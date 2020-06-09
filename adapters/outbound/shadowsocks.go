@@ -8,14 +8,14 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/Dreamacro/clash/common/structure"
-	"github.com/Dreamacro/clash/component/dialer"
-	obfs "github.com/Dreamacro/clash/component/simple-obfs"
-	"github.com/Dreamacro/clash/component/socks5"
-	v2rayObfs "github.com/Dreamacro/clash/component/v2ray-plugin"
-	C "github.com/Dreamacro/clash/constant"
+	"github.com/ClashrAuto/clash/common/structure"
+	"github.com/ClashrAuto/clash/component/dialer"
+	obfs "github.com/ClashrAuto/clash/component/simple-obfs"
+	"github.com/ClashrAuto/clash/component/socks5"
+	v2rayObfs "github.com/ClashrAuto/clash/component/v2ray-plugin"
+	C "github.com/ClashrAuto/clash/constant"
 
-	"github.com/Dreamacro/go-shadowsocks2/core"
+	"github.com/ClashrAuto/go-shadowsocks2/core"
 )
 
 type ShadowSocks struct {

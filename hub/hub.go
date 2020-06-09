@@ -1,9 +1,9 @@
 package hub
 
 import (
-	"github.com/Dreamacro/clash/hub/executor"
-	"github.com/Dreamacro/clash/hub/route"
-	"github.com/Dreamacro/clash/config"
+	"github.com/ClashrAuto/clash/hub/executor"
+	"github.com/ClashrAuto/clash/hub/route"
+	"github.com/ClashrAuto/clash/config"
 )
 
 type Option func(*config.Config)

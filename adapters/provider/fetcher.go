@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Dreamacro/clash/log"
+	"github.com/ClashrAuto/clash/log"
 )
 
 var (

@@ -8,7 +8,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/Dreamacro/clash/component/auth"
+	"github.com/ClashrAuto/clash/component/auth"
 )
 
 // Error represents a SOCKS error

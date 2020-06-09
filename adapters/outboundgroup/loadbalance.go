@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"net"
 
-	"github.com/Dreamacro/clash/adapters/outbound"
-	"github.com/Dreamacro/clash/adapters/provider"
-	"github.com/Dreamacro/clash/common/murmur3"
-	"github.com/Dreamacro/clash/common/singledo"
-	C "github.com/Dreamacro/clash/constant"
+	"github.com/ClashrAuto/clash/adapters/outbound"
+	"github.com/ClashrAuto/clash/adapters/provider"
+	"github.com/ClashrAuto/clash/common/murmur3"
+	"github.com/ClashrAuto/clash/common/singledo"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"golang.org/x/net/publicsuffix"
 )

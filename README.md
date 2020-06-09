@@ -1,19 +1,19 @@
 <h1 align="center">
-  <img src="https://github.com/Dreamacro/clash/raw/master/docs/logo.png" alt="Clash" width="200">
+  <img src="https://github.com/ClashrAuto/clash/raw/master/docs/logo.png" alt="Clash" width="200">
   <br>Clash<br>
 </h1>
 
 <h4 align="center">A rule-based tunnel in Go.</h4>
 
 <p align="center">
-  <a href="https://github.com/Dreamacro/clash/actions">
-    <img src="https://img.shields.io/github/workflow/status/Dreamacro/clash/Go?style=flat-square" alt="Github Actions">
+  <a href="https://github.com/ClashrAuto/clash/actions">
+    <img src="https://img.shields.io/github/workflow/status/ClashrAuto/clash/Go?style=flat-square" alt="Github Actions">
   </a>
-  <a href="https://goreportcard.com/report/github.com/Dreamacro/clash">
-    <img src="https://goreportcard.com/badge/github.com/Dreamacro/clash?style=flat-square">
+  <a href="https://goreportcard.com/report/github.com/ClashrAuto/clash">
+    <img src="https://goreportcard.com/badge/github.com/ClashrAuto/clash?style=flat-square">
   </a>
-  <a href="https://github.com/Dreamacro/clash/releases">
-    <img src="https://img.shields.io/github/release/Dreamacro/clash/all.svg?style=flat-square">
+  <a href="https://github.com/ClashrAuto/clash/releases">
+    <img src="https://img.shields.io/github/release/ClashrAuto/clash/all.svg?style=flat-square">
   </a>
 </p>
 
@@ -33,11 +33,11 @@
 Clash requires Go >= 1.13. You can build it from source:
 
 ```sh
-$ go get -u -v github.com/Dreamacro/clash
+$ go get -u -v github.com/ClashrAuto/clash
 ```
 
-Pre-built binaries are available here: [release](https://github.com/Dreamacro/clash/releases)  
-Pre-built Premium binaries are available here: [Premium release](https://github.com/Dreamacro/clash/releases/tag/premium). Source is not currently available.
+Pre-built binaries are available here: [release](https://github.com/ClashrAuto/clash/releases)  
+Pre-built Premium binaries are available here: [Premium release](https://github.com/ClashrAuto/clash/releases/tag/premium). Source is not currently available.
 
 Check Clash version with:
 
@@ -127,27 +127,27 @@ experimental:
 #   'alpha.clash.dev': '::1'
 
 # dns:
-  # enable: true # set true to enable dns (default is false)
-  # ipv6: false # default is false
-  # listen: 0.0.0.0:53
-  # # default-nameserver: # resolve dns nameserver host, should fill pure IP
-  # #   - 114.114.114.114
-  # #   - 8.8.8.8
-  # enhanced-mode: redir-host # or fake-ip
-  # # fake-ip-range: 198.18.0.1/16 # if you don't know what it is, don't change it
-  # fake-ip-filter: # fake ip white domain list
-  #   - '*.lan'
-  #   - localhost.ptlogin2.qq.com
-  # nameserver:
-  #   - 114.114.114.114
-  #   - tls://dns.rubyfish.cn:853 # dns over tls
-  #   - https://1.1.1.1/dns-query # dns over https
-  # fallback: # concurrent request with nameserver, fallback used when GEOIP country isn't CN
-  #   - tcp://1.1.1.1
-  # fallback-filter:
-  #   geoip: true # default
-  #   ipcidr: # ips in these subnets will be considered polluted
-  #     - 240.0.0.0/4
+# enable: true # set true to enable dns (default is false)
+# ipv6: false # default is false
+# listen: 0.0.0.0:53
+# # default-nameserver: # resolve dns nameserver host, should fill pure IP
+# #   - 114.114.114.114
+# #   - 8.8.8.8
+# enhanced-mode: redir-host # or fake-ip
+# # fake-ip-range: 198.18.0.1/16 # if you don't know what it is, don't change it
+# fake-ip-filter: # fake ip white domain list
+#   - '*.lan'
+#   - localhost.ptlogin2.qq.com
+# nameserver:
+#   - 114.114.114.114
+#   - tls://dns.rubyfish.cn:853 # dns over tls
+#   - https://1.1.1.1/dns-query # dns over https
+# fallback: # concurrent request with nameserver, fallback used when GEOIP country isn't CN
+#   - tcp://1.1.1.1
+# fallback-filter:
+#   geoip: true # default
+#   ipcidr: # ips in these subnets will be considered polluted
+#     - 240.0.0.0/4
 
 proxies:
   # shadowsocks
@@ -163,8 +163,8 @@ proxies:
     port: 443
     cipher: chacha20-ietf-poly1305
     password: "password"
-    # udp: true
 
+    # udp: true
   # old obfs configuration format remove after prerelease
   - name: "ss2"
     type: ss
@@ -203,6 +203,7 @@ proxies:
     uuid: uuid
     alterId: 32
     cipher: auto
+
     # udp: true
     # tls: true
     # skip-cert-verify: true
@@ -210,7 +211,6 @@ proxies:
     # ws-path: /path
     # ws-headers:
     #   Host: v2ray.com
-  
   - name: "vmess-http"
     type: vmess
     server: server
@@ -218,6 +218,7 @@ proxies:
     uuid: uuid
     alterId: 32
     cipher: auto
+
     # udp: true
     # network: http
     # http-opts:
@@ -228,38 +229,37 @@ proxies:
     #   # headers:
     #   #   Connection:
     #   #     - keep-alive
-
   # socks5
   - name: "socks"
     type: socks5
     server: server
     port: 443
+
     # username: username
     # password: password
     # tls: true
     # skip-cert-verify: true
     # udp: true
-
   # http
   - name: "http"
     type: http
     server: server
     port: 443
+
     # username: username
     # password: password
     # tls: true # https
     # skip-cert-verify: true
-
   # snell
   - name: "snell"
     type: snell
     server: server
     port: 44046
     psk: yourpsk
-    # obfs-opts:
-      # mode: http # or tls
-      # host: bing.com
 
+    # obfs-opts:
+    # mode: http # or tls
+    # host: bing.com
   # trojan
   - name: "trojan"
     type: trojan
@@ -291,7 +291,7 @@ proxy-groups:
       - ss1
       - ss2
       - vmess1
-    url: 'http://www.gstatic.com/generate_204'
+    url: "http://www.gstatic.com/generate_204"
     interval: 300
 
   # fallback select an available policy by priority. The availability is tested by accessing an URL, just like an auto url-test group.
@@ -301,7 +301,7 @@ proxy-groups:
       - ss1
       - ss2
       - vmess1
-    url: 'http://www.gstatic.com/generate_204'
+    url: "http://www.gstatic.com/generate_204"
     interval: 300
 
   # load-balance: The request of the same eTLD will be dial on the same proxy.
@@ -311,7 +311,7 @@ proxy-groups:
       - ss1
       - ss2
       - vmess1
-    url: 'http://www.gstatic.com/generate_204'
+    url: "http://www.gstatic.com/generate_204"
     interval: 300
 
   # select is used for selecting proxy or proxy group
@@ -323,7 +323,7 @@ proxy-groups:
       - ss2
       - vmess1
       - auto
-  
+
   - name: UseProvider
     type: select
     use:
@@ -366,12 +366,15 @@ rules:
   # you also can use `FINAL,Proxy` or `FINAL,,Proxy` now
   - MATCH,auto
 ```
+
 </details>
 
 ## Advanced
-[Provider](https://github.com/Dreamacro/clash/wiki/Provider)
+
+[Provider](https://github.com/ClashrAuto/clash/wiki/Provider)
 
 ## Documentations
+
 https://clash.gitbook.io/
 
 ## Credits
@@ -382,7 +385,7 @@ https://clash.gitbook.io/
 
 ## License
 
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FDreamacro%2Fclash.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FDreamacro%2Fclash?ref=badge_large)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FClashrAuto%2Fclash.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FClashrAuto%2Fclash?ref=badge_large)
 
 ## TODO
 
