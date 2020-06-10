@@ -3,6 +3,7 @@ module github.com/ClashrAuto/clash
 go 1.14
 
 require (
+	github.com/ClashrAuto/Clashr v0.0.0-20200508085544-280623be37c5
 	github.com/ClashrAuto/gossr v0.0.0-20200508085025-725f4805e0b4
 	github.com/Dreamacro/go-shadowsocks2 v0.1.5
 	github.com/dgryski/go-camellia v0.0.0-20191119043421-69a8a13fb23d // indirect

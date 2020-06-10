@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/gossr/obfs"
-	"github.com/ClashrAuto/gossr/protocol"
 	"net"
 	"strconv"
 	"strings"
 
-	"github.com/ClashrAuto/gossr"
+	C "github.com/ClashrAuto/Clashr/constant"
+	"github.com/ClashrAuto/gossr/obfs"
+	"github.com/ClashrAuto/gossr/protocol"
+
+	shadowsocksr "github.com/ClashrAuto/gossr"
 	"github.com/ClashrAuto/gossr/ssr"
 )
 
