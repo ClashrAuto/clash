@@ -11,11 +11,11 @@ import (
 	"net/http"
 	"strconv"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/ca"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	C "github.com/metacubex/clashauto/constant"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/ca"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type Http struct {

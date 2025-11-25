@@ -5,7 +5,7 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/metacubex/clashauto/component/resolver"
+	"github.com/ClashrAuto/clash/component/resolver"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

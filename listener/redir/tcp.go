@@ -3,9 +3,9 @@ package redir
 import (
 	"net"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	"github.com/metacubex/clashauto/component/keepalive"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	"github.com/ClashrAuto/clash/component/keepalive"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type Listener struct {

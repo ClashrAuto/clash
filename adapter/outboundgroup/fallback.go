@@ -6,11 +6,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/metacubex/clashauto/common/callback"
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/utils"
-	C "github.com/metacubex/clashauto/constant"
-	P "github.com/metacubex/clashauto/constant/provider"
+	"github.com/ClashrAuto/clash/common/callback"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/utils"
+	C "github.com/ClashrAuto/clash/constant"
+	P "github.com/ClashrAuto/clash/constant/provider"
 )
 
 type Fallback struct {

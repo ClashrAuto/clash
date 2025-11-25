@@ -3,8 +3,8 @@
 package outboundgroup
 
 import (
-	C "github.com/metacubex/clashauto/constant"
-	P "github.com/metacubex/clashauto/constant/provider"
+	C "github.com/ClashrAuto/clash/constant"
+	P "github.com/ClashrAuto/clash/constant/provider"
 )
 
 type ProxyGroup interface {

@@ -1,6 +1,6 @@
 package dialer
 
-import "github.com/metacubex/clashauto/constant/features"
+import "github.com/ClashrAuto/clash/constant/features"
 
 func init() {
 	// According to MSDN, this option is available since Windows 10, 1607

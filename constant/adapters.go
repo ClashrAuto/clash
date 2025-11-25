@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/component/dialer"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/component/dialer"
 )
 
 // Adapter Type

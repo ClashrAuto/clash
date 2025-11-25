@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 )
 
 // store process name for when dealing with multiple PROCESS-NAME rules

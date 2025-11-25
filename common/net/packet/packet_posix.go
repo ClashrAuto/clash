@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/metacubex/clashauto/common/pool"
+	"github.com/ClashrAuto/clash/common/pool"
 )
 
 type enhanceUDPConn struct {

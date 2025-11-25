@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/http"
 
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 // NewHTTPS receive CONNECT request and return ConnContext

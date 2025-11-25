@@ -3,7 +3,7 @@ package common
 import (
 	"net/netip"
 
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type IPCIDROption func(*IPCIDR)

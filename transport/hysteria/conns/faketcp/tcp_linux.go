@@ -20,7 +20,7 @@ import (
 	"github.com/metacubex/gopacket"
 	"github.com/metacubex/gopacket/layers"
 
-	"github.com/metacubex/clashauto/component/dialer"
+	"github.com/ClashrAuto/clash/component/dialer"
 )
 
 var (

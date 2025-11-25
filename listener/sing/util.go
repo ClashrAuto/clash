@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	"github.com/metacubex/clashauto/transport/socks5"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 // HandleSocket like inbound.NewSocket combine with Tunnel.HandleTCPConn but also handel specialFqdn

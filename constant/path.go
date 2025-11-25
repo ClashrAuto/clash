@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/constant/features"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/constant/features"
 )
 
 const Name = "clashauto"

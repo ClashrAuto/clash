@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"net"
 
-	"github.com/metacubex/clashauto/common/pool"
+	"github.com/ClashrAuto/clash/common/pool"
 )
 
 type Conn struct {

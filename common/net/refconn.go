@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/metacubex/clashauto/common/buf"
+	"github.com/ClashrAuto/clash/common/buf"
 )
 
 type refConn struct {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/metacubex/clashauto/common/singleflight"
-	"github.com/metacubex/clashauto/component/geodata/router"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/singleflight"
+	"github.com/ClashrAuto/clash/component/geodata/router"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 )
 
 var (

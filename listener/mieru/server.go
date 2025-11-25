@@ -6,10 +6,10 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	N "github.com/metacubex/clashauto/common/net"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/socks5"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	N "github.com/ClashrAuto/clash/common/net"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/socks5"
 
 	mierucommon "github.com/enfein/mieru/v3/apis/common"
 	mieruconstant "github.com/enfein/mieru/v3/apis/constant"

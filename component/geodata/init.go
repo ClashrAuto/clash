@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/common/atomic"
-	clashautoHttp "github.com/metacubex/clashauto/component/http"
-	"github.com/metacubex/clashauto/component/mmdb"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/atomic"
+	clashautoHttp "github.com/ClashrAuto/clash/component/http"
+	"github.com/ClashrAuto/clash/component/mmdb"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 )
 
 var (

@@ -9,10 +9,10 @@ import (
 	"encoding/binary"
 	"sync"
 
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/log"
-	"github.com/metacubex/clashauto/ntp"
-	"github.com/metacubex/clashauto/transport/shadowsocks/core"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/log"
+	"github.com/ClashrAuto/clash/ntp"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/core"
 
 	"github.com/metacubex/randv2"
 )

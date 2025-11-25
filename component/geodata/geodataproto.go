@@ -1,7 +1,7 @@
 package geodata
 
 import (
-	"github.com/metacubex/clashauto/component/geodata/router"
+	"github.com/ClashrAuto/clash/component/geodata/router"
 )
 
 type LoaderImplementation interface {

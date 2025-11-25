@@ -5,9 +5,9 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/metacubex/clashauto/component/cidr"
-	"github.com/metacubex/clashauto/component/geodata/strmatcher"
-	"github.com/metacubex/clashauto/component/trie"
+	"github.com/ClashrAuto/clash/component/cidr"
+	"github.com/ClashrAuto/clash/component/geodata/strmatcher"
+	"github.com/ClashrAuto/clash/component/trie"
 )
 
 var matcherTypeMap = map[Domain_Type]strmatcher.Type{

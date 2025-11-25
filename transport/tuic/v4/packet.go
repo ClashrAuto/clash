@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/common/atomic"
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/transport/tuic/common"
+	"github.com/ClashrAuto/clash/common/atomic"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/transport/tuic/common"
 
 	"github.com/metacubex/quic-go"
 )

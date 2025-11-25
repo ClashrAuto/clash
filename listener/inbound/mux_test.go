@@ -3,7 +3,7 @@ package inbound_test
 import (
 	"testing"
 
-	"github.com/metacubex/clashauto/adapter/outbound"
+	"github.com/ClashrAuto/clash/adapter/outbound"
 
 	"github.com/stretchr/testify/assert"
 )

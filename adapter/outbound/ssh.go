@@ -11,10 +11,10 @@ import (
 	"strings"
 	"sync"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	C "github.com/metacubex/clashauto/constant"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"github.com/metacubex/randv2"
 	"golang.org/x/crypto/ssh"

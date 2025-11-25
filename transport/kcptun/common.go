@@ -3,7 +3,7 @@ package kcptun
 import (
 	"crypto/sha1"
 
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/kcp-go"
 	"golang.org/x/crypto/pbkdf2"

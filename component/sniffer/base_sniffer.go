@@ -3,9 +3,9 @@ package sniffer
 import (
 	"errors"
 
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/constant/sniffer"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/constant/sniffer"
 )
 
 type SnifferConfig struct {

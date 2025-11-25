@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	N "github.com/metacubex/clashauto/common/net"
+	N "github.com/ClashrAuto/clash/common/net"
 
 	"github.com/stretchr/testify/assert"
 )

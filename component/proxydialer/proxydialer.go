@@ -7,11 +7,11 @@ import (
 	"net/netip"
 	"strings"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/dialer"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/tunnel"
-	"github.com/metacubex/clashauto/tunnel/statistic"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/dialer"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/tunnel"
+	"github.com/ClashrAuto/clash/tunnel/statistic"
 )
 
 type proxyDialer struct {

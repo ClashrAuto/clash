@@ -3,7 +3,7 @@ package trie
 import (
 	"net"
 
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type IPV6 bool

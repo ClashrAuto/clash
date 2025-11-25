@@ -1,7 +1,7 @@
 package cachefile
 
 import (
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/bbolt"
 )

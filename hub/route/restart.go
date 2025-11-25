@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/metacubex/clashauto/hub/executor"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/hub/executor"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

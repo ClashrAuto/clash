@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/metacubex/clashauto/constant"
-	LT "github.com/metacubex/clashauto/listener/tunnel"
-	"github.com/metacubex/clashauto/log"
+	C "github.com/ClashrAuto/clash/constant"
+	LT "github.com/ClashrAuto/clash/listener/tunnel"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type TunnelOption struct {

@@ -1,6 +1,6 @@
 package inbound
 
-import "github.com/metacubex/clashauto/listener/reality"
+import "github.com/ClashrAuto/clash/listener/reality"
 
 type RealityConfig struct {
 	Dest              string   `inbound:"dest"`

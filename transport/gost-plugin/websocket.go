@@ -6,9 +6,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/metacubex/clashauto/component/ca"
-	"github.com/metacubex/clashauto/component/ech"
-	"github.com/metacubex/clashauto/transport/vmess"
+	"github.com/ClashrAuto/clash/component/ca"
+	"github.com/ClashrAuto/clash/component/ech"
+	"github.com/ClashrAuto/clash/transport/vmess"
 	smux "github.com/metacubex/smux"
 )
 

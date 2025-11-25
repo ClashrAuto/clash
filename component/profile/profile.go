@@ -1,7 +1,7 @@
 package profile
 
 import (
-	"github.com/metacubex/clashauto/common/atomic"
+	"github.com/ClashrAuto/clash/common/atomic"
 )
 
 // StoreSelected is a global switch for storing selected proxy to cache

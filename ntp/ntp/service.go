@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	"github.com/metacubex/clashauto/log"
-	clashautoNtp "github.com/metacubex/clashauto/ntp"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	"github.com/ClashrAuto/clash/log"
+	clashautoNtp "github.com/ClashrAuto/clash/ntp"
 
 	M "github.com/metacubex/sing/common/metadata"
 	"github.com/metacubex/sing/common/ntp"

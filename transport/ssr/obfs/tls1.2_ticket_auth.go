@@ -8,9 +8,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/ntp"
-	"github.com/metacubex/clashauto/transport/ssr/tools"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/ntp"
+	"github.com/ClashrAuto/clash/transport/ssr/tools"
 
 	"github.com/metacubex/randv2"
 )

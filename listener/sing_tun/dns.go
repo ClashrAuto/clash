@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/component/resolver"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/listener/sing"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/resolver"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/listener/sing"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/sing/common/buf"
 	"github.com/metacubex/sing/common/bufio"

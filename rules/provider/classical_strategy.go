@@ -3,10 +3,10 @@ package provider
 import (
 	"fmt"
 
-	C "github.com/metacubex/clashauto/constant"
-	P "github.com/metacubex/clashauto/constant/provider"
-	"github.com/metacubex/clashauto/log"
-	"github.com/metacubex/clashauto/rules/common"
+	C "github.com/ClashrAuto/clash/constant"
+	P "github.com/ClashrAuto/clash/constant/provider"
+	"github.com/ClashrAuto/clash/log"
+	"github.com/ClashrAuto/clash/rules/common"
 )
 
 type classicalStrategy struct {

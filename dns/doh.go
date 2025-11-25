@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/component/ca"
-	tlsC "github.com/metacubex/clashauto/component/tls"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/ca"
+	tlsC "github.com/ClashrAuto/clash/component/tls"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/quic-go/http3"

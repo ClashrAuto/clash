@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/metacubex/clashauto/component/updater"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/updater"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

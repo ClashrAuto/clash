@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/metacubex/clashauto/component/auth"
+	"github.com/ClashrAuto/clash/component/auth"
 )
 
 type authStore struct {

@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/metacubex/clashauto/common/once"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/ntp"
+	"github.com/ClashrAuto/clash/common/once"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/ntp"
 )
 
 var globalCertPool *x509.CertPool

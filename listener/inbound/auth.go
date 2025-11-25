@@ -1,8 +1,8 @@
 package inbound
 
 import (
-	"github.com/metacubex/clashauto/component/auth"
-	authStore "github.com/metacubex/clashauto/listener/auth"
+	"github.com/ClashrAuto/clash/component/auth"
+	authStore "github.com/ClashrAuto/clash/listener/auth"
 )
 
 type AuthUser struct {

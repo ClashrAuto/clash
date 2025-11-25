@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/metacubex/clashauto/transport/hysteria/obfs"
-	"github.com/metacubex/clashauto/transport/hysteria/utils"
+	"github.com/ClashrAuto/clash/transport/hysteria/obfs"
+	"github.com/ClashrAuto/clash/transport/hysteria/utils"
 
 	"github.com/metacubex/randv2"
 )

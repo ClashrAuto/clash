@@ -15,19 +15,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/component/ca"
-	clashautoHttp "github.com/metacubex/clashauto/component/http"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/constant/features"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/ca"
+	clashautoHttp "github.com/ClashrAuto/clash/component/http"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/constant/features"
+	"github.com/ClashrAuto/clash/log"
 )
 
 const (
-	baseReleaseURL    = "https://github.com/MetaCubeX/clashauto/releases/latest/download/"
-	versionReleaseURL = "https://github.com/MetaCubeX/clashauto/releases/latest/download/version.txt"
+	baseReleaseURL    = "https://github.com/ClashrAuto/clash/releases/latest/download/"
+	versionReleaseURL = "https://github.com/ClashrAuto/clash/releases/latest/download/version.txt"
 
-	baseAlphaURL    = "https://github.com/MetaCubeX/clashauto/releases/download/Prerelease-Alpha/"
-	versionAlphaURL = "https://github.com/MetaCubeX/clashauto/releases/download/Prerelease-Alpha/version.txt"
+	baseAlphaURL    = "https://github.com/ClashrAuto/clash/releases/download/Prerelease-Alpha/"
+	versionAlphaURL = "https://github.com/ClashrAuto/clash/releases/download/Prerelease-Alpha/version.txt"
 
 	// MaxPackageFileSize is a maximum package file length in bytes. The largest
 	// package whose size is limited by this constant currently has the size of

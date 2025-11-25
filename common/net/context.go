@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/metacubex/clashauto/common/contextutils"
+	"github.com/ClashrAuto/clash/common/contextutils"
 )
 
 // SetupContextForConn is a helper function that starts connection I/O interrupter.

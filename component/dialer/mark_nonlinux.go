@@ -7,7 +7,7 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 )
 
 var printMarkWarnOnce sync.Once

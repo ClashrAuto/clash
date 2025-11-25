@@ -5,7 +5,7 @@
 --description "The universal proxy platform."
 --url "https://wiki.metacubex.one/"
 --maintainer "MetaCubeX <none@example.com>"
---deb-field "Bug: https://github.com/MetaCubeX/clashauto/issues"
+--deb-field "Bug: https://github.com/ClashrAuto/clash/issues"
 --no-deb-generate-changes
 --config-files /etc/clashauto/config.yaml
 

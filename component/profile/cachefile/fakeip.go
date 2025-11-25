@@ -3,7 +3,7 @@ package cachefile
 import (
 	"net/netip"
 
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/bbolt"
 )

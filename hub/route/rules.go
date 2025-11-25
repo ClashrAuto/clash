@@ -1,10 +1,10 @@
 package route
 
 import (
-	"github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/constant"
 	"net/http"
 
-	"github.com/metacubex/clashauto/tunnel"
+	"github.com/ClashrAuto/clash/tunnel"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

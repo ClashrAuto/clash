@@ -1,6 +1,6 @@
 package config
 
-import "github.com/metacubex/clashauto/transport/kcptun"
+import "github.com/ClashrAuto/clash/transport/kcptun"
 
 type KcpTun struct {
 	Enable        bool `json:"enable"`

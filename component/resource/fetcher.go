@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/component/slowdown"
-	P "github.com/metacubex/clashauto/constant/provider"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/component/slowdown"
+	P "github.com/ClashrAuto/clash/constant/provider"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/fswatch"
 	"github.com/samber/lo"

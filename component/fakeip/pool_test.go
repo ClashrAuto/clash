@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/metacubex/clashauto/component/profile/cachefile"
+	"github.com/ClashrAuto/clash/component/profile/cachefile"
 
 	"github.com/metacubex/bbolt"
 	"github.com/stretchr/testify/assert"

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package clashauto.transport.vless;
 option csharp_namespace = "Mihomo.Transport.Vless";
-option go_package = "github.com/metacubex/clashauto/transport/vless";
+option go_package = "github.com/ClashrAuto/clash/transport/vless";
 option java_package = "com.clashauto.transport.vless";
 option java_multiple_files = true;
 

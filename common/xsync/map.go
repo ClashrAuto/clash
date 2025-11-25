@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/metacubex/clashauto/common/maphash"
+	"github.com/ClashrAuto/clash/common/maphash"
 )
 
 const (

@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/metacubex/clashauto/component/keepalive"
-	"github.com/metacubex/clashauto/component/resolver"
+	"github.com/ClashrAuto/clash/component/keepalive"
+	"github.com/ClashrAuto/clash/component/resolver"
 )
 
 const (

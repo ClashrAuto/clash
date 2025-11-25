@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/metacubex/clashauto/adapter/outbound"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	C "github.com/metacubex/clashauto/constant"
-	P "github.com/metacubex/clashauto/constant/provider"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/adapter/outbound"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	C "github.com/ClashrAuto/clash/constant"
+	P "github.com/ClashrAuto/clash/constant/provider"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type Relay struct {

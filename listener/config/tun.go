@@ -3,7 +3,7 @@ package config
 import (
 	"net/netip"
 
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"go4.org/netipx"
 	"golang.org/x/exp/slices"

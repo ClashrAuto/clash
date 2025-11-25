@@ -3,7 +3,7 @@ package socks
 import (
 	"net"
 
-	"github.com/metacubex/clashauto/transport/socks5"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 type packet struct {

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/metacubex/clashauto/tunnel/statistic"
+	"github.com/ClashrAuto/clash/tunnel/statistic"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/log"
 )
 
 // ConvertsV2Ray convert V2Ray subscribe proxies data to clashauto proxies config

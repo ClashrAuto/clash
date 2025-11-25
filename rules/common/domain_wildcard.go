@@ -3,8 +3,8 @@ package common
 import (
 	"strings"
 
-	"github.com/metacubex/clashauto/component/wildcard"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/component/wildcard"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type DomainWildcard struct {

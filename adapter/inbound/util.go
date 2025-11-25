@@ -6,8 +6,8 @@ import (
 	"net/netip"
 	"strings"
 
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/socks5"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 func parseSocksAddr(target socks5.Addr) *C.Metadata {

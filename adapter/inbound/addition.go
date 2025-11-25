@@ -3,7 +3,7 @@ package inbound
 import (
 	"net"
 
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type Addition func(metadata *C.Metadata)

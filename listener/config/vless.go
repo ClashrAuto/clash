@@ -3,8 +3,8 @@ package config
 import (
 	"encoding/json"
 
-	"github.com/metacubex/clashauto/listener/reality"
-	"github.com/metacubex/clashauto/listener/sing"
+	"github.com/ClashrAuto/clash/listener/reality"
+	"github.com/ClashrAuto/clash/listener/sing"
 )
 
 type VlessUser struct {

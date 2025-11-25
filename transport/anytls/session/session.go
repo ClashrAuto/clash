@@ -12,12 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/clashauto/common/buf"
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
-	"github.com/metacubex/clashauto/transport/anytls/padding"
-	"github.com/metacubex/clashauto/transport/anytls/util"
+	"github.com/ClashrAuto/clash/common/buf"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
+	"github.com/ClashrAuto/clash/transport/anytls/padding"
+	"github.com/ClashrAuto/clash/transport/anytls/util"
 )
 
 type Session struct {

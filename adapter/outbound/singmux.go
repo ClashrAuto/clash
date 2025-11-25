@@ -3,11 +3,11 @@ package outbound
 import (
 	"context"
 
-	CN "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	CN "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 
 	mux "github.com/metacubex/sing-mux"
 	E "github.com/metacubex/sing/common/exceptions"

@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/metacubex/clashauto/common/once"
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/once"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/log"
 
 	utls "github.com/metacubex/utls"
 	"github.com/mroth/weightedrand/v2"

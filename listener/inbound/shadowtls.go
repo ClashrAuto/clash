@@ -1,8 +1,8 @@
 package inbound
 
 import (
-	"github.com/metacubex/clashauto/common/utils"
-	LC "github.com/metacubex/clashauto/listener/config"
+	"github.com/ClashrAuto/clash/common/utils"
+	LC "github.com/ClashrAuto/clash/listener/config"
 )
 
 type ShadowTLS struct {

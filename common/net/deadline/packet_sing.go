@@ -4,7 +4,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/metacubex/clashauto/common/net/packet"
+	"github.com/ClashrAuto/clash/common/net/packet"
 
 	"github.com/metacubex/sing/common/buf"
 	"github.com/metacubex/sing/common/bufio"

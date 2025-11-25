@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/metacubex/clashauto/common/atomic"
-	"github.com/metacubex/clashauto/common/utils"
+	"github.com/ClashrAuto/clash/common/atomic"
+	"github.com/ClashrAuto/clash/common/utils"
 )
 
 var (

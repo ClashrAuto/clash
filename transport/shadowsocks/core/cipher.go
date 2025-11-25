@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/transport/shadowsocks/shadowaead"
-	"github.com/metacubex/clashauto/transport/shadowsocks/shadowstream"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/shadowaead"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/shadowstream"
 )
 
 type Cipher interface {

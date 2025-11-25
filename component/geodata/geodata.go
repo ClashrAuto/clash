@@ -3,8 +3,8 @@ package geodata
 import (
 	"fmt"
 
-	"github.com/metacubex/clashauto/component/geodata/router"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/component/geodata/router"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type loader struct {

@@ -3,9 +3,9 @@ package listener
 import (
 	"fmt"
 
-	"github.com/metacubex/clashauto/common/structure"
-	C "github.com/metacubex/clashauto/constant"
-	IN "github.com/metacubex/clashauto/listener/inbound"
+	"github.com/ClashrAuto/clash/common/structure"
+	C "github.com/ClashrAuto/clash/constant"
+	IN "github.com/ClashrAuto/clash/listener/inbound"
 )
 
 func ParseListener(mapping map[string]any) (C.InboundListener, error) {

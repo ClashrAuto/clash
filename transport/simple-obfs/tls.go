@@ -7,8 +7,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/ntp"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/ntp"
 )
 
 const (

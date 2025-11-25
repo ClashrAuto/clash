@@ -6,8 +6,8 @@ import (
 	"io"
 	"net"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/pool"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/pool"
 )
 
 // ErrShortPacket means that the packet is too short for a valid encrypted packet.

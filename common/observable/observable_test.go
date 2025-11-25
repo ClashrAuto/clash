@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/metacubex/clashauto/common/atomic"
+	"github.com/ClashrAuto/clash/common/atomic"
 
 	"github.com/stretchr/testify/assert"
 )

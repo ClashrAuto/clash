@@ -6,12 +6,12 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/metacubex/clashauto/component/geodata"
-	"github.com/metacubex/clashauto/component/geodata/router"
-	"github.com/metacubex/clashauto/component/mmdb"
-	"github.com/metacubex/clashauto/component/resolver"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/geodata"
+	"github.com/ClashrAuto/clash/component/geodata/router"
+	"github.com/ClashrAuto/clash/component/mmdb"
+	"github.com/ClashrAuto/clash/component/resolver"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 
 	"golang.org/x/exp/slices"
 )

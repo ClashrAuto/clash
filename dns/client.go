@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/clashauto/component/ca"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/ca"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 
 	D "github.com/miekg/dns"
 )

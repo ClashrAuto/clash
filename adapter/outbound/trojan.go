@@ -9,17 +9,17 @@ import (
 	"net/http"
 	"strconv"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/ca"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/ech"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	tlsC "github.com/metacubex/clashauto/component/tls"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/gun"
-	"github.com/metacubex/clashauto/transport/shadowsocks/core"
-	"github.com/metacubex/clashauto/transport/trojan"
-	"github.com/metacubex/clashauto/transport/vmess"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/ca"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/ech"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	tlsC "github.com/ClashrAuto/clash/component/tls"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/gun"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/core"
+	"github.com/ClashrAuto/clash/transport/trojan"
+	"github.com/ClashrAuto/clash/transport/vmess"
 )
 
 type Trojan struct {

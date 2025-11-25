@@ -3,13 +3,13 @@ package shadowsocks
 import (
 	"net"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/sockopt"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
-	"github.com/metacubex/clashauto/transport/shadowsocks/core"
-	"github.com/metacubex/clashauto/transport/socks5"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/sockopt"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/core"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 type UDPListener struct {

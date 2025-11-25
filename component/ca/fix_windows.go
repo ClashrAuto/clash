@@ -1,7 +1,7 @@
 package ca
 
 import (
-	"github.com/metacubex/clashauto/constant/features"
+	"github.com/ClashrAuto/clash/constant/features"
 )
 
 func init() {

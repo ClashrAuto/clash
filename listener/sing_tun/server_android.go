@@ -7,10 +7,10 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/metacubex/clashauto/component/process"
-	"github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/constant/features"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/process"
+	"github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/constant/features"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/metacubex/sing-tun"
 	"github.com/sagernet/netlink"

@@ -8,9 +8,9 @@ import (
 	"strings"
 	_ "unsafe"
 
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/component/resolver/hosts"
-	"github.com/metacubex/clashauto/component/trie"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/component/resolver/hosts"
+	"github.com/ClashrAuto/clash/component/trie"
 	"github.com/metacubex/randv2"
 )
 

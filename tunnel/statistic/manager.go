@@ -4,9 +4,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/metacubex/clashauto/common/atomic"
-	"github.com/metacubex/clashauto/common/xsync"
-	"github.com/metacubex/clashauto/component/memory"
+	"github.com/ClashrAuto/clash/common/atomic"
+	"github.com/ClashrAuto/clash/common/xsync"
+	"github.com/ClashrAuto/clash/component/memory"
 )
 
 var DefaultManager *Manager

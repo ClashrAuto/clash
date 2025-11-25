@@ -6,9 +6,9 @@ import (
 	"net"
 	"runtime"
 
-	"github.com/metacubex/clashauto/common/cmd"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/cmd"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/log"
 )
 
 var (

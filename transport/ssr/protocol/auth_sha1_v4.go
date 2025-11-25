@@ -7,9 +7,9 @@ import (
 	"hash/crc32"
 	"net"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/transport/ssr/tools"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/transport/ssr/tools"
 
 	"github.com/metacubex/randv2"
 )

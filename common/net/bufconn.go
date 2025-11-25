@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"net"
 
-	"github.com/metacubex/clashauto/common/buf"
+	"github.com/ClashrAuto/clash/common/buf"
 )
 
 var _ ExtendedConn = (*BufferedConn)(nil)

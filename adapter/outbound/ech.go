@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/metacubex/clashauto/component/ech"
-	"github.com/metacubex/clashauto/component/resolver"
+	"github.com/ClashrAuto/clash/component/ech"
+	"github.com/ClashrAuto/clash/component/resolver"
 )
 
 type ECHOptions struct {

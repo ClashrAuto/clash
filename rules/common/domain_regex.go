@@ -1,7 +1,7 @@
 package common
 
 import (
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"github.com/dlclark/regexp2"
 )

@@ -3,10 +3,10 @@ package inbound
 import (
 	"strings"
 
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/listener/anytls"
-	LC "github.com/metacubex/clashauto/listener/config"
-	"github.com/metacubex/clashauto/log"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/listener/anytls"
+	LC "github.com/ClashrAuto/clash/listener/config"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type AnyTLSOption struct {

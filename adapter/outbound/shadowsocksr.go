@@ -7,16 +7,16 @@ import (
 	"net"
 	"strconv"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/dialer"
-	"github.com/metacubex/clashauto/component/proxydialer"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/shadowsocks/core"
-	"github.com/metacubex/clashauto/transport/shadowsocks/shadowaead"
-	"github.com/metacubex/clashauto/transport/shadowsocks/shadowstream"
-	"github.com/metacubex/clashauto/transport/socks5"
-	"github.com/metacubex/clashauto/transport/ssr/obfs"
-	"github.com/metacubex/clashauto/transport/ssr/protocol"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/ClashrAuto/clash/component/proxydialer"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/core"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/shadowaead"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/shadowstream"
+	"github.com/ClashrAuto/clash/transport/socks5"
+	"github.com/ClashrAuto/clash/transport/ssr/obfs"
+	"github.com/ClashrAuto/clash/transport/ssr/protocol"
 )
 
 type ShadowSocksR struct {
@@ -137,7 +137,7 @@ func (ssr *ShadowSocksR) ProxyInfo() C.ProxyInfo {
 
 func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 	// SSR protocol compatibility
-	// https://github.com/metacubex/clashauto/pull/2056
+	// https://github.com/ClashrAuto/clash/pull/2056
 	if option.Cipher == "none" {
 		option.Cipher = "dummy"
 	}

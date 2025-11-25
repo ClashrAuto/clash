@@ -9,11 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
-	"github.com/metacubex/clashauto/adapter/outboundgroup"
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/component/profile/cachefile"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/tunnel"
+	"github.com/ClashrAuto/clash/adapter/outboundgroup"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/component/profile/cachefile"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/tunnel"
 )
 
 func groupRouter() http.Handler {

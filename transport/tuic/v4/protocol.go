@@ -11,8 +11,8 @@ import (
 	"github.com/metacubex/blake3"
 	"github.com/metacubex/quic-go"
 
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/socks5"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 type BufferedReader interface {

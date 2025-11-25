@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/common/buf"
-	N "github.com/metacubex/clashauto/common/net"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/common/buf"
+	N "github.com/ClashrAuto/clash/common/net"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"

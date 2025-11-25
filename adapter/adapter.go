@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/clashauto/common/atomic"
-	"github.com/metacubex/clashauto/common/queue"
-	"github.com/metacubex/clashauto/common/utils"
-	"github.com/metacubex/clashauto/common/xsync"
-	"github.com/metacubex/clashauto/component/ca"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/atomic"
+	"github.com/ClashrAuto/clash/common/queue"
+	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/ClashrAuto/clash/common/xsync"
+	"github.com/ClashrAuto/clash/component/ca"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 	"github.com/VividCortex/ewma"
 )
 

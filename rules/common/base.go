@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"golang.org/x/exp/slices"
 )

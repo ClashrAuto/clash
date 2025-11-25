@@ -3,8 +3,8 @@ package protocol
 import (
 	"net"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/common/pool"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/common/pool"
 )
 
 type PacketConn struct {

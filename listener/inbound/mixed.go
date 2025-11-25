@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/metacubex/clashauto/constant"
-	LC "github.com/metacubex/clashauto/listener/config"
-	"github.com/metacubex/clashauto/listener/mixed"
-	"github.com/metacubex/clashauto/listener/socks"
-	"github.com/metacubex/clashauto/log"
+	C "github.com/ClashrAuto/clash/constant"
+	LC "github.com/ClashrAuto/clash/listener/config"
+	"github.com/ClashrAuto/clash/listener/mixed"
+	"github.com/ClashrAuto/clash/listener/socks"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type MixedOption struct {

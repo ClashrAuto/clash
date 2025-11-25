@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/listener/tproxy"
-	"github.com/metacubex/clashauto/log"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/listener/tproxy"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type TProxyOption struct {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"net"
 
-	N "github.com/metacubex/clashauto/common/net"
+	N "github.com/ClashrAuto/clash/common/net"
 )
 
 type origin struct{}

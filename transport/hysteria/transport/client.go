@@ -5,12 +5,12 @@ import (
 	"net"
 	"time"
 
-	tlsC "github.com/metacubex/clashauto/component/tls"
-	"github.com/metacubex/clashauto/transport/hysteria/conns/faketcp"
-	"github.com/metacubex/clashauto/transport/hysteria/conns/udp"
-	"github.com/metacubex/clashauto/transport/hysteria/conns/wechat"
-	obfsPkg "github.com/metacubex/clashauto/transport/hysteria/obfs"
-	"github.com/metacubex/clashauto/transport/hysteria/utils"
+	tlsC "github.com/ClashrAuto/clash/component/tls"
+	"github.com/ClashrAuto/clash/transport/hysteria/conns/faketcp"
+	"github.com/ClashrAuto/clash/transport/hysteria/conns/udp"
+	"github.com/ClashrAuto/clash/transport/hysteria/conns/wechat"
+	obfsPkg "github.com/ClashrAuto/clash/transport/hysteria/obfs"
+	"github.com/ClashrAuto/clash/transport/hysteria/utils"
 
 	"github.com/metacubex/quic-go"
 )

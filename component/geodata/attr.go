@@ -3,7 +3,7 @@ package geodata
 import (
 	"strings"
 
-	"github.com/metacubex/clashauto/component/geodata/router"
+	"github.com/ClashrAuto/clash/component/geodata/router"
 )
 
 type AttributeList struct {

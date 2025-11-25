@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/metacubex/clashauto/adapter/outbound"
-	"github.com/metacubex/clashauto/listener/inbound"
-	"github.com/metacubex/clashauto/transport/kcptun"
-	shadowtls "github.com/metacubex/clashauto/transport/sing-shadowtls"
+	"github.com/ClashrAuto/clash/adapter/outbound"
+	"github.com/ClashrAuto/clash/listener/inbound"
+	"github.com/ClashrAuto/clash/transport/kcptun"
+	shadowtls "github.com/ClashrAuto/clash/transport/sing-shadowtls"
 
 	shadowsocks "github.com/metacubex/sing-shadowsocks"
 	"github.com/metacubex/sing-shadowsocks/shadowaead"

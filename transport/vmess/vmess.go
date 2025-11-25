@@ -5,7 +5,7 @@ import (
 	"net"
 	"runtime"
 
-	"github.com/metacubex/clashauto/common/utils"
+	"github.com/ClashrAuto/clash/common/utils"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/randv2"

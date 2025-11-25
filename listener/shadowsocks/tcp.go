@@ -4,13 +4,13 @@ import (
 	"net"
 	"strings"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	N "github.com/metacubex/clashauto/common/net"
-	C "github.com/metacubex/clashauto/constant"
-	LC "github.com/metacubex/clashauto/listener/config"
-	"github.com/metacubex/clashauto/listener/sing"
-	"github.com/metacubex/clashauto/transport/shadowsocks/core"
-	"github.com/metacubex/clashauto/transport/socks5"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	N "github.com/ClashrAuto/clash/common/net"
+	C "github.com/ClashrAuto/clash/constant"
+	LC "github.com/ClashrAuto/clash/listener/config"
+	"github.com/ClashrAuto/clash/listener/sing"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/core"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 type Listener struct {

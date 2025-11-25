@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/component/auth"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/component/auth"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/log"
 )
 
 type bodyWrapper struct {

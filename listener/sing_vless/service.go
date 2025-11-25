@@ -8,8 +8,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/metacubex/clashauto/transport/vless"
-	"github.com/metacubex/clashauto/transport/vless/vision"
+	"github.com/ClashrAuto/clash/transport/vless"
+	"github.com/ClashrAuto/clash/transport/vless/vision"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/sing-vmess"

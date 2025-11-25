@@ -5,7 +5,7 @@ import (
 	"golang.org/x/exp/slices"
 	"net"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
+	"github.com/ClashrAuto/clash/adapter/inbound"
 
 	"github.com/metacubex/sing/common/auth"
 )

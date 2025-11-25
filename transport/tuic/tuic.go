@@ -1,10 +1,10 @@
 package tuic
 
 import (
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/tuic/common"
-	v4 "github.com/metacubex/clashauto/transport/tuic/v4"
-	v5 "github.com/metacubex/clashauto/transport/tuic/v5"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/tuic/common"
+	v4 "github.com/ClashrAuto/clash/transport/tuic/v4"
+	v5 "github.com/ClashrAuto/clash/transport/tuic/v5"
 )
 
 type ClientOptionV4 = v4.ClientOption

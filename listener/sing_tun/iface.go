@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/metacubex/clashauto/component/iface"
+	"github.com/ClashrAuto/clash/component/iface"
 
 	"github.com/metacubex/sing/common/control"
 )

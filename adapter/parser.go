@@ -3,9 +3,9 @@ package adapter
 import (
 	"fmt"
 
-	"github.com/metacubex/clashauto/adapter/outbound"
-	"github.com/metacubex/clashauto/common/structure"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/adapter/outbound"
+	"github.com/ClashrAuto/clash/common/structure"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 func ParseProxy(mapping map[string]any) (C.Proxy, error) {

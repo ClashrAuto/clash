@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/metacubex/clashauto/common/structure"
-	"github.com/metacubex/clashauto/component/resource"
-	C "github.com/metacubex/clashauto/constant"
-	P "github.com/metacubex/clashauto/constant/provider"
-	"github.com/metacubex/clashauto/rules/common"
+	"github.com/ClashrAuto/clash/common/structure"
+	"github.com/ClashrAuto/clash/component/resource"
+	C "github.com/ClashrAuto/clash/constant"
+	P "github.com/ClashrAuto/clash/constant/provider"
+	"github.com/ClashrAuto/clash/rules/common"
 )
 
 type ruleProviderSchema struct {

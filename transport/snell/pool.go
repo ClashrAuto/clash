@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/metacubex/clashauto/component/pool"
-	"github.com/metacubex/clashauto/transport/shadowsocks/shadowaead"
+	"github.com/ClashrAuto/clash/component/pool"
+	"github.com/ClashrAuto/clash/transport/shadowsocks/shadowaead"
 )
 
 type Pool struct {

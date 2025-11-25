@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/netip"
 
-	C "github.com/metacubex/clashauto/constant"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 var (

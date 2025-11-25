@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/metacubex/clashauto/common/utils"
-	clashautoHttp "github.com/metacubex/clashauto/component/http"
-	"github.com/metacubex/clashauto/component/profile/cachefile"
-	P "github.com/metacubex/clashauto/constant/provider"
+	"github.com/ClashrAuto/clash/common/utils"
+	clashautoHttp "github.com/ClashrAuto/clash/component/http"
+	"github.com/ClashrAuto/clash/component/profile/cachefile"
+	P "github.com/ClashrAuto/clash/constant/provider"
 )
 
 const (

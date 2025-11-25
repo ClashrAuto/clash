@@ -3,8 +3,8 @@ package inbound
 import (
 	"net"
 
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/transport/socks5"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/transport/socks5"
 )
 
 // NewHTTP receive normal http request and return HTTPContext

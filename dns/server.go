@@ -4,10 +4,10 @@ import (
 	"context"
 	"net"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	"github.com/metacubex/clashauto/common/sockopt"
-	"github.com/metacubex/clashauto/component/resolver"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	"github.com/ClashrAuto/clash/common/sockopt"
+	"github.com/ClashrAuto/clash/component/resolver"
+	"github.com/ClashrAuto/clash/log"
 
 	D "github.com/miekg/dns"
 )

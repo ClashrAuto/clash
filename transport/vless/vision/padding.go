@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/metacubex/clashauto/common/buf"
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/common/buf"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/log"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/randv2"

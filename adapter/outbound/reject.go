@@ -7,8 +7,8 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/metacubex/clashauto/common/buf"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/common/buf"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type Reject struct {

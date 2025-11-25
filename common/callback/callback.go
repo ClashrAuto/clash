@@ -1,9 +1,9 @@
 package callback
 
 import (
-	"github.com/metacubex/clashauto/common/buf"
-	N "github.com/metacubex/clashauto/common/net"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/common/buf"
+	N "github.com/ClashrAuto/clash/common/net"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type firstWriteCallBackConn struct {

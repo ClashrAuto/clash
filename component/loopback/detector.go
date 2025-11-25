@@ -7,11 +7,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/metacubex/clashauto/common/callback"
-	"github.com/metacubex/clashauto/common/xsync"
-	"github.com/metacubex/clashauto/component/iface"
-	C "github.com/metacubex/clashauto/constant"
-	"github.com/metacubex/clashauto/constant/features"
+	"github.com/ClashrAuto/clash/common/callback"
+	"github.com/ClashrAuto/clash/common/xsync"
+	"github.com/ClashrAuto/clash/component/iface"
+	C "github.com/ClashrAuto/clash/constant"
+	"github.com/ClashrAuto/clash/constant/features"
 )
 
 var disableLoopBackDetector, _ = strconv.ParseBool(os.Getenv("DISABLE_LOOPBACK_DETECTOR"))

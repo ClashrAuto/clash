@@ -3,8 +3,8 @@ package context
 import (
 	"net"
 
-	"github.com/metacubex/clashauto/common/utils"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/common/utils"
+	C "github.com/ClashrAuto/clash/constant"
 
 	"github.com/gofrs/uuid/v5"
 )

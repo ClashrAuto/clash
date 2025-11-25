@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/metacubex/clashauto/component/resolver"
-	icontext "github.com/metacubex/clashauto/context"
+	"github.com/ClashrAuto/clash/component/resolver"
+	icontext "github.com/ClashrAuto/clash/context"
 	D "github.com/miekg/dns"
 )
 

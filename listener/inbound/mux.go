@@ -1,6 +1,6 @@
 package inbound
 
-import "github.com/metacubex/clashauto/listener/sing"
+import "github.com/ClashrAuto/clash/listener/sing"
 
 type MuxOption struct {
 	Padding bool          `inbound:"padding,omitempty"`

@@ -12,10 +12,10 @@ import (
 	"reflect"
 	"unsafe"
 
-	N "github.com/metacubex/clashauto/common/net"
-	tlsC "github.com/metacubex/clashauto/component/tls"
-	"github.com/metacubex/clashauto/log"
-	"github.com/metacubex/clashauto/transport/vless/encryption"
+	N "github.com/ClashrAuto/clash/common/net"
+	tlsC "github.com/ClashrAuto/clash/component/tls"
+	"github.com/ClashrAuto/clash/log"
+	"github.com/ClashrAuto/clash/transport/vless/encryption"
 
 	"github.com/gofrs/uuid/v5"
 )

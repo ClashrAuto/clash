@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/transport/anytls/pipe"
+	"github.com/ClashrAuto/clash/transport/anytls/pipe"
 )
 
 // Stream implements net.Conn

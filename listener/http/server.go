@@ -4,15 +4,15 @@ import (
 	"errors"
 	"net"
 
-	"github.com/metacubex/clashauto/adapter/inbound"
-	"github.com/metacubex/clashauto/component/ca"
-	"github.com/metacubex/clashauto/component/ech"
-	tlsC "github.com/metacubex/clashauto/component/tls"
-	C "github.com/metacubex/clashauto/constant"
-	authStore "github.com/metacubex/clashauto/listener/auth"
-	LC "github.com/metacubex/clashauto/listener/config"
-	"github.com/metacubex/clashauto/listener/reality"
-	"github.com/metacubex/clashauto/ntp"
+	"github.com/ClashrAuto/clash/adapter/inbound"
+	"github.com/ClashrAuto/clash/component/ca"
+	"github.com/ClashrAuto/clash/component/ech"
+	tlsC "github.com/ClashrAuto/clash/component/tls"
+	C "github.com/ClashrAuto/clash/constant"
+	authStore "github.com/ClashrAuto/clash/listener/auth"
+	LC "github.com/ClashrAuto/clash/listener/config"
+	"github.com/ClashrAuto/clash/listener/reality"
+	"github.com/ClashrAuto/clash/ntp"
 )
 
 type Listener struct {

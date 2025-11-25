@@ -9,7 +9,7 @@ import (
 	"net/netip"
 	"strconv"
 
-	"github.com/metacubex/clashauto/component/auth"
+	"github.com/ClashrAuto/clash/component/auth"
 )
 
 const Version = 0x04

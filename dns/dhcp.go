@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/clashauto/component/dhcp"
-	"github.com/metacubex/clashauto/component/iface"
+	"github.com/ClashrAuto/clash/component/dhcp"
+	"github.com/ClashrAuto/clash/component/iface"
 	D "github.com/miekg/dns"
 )
 

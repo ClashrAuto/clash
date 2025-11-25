@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/clashauto/transport/anytls/padding"
-	"github.com/metacubex/clashauto/transport/anytls/skiplist"
-	"github.com/metacubex/clashauto/transport/anytls/util"
+	"github.com/ClashrAuto/clash/transport/anytls/padding"
+	"github.com/ClashrAuto/clash/transport/anytls/skiplist"
+	"github.com/ClashrAuto/clash/transport/anytls/util"
 )
 
 type Client struct {

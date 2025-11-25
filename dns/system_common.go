@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/metacubex/clashauto/component/resolver"
-	"github.com/metacubex/clashauto/log"
+	"github.com/ClashrAuto/clash/component/resolver"
+	"github.com/ClashrAuto/clash/log"
 
 	"golang.org/x/exp/slices"
 )

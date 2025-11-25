@@ -3,8 +3,8 @@ package nat
 import (
 	"net"
 
-	"github.com/metacubex/clashauto/common/atomic"
-	C "github.com/metacubex/clashauto/constant"
+	"github.com/ClashrAuto/clash/common/atomic"
+	C "github.com/ClashrAuto/clash/constant"
 )
 
 type writeBackProxy struct {

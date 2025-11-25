@@ -3,7 +3,7 @@ package constant
 import (
 	"net"
 
-	N "github.com/metacubex/clashauto/common/net"
+	N "github.com/ClashrAuto/clash/common/net"
 
 	"github.com/gofrs/uuid/v5"
 )

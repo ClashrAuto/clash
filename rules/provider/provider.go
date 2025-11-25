@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/clashauto/common/pool"
-	"github.com/metacubex/clashauto/component/resource"
-	C "github.com/metacubex/clashauto/constant"
-	P "github.com/metacubex/clashauto/constant/provider"
-	"github.com/metacubex/clashauto/rules/common"
+	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/ClashrAuto/clash/component/resource"
+	C "github.com/ClashrAuto/clash/constant"
+	P "github.com/ClashrAuto/clash/constant/provider"
+	"github.com/ClashrAuto/clash/rules/common"
 
 	"gopkg.in/yaml.v3"
 )

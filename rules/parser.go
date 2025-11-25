@@ -3,10 +3,10 @@ package rules
 import (
 	"fmt"
 
-	C "github.com/metacubex/clashauto/constant"
-	RC "github.com/metacubex/clashauto/rules/common"
-	"github.com/metacubex/clashauto/rules/logic"
-	RP "github.com/metacubex/clashauto/rules/provider"
+	C "github.com/ClashrAuto/clash/constant"
+	RC "github.com/ClashrAuto/clash/rules/common"
+	"github.com/ClashrAuto/clash/rules/logic"
+	RP "github.com/ClashrAuto/clash/rules/provider"
 )
 
 func ParseRule(tp, payload, target string, params []string, subRules map[string][]C.Rule) (parsed C.Rule, parseErr error) {

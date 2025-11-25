@@ -6,7 +6,7 @@ import (
 	"net/netip"
 	"syscall"
 
-	"github.com/metacubex/clashauto/component/iface"
+	"github.com/ClashrAuto/clash/component/iface"
 
 	"golang.org/x/sys/unix"
 )

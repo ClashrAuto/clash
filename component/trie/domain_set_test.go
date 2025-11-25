@@ -4,7 +4,7 @@ import (
 	"golang.org/x/exp/slices"
 	"testing"
 
-	"github.com/metacubex/clashauto/component/trie"
+	"github.com/ClashrAuto/clash/component/trie"
 	"github.com/stretchr/testify/assert"
 )
 

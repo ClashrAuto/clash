@@ -7,8 +7,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/log"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/log"
 
 	"golang.org/x/net/http2"
 )

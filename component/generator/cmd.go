@@ -4,8 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/metacubex/clashauto/component/ech"
-	"github.com/metacubex/clashauto/transport/vless/encryption"
+	"github.com/ClashrAuto/clash/component/ech"
+	"github.com/ClashrAuto/clash/transport/vless/encryption"
 
 	"github.com/gofrs/uuid/v5"
 )

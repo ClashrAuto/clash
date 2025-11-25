@@ -6,9 +6,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/metacubex/clashauto/common/buf"
-	N "github.com/metacubex/clashauto/common/net"
-	"github.com/metacubex/clashauto/transport/vless/vision"
+	"github.com/ClashrAuto/clash/common/buf"
+	N "github.com/ClashrAuto/clash/common/net"
+	"github.com/ClashrAuto/clash/transport/vless/vision"
 
 	"github.com/gofrs/uuid/v5"
 	"google.golang.org/protobuf/proto"

@@ -5,9 +5,9 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/metacubex/clashauto/adapter/outbound"
-	"github.com/metacubex/clashauto/listener/inbound"
-	"github.com/metacubex/clashauto/transport/vless/encryption"
+	"github.com/ClashrAuto/clash/adapter/outbound"
+	"github.com/ClashrAuto/clash/listener/inbound"
+	"github.com/ClashrAuto/clash/transport/vless/encryption"
 	"github.com/stretchr/testify/assert"
 )
 
