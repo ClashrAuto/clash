@@ -289,6 +289,7 @@ jobs:
       run: |
         go env
         go build -v -tags "with_gvisor" -trimpath -ldflags "${BUILDTAG} -X 'github.com/ClashrAuto/clash/constant.Version=${VERSION}' -X 'github.com/ClashrAuto/clash/constant.BuildTime=${BUILDTIME}' -w -s -buildid="
+        ls -alF
         if [ "${{matrix.jobs.goos}}" = "windows" ]; then
           cp clashauto.exe clashauto-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
           zip -r clashauto-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip clashauto-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
