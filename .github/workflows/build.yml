@@ -310,7 +310,7 @@ jobs:
           -v "${PackageVersion}" \
           -p "clashauto-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.deb" \
           --architecture ${{ matrix.jobs.debian }} \
-          clashauto=/usr/bin/clashauto
+          clash=/usr/bin/clashauto
 
     - name: Package RPM
       if: matrix.jobs.rpm != ''
@@ -323,7 +323,7 @@ jobs:
           -v "${PackageVersion}" \
           -p "clashauto-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.rpm" \
           --architecture ${{ matrix.jobs.rpm }} \
-          clashauto=/usr/bin/clashauto
+          clash=/usr/bin/clashauto
 
     - name: Package Pacman
       if: matrix.jobs.pacman != ''
@@ -337,7 +337,7 @@ jobs:
           -v "${PackageVersion}" \
           -p "clashauto-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.pkg.tar.zst" \
           --architecture ${{ matrix.jobs.pacman }} \
-          clashauto=/usr/bin/clashauto
+          clash=/usr/bin/clashauto
 
     - name: Save version
       run: |
