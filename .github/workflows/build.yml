@@ -417,7 +417,6 @@ jobs:
 
   Upload-Release:
     permissions: write-all
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
     needs: [build]
     runs-on: ubuntu-latest
     steps:
