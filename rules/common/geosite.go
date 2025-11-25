@@ -3,12 +3,12 @@ package common
 import (
 	"fmt"
 
-	"github.com/metacubex/mihomo/component/geodata"
-	_ "github.com/metacubex/mihomo/component/geodata/memconservative"
-	"github.com/metacubex/mihomo/component/geodata/router"
-	_ "github.com/metacubex/mihomo/component/geodata/standard"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/geodata"
+	_ "github.com/metacubex/clashauto/component/geodata/memconservative"
+	"github.com/metacubex/clashauto/component/geodata/router"
+	_ "github.com/metacubex/clashauto/component/geodata/standard"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 )
 
 type GEOSITE struct {
@@ -22,7 +22,7 @@ func (gs *GEOSITE) RuleType() C.RuleType {
 	return C.GEOSITE
 }
 
-func (gs *GEOSITE) Match(metadata *C.Metadata) (bool, string) {
+func (gs *GEOSITE) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
 	return gs.MatchDomain(metadata.RuleHost()), gs.adapter
 }
 

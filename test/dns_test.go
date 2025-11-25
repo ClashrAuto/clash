@@ -53,7 +53,7 @@ func TestMihomo_DNSHostAndFakeIP(t *testing.T) {
 	basic := `
 log-level: silent
 hosts:
-  foo.mihomo.dev: 1.1.1.1
+  foo.clashauto.dev: 1.1.1.1
 dns:
   enable: true
   listen: 0.0.0.0:8553
@@ -81,7 +81,7 @@ dns:
 		{"foo.org", "198.18.0.4"},
 		{"bar.org", "198.18.0.5"},
 		{"foo.org", "198.18.0.4"},
-		{"foo.mihomo.dev", "1.1.1.1"},
+		{"foo.clashauto.dev", "1.1.1.1"},
 	}
 
 	for _, pair := range list {

@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/metacubex/mihomo/common/structure"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/resource"
-	C "github.com/metacubex/mihomo/constant"
-	types "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/clashauto/common/structure"
+	"github.com/metacubex/clashauto/common/utils"
+	"github.com/metacubex/clashauto/component/resource"
+	C "github.com/metacubex/clashauto/constant"
+	P "github.com/metacubex/clashauto/constant/provider"
 
 	"github.com/dlclark/regexp2"
 )
 
 var (
 	errVehicleType = errors.New("unsupport vehicle type")
-	errSubPath     = errors.New("path is not subpath of home directory")
 )
 
 type healthCheckSchema struct {
@@ -57,22 +56,24 @@ type OverrideSchema struct {
 }
 
 type proxyProviderSchema struct {
-	Type          string `provider:"type"`
-	Path          string `provider:"path,omitempty"`
-	URL           string `provider:"url,omitempty"`
-	Proxy         string `provider:"proxy,omitempty"`
-	Interval      int    `provider:"interval,omitempty"`
-	Filter        string `provider:"filter,omitempty"`
-	ExcludeFilter string `provider:"exclude-filter,omitempty"`
-	ExcludeType   string `provider:"exclude-type,omitempty"`
-	DialerProxy   string `provider:"dialer-proxy,omitempty"`
+	Type          string           `provider:"type"`
+	Path          string           `provider:"path,omitempty"`
+	URL           string           `provider:"url,omitempty"`
+	Proxy         string           `provider:"proxy,omitempty"`
+	Interval      int              `provider:"interval,omitempty"`
+	Filter        string           `provider:"filter,omitempty"`
+	ExcludeFilter string           `provider:"exclude-filter,omitempty"`
+	ExcludeType   string           `provider:"exclude-type,omitempty"`
+	DialerProxy   string           `provider:"dialer-proxy,omitempty"`
+	SizeLimit     int64            `provider:"size-limit,omitempty"`
+	Payload       []map[string]any `provider:"payload,omitempty"`
 
 	HealthCheck healthCheckSchema   `provider:"health-check,omitempty"`
 	Override    OverrideSchema      `provider:"override,omitempty"`
 	Header      map[string][]string `provider:"header,omitempty"`
 }
 
-func ParseProxyProvider(name string, mapping map[string]any) (types.ProxyProvider, error) {
+func ParseProxyProvider(name string, mapping map[string]any) (P.ProxyProvider, error) {
 	decoder := structure.NewDecoder(structure.Option{TagName: "provider", WeaklyTypedInput: true})
 
 	schema := &proxyProviderSchema{
@@ -98,30 +99,35 @@ func ParseProxyProvider(name string, mapping map[string]any) (types.ProxyProvide
 	}
 	hc := NewHealthCheck([]C.Proxy{}, schema.HealthCheck.URL, uint(schema.HealthCheck.TestTimeout), hcInterval, schema.HealthCheck.Lazy, expectedStatus)
 
-	var vehicle types.Vehicle
+	parser, err := NewProxiesParser(schema.Filter, schema.ExcludeFilter, schema.ExcludeType, schema.DialerProxy, schema.Override)
+	if err != nil {
+		return nil, err
+	}
+
+	var vehicle P.Vehicle
 	switch schema.Type {
 	case "file":
 		path := C.Path.Resolve(schema.Path)
+		if !C.Path.IsSafePath(path) {
+			return nil, C.Path.ErrNotSafePath(path)
+		}
 		vehicle = resource.NewFileVehicle(path)
 	case "http":
 		path := C.Path.GetPathByHash("proxies", schema.URL)
 		if schema.Path != "" {
 			path = C.Path.Resolve(schema.Path)
 			if !C.Path.IsSafePath(path) {
-				return nil, fmt.Errorf("%w: %s", errSubPath, path)
+				return nil, C.Path.ErrNotSafePath(path)
 			}
 		}
-		vehicle = resource.NewHTTPVehicle(schema.URL, path, schema.Proxy, schema.Header, resource.DefaultHttpTimeout)
+		vehicle = resource.NewHTTPVehicle(schema.URL, path, schema.Proxy, schema.Header, resource.DefaultHttpTimeout, schema.SizeLimit)
+	case "inline":
+		return NewInlineProvider(name, schema.Payload, parser, hc)
 	default:
 		return nil, fmt.Errorf("%w: %s", errVehicleType, schema.Type)
 	}
 
 	interval := time.Duration(uint(schema.Interval)) * time.Second
-	filter := schema.Filter
-	excludeFilter := schema.ExcludeFilter
-	excludeType := schema.ExcludeType
-	dialerProxy := schema.DialerProxy
-	override := schema.Override
 
-	return NewProxySetProvider(name, interval, filter, excludeFilter, excludeType, dialerProxy, override, vehicle, hc)
+	return NewProxySetProvider(name, interval, schema.Payload, parser, vehicle, hc)
 }

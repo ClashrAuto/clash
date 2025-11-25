@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/metacubex/mihomo/component/pool"
-	"github.com/metacubex/mihomo/transport/shadowsocks/shadowaead"
+	"github.com/metacubex/clashauto/component/pool"
+	"github.com/metacubex/clashauto/transport/shadowsocks/shadowaead"
 )
 
 type Pool struct {
@@ -61,7 +61,7 @@ func (pc *PoolConn) Write(b []byte) (int, error) {
 }
 
 func (pc *PoolConn) Close() error {
-	// mihomo use SetReadDeadline to break bidirectional copy between client and server.
+	// clashauto use SetReadDeadline to break bidirectional copy between client and server.
 	// reset it before reuse connection to avoid io timeout error.
 	_ = pc.Snell.Conn.SetReadDeadline(time.Time{})
 	pc.pool.Put(pc.Snell)

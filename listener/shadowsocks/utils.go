@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/metacubex/mihomo/transport/socks5"
+	"github.com/metacubex/clashauto/transport/socks5"
 )
 
 type packet struct {

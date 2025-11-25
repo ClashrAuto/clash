@@ -3,18 +3,18 @@ package tuic
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"net"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/socks5"
-	"github.com/metacubex/mihomo/transport/tuic/common"
-	v4 "github.com/metacubex/mihomo/transport/tuic/v4"
-	v5 "github.com/metacubex/mihomo/transport/tuic/v5"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	N "github.com/metacubex/clashauto/common/net"
+	"github.com/metacubex/clashauto/common/utils"
+	tlsC "github.com/metacubex/clashauto/component/tls"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/transport/socks5"
+	"github.com/metacubex/clashauto/transport/tuic/common"
+	v4 "github.com/metacubex/clashauto/transport/tuic/v4"
+	v5 "github.com/metacubex/clashauto/transport/tuic/v5"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/quic-go"
@@ -24,7 +24,7 @@ type ServerOption struct {
 	HandleTcpFn func(conn net.Conn, addr socks5.Addr, additions ...inbound.Addition) error
 	HandleUdpFn func(addr socks5.Addr, packet C.UDPPacket, additions ...inbound.Addition) error
 
-	TlsConfig             *tls.Config
+	TlsConfig             *tlsC.Config
 	QuicConfig            *quic.Config
 	Tokens                [][32]byte          // V4 special
 	Users                 map[[16]byte]string // V5 special
@@ -69,7 +69,7 @@ func (s *Server) Close() error {
 
 type serverHandler struct {
 	*Server
-	quicConn quic.EarlyConnection
+	quicConn *quic.Conn
 	uuid     uuid.UUID
 
 	v4Handler common.ServerHandler
@@ -87,7 +87,11 @@ func (s *serverHandler) handle() {
 		_ = s.handleMessage()
 	}()
 
-	<-s.quicConn.HandshakeComplete()
+	select {
+	case <-s.quicConn.HandshakeComplete(): // this chan maybe not closed if handshake never complete
+	case <-time.After(s.quicConn.Config().HandshakeIdleTimeout): // HandshakeIdleTimeout in real conn.Config() never be zero
+	}
+
 	time.AfterFunc(s.AuthenticationTimeout, func() {
 		if s.v4Handler != nil {
 			if s.v4Handler.AuthOk() {
@@ -138,7 +142,7 @@ func (s *serverHandler) handleMessage() (err error) {
 
 func (s *serverHandler) handleStream() (err error) {
 	for {
-		var quicStream quic.Stream
+		var quicStream *quic.Stream
 		quicStream, err = s.quicConn.AcceptStream(context.Background())
 		if err != nil {
 			return err
@@ -175,7 +179,7 @@ func (s *serverHandler) handleStream() (err error) {
 
 func (s *serverHandler) handleUniStream() (err error) {
 	for {
-		var stream quic.ReceiveStream
+		var stream *quic.ReceiveStream
 		stream, err = s.quicConn.AcceptUniStream(context.Background())
 		if err != nil {
 			return err

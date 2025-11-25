@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	"github.com/metacubex/mihomo/common/batch"
-	"github.com/metacubex/mihomo/common/singledo"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/common/atomic"
+	"github.com/metacubex/clashauto/common/singledo"
+	"github.com/metacubex/clashauto/common/utils"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 
 	"github.com/dlclark/regexp2"
+	"golang.org/x/sync/errgroup"
 )
 
 type HealthCheckOption struct {
@@ -32,7 +32,6 @@ type HealthCheck struct {
 	url            string
 	extra          map[string]*extraOption
 	mu             sync.Mutex
-	started        atomic.Bool
 	proxies        []C.Proxy
 	interval       time.Duration
 	lazy           bool
@@ -43,13 +42,8 @@ type HealthCheck struct {
 }
 
 func (hc *HealthCheck) process() {
-	if hc.started.Load() {
-		log.Warnln("Skip start health check timer due to it's started")
-		return
-	}
-
 	ticker := time.NewTicker(hc.interval)
-	hc.start()
+	go hc.check()
 	for {
 		select {
 		case <-ticker.C:
@@ -62,13 +56,12 @@ func (hc *HealthCheck) process() {
 			}
 		case <-hc.ctx.Done():
 			ticker.Stop()
-			hc.stop()
 			return
 		}
 	}
 }
 
-func (hc *HealthCheck) setProxy(proxies []C.Proxy) {
+func (hc *HealthCheck) setProxies(proxies []C.Proxy) {
 	hc.proxies = proxies
 }
 
@@ -105,10 +98,6 @@ func (hc *HealthCheck) registerHealthCheckTask(url string, expectedStatus utils.
 	option := &extraOption{filters: map[string]struct{}{}, expectedStatus: expectedStatus}
 	splitAndAddFiltersToExtra(filter, option)
 	hc.extra[url] = option
-
-	if hc.auto() && !hc.started.Load() {
-		go hc.process()
-	}
 }
 
 func splitAndAddFiltersToExtra(filter string, option *extraOption) {
@@ -131,14 +120,6 @@ func (hc *HealthCheck) touch() {
 	hc.lastTouch.Store(time.Now())
 }
 
-func (hc *HealthCheck) start() {
-	hc.started.Store(true)
-}
-
-func (hc *HealthCheck) stop() {
-	hc.started.Store(false)
-}
-
 func (hc *HealthCheck) check() {
 	if len(hc.proxies) == 0 {
 		return
@@ -147,7 +128,8 @@ func (hc *HealthCheck) check() {
 	_, _, _ = hc.singleDo.Do(func() (struct{}, error) {
 		id := utils.NewUUIDV4().String()
 		log.Debugln("Start New Health Checking {%s}", id)
-		b, _ := batch.New[bool](hc.ctx, batch.WithConcurrencyNum[bool](10))
+		b := new(errgroup.Group)
+		b.SetLimit(10)
 
 		// execute default health check
 		option := &extraOption{filters: nil, expectedStatus: hc.expectedStatus}
@@ -159,13 +141,13 @@ func (hc *HealthCheck) check() {
 				hc.execute(b, url, id, option)
 			}
 		}
-		b.Wait()
+		_ = b.Wait()
 		log.Debugln("Finish A Health Checking {%s}", id)
 		return struct{}{}, nil
 	})
 }
 
-func (hc *HealthCheck) execute(b *batch.Batch[bool], url, uid string, option *extraOption) {
+func (hc *HealthCheck) execute(b *errgroup.Group, url, uid string, option *extraOption) {
 	url = strings.TrimSpace(url)
 	if len(url) == 0 {
 		log.Debugln("Health Check has been skipped due to testUrl is empty, {%s}", uid)
@@ -195,13 +177,13 @@ func (hc *HealthCheck) execute(b *batch.Batch[bool], url, uid string, option *ex
 		}
 
 		p := proxy
-		b.Go(p.Name(), func() (bool, error) {
+		b.Go(func() error {
 			ctx, cancel := context.WithTimeout(hc.ctx, hc.timeout)
 			defer cancel()
 			log.Debugln("Health Checking, proxy: %s, url: %s, id: {%s}", p.Name(), url, uid)
 			_, _ = p.URLTest(ctx, url, expectedStatus)
 			log.Debugln("Health Checked, proxy: %s, url: %s, alive: %t, delay: %d ms uid: {%s}", p.Name(), url, p.AliveForTestUrl(url), p.LastDelayForTestUrl(url), uid)
-			return false, nil
+			return nil
 		})
 	}
 }

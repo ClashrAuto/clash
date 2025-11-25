@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/metacubex/clashauto/constant"
 	"strings"
 )
 
@@ -34,7 +34,7 @@ func (n *NetworkType) RuleType() C.RuleType {
 	return C.Network
 }
 
-func (n *NetworkType) Match(metadata *C.Metadata) (bool, string) {
+func (n *NetworkType) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
 	return n.network == metadata.NetWork, n.adapter
 }
 

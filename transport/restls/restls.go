@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	tls "github.com/3andne/restls-client-go"
+	tls "github.com/metacubex/restls-client-go"
 )
 
 const (
@@ -19,8 +19,12 @@ func (r *Restls) Upstream() any {
 	return r.UConn.NetConn()
 }
 
+type Config = tls.Config
+
+var NewRestlsConfig = tls.NewRestlsConfig
+
 // NewRestls return a Restls Connection
-func NewRestls(ctx context.Context, conn net.Conn, config *tls.Config) (net.Conn, error) {
+func NewRestls(ctx context.Context, conn net.Conn, config *Config) (net.Conn, error) {
 	clientHellowID := tls.HelloChrome_Auto
 	if config != nil {
 		clientIDPtr := config.ClientID.Load()

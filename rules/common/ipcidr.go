@@ -3,7 +3,7 @@ package common
 import (
 	"net/netip"
 
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 type IPCIDROption func(*IPCIDR)
@@ -35,12 +35,16 @@ func (i *IPCIDR) RuleType() C.RuleType {
 	return C.IPCIDR
 }
 
-func (i *IPCIDR) Match(metadata *C.Metadata) (bool, string) {
+func (i *IPCIDR) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
+	if !i.noResolveIP && !i.isSourceIP && helper.ResolveIP != nil {
+		helper.ResolveIP()
+	}
+
 	ip := metadata.DstIP
 	if i.isSourceIP {
 		ip = metadata.SrcIP
 	}
-	return ip.IsValid() && i.ipnet.Contains(ip), i.adapter
+	return ip.IsValid() && i.ipnet.Contains(ip.WithZone("")), i.adapter
 }
 
 func (i *IPCIDR) Adapter() string {
@@ -49,10 +53,6 @@ func (i *IPCIDR) Adapter() string {
 
 func (i *IPCIDR) Payload() string {
 	return i.ipnet.String()
-}
-
-func (i *IPCIDR) ShouldResolveIP() bool {
-	return !i.noResolveIP
 }
 
 func NewIPCIDR(s string, adapter string, opts ...IPCIDROption) (*IPCIDR, error) {

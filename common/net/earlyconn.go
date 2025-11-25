@@ -4,8 +4,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/common/once"
+	"github.com/metacubex/clashauto/common/buf"
+	"github.com/metacubex/clashauto/common/once"
 )
 
 type earlyConn struct {

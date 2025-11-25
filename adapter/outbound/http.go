@@ -7,15 +7,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"strconv"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/proxydialer"
-	C "github.com/metacubex/mihomo/constant"
+	N "github.com/metacubex/clashauto/common/net"
+	"github.com/metacubex/clashauto/component/ca"
+	"github.com/metacubex/clashauto/component/dialer"
+	"github.com/metacubex/clashauto/component/proxydialer"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 type Http struct {
@@ -37,6 +37,8 @@ type HttpOption struct {
 	SNI            string            `proxy:"sni,omitempty"`
 	SkipCertVerify bool              `proxy:"skip-cert-verify,omitempty"`
 	Fingerprint    string            `proxy:"fingerprint,omitempty"`
+	Certificate    string            `proxy:"certificate,omitempty"`
+	PrivateKey     string            `proxy:"private-key,omitempty"`
 	Headers        map[string]string `proxy:"headers,omitempty"`
 }
 
@@ -51,15 +53,15 @@ func (h *Http) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.Me
 		}
 	}
 
-	if err := h.shakeHand(metadata, c); err != nil {
+	if err := h.shakeHandContext(ctx, c, metadata); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
 // DialContext implements C.ProxyAdapter
-func (h *Http) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (_ C.Conn, err error) {
-	return h.DialContextWithDialer(ctx, dialer.NewDialer(h.Base.DialOptions(opts...)...), metadata)
+func (h *Http) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
+	return h.DialContextWithDialer(ctx, dialer.NewDialer(h.DialOptions()...), metadata)
 }
 
 // DialContextWithDialer implements C.ProxyAdapter
@@ -92,7 +94,19 @@ func (h *Http) SupportWithDialer() C.NetWork {
 	return C.TCP
 }
 
-func (h *Http) shakeHand(metadata *C.Metadata, rw io.ReadWriter) error {
+// ProxyInfo implements C.ProxyAdapter
+func (h *Http) ProxyInfo() C.ProxyInfo {
+	info := h.Base.ProxyInfo()
+	info.DialerProxy = h.option.DialerProxy
+	return info
+}
+
+func (h *Http) shakeHandContext(ctx context.Context, c net.Conn, metadata *C.Metadata) (err error) {
+	if ctx.Done() != nil {
+		done := N.SetupContextForConn(ctx, c)
+		defer done(&err)
+	}
+
 	addr := metadata.RemoteAddress()
 	HeaderString := "CONNECT " + addr + " HTTP/1.1\r\n"
 	tempHeaders := map[string]string{
@@ -116,13 +130,13 @@ func (h *Http) shakeHand(metadata *C.Metadata, rw io.ReadWriter) error {
 
 	HeaderString += "\r\n"
 
-	_, err := rw.Write([]byte(HeaderString))
+	_, err = c.Write([]byte(HeaderString))
 
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.ReadResponse(bufio.NewReader(rw), nil)
+	resp, err := http.ReadResponse(bufio.NewReader(c), nil)
 
 	if err != nil {
 		return err
@@ -155,10 +169,15 @@ func NewHttp(option HttpOption) (*Http, error) {
 			sni = option.SNI
 		}
 		var err error
-		tlsConfig, err = ca.GetSpecifiedFingerprintTLSConfig(&tls.Config{
-			InsecureSkipVerify: option.SkipCertVerify,
-			ServerName:         sni,
-		}, option.Fingerprint)
+		tlsConfig, err = ca.GetTLSConfig(ca.Option{
+			TLSConfig: &tls.Config{
+				InsecureSkipVerify: option.SkipCertVerify,
+				ServerName:         sni,
+			},
+			Fingerprint: option.Fingerprint,
+			Certificate: option.Certificate,
+			PrivateKey:  option.PrivateKey,
+		})
 		if err != nil {
 			return nil, err
 		}

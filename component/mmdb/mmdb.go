@@ -3,9 +3,9 @@ package mmdb
 import (
 	"sync"
 
-	mihomoOnce "github.com/metacubex/mihomo/common/once"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	clashautoOnce "github.com/metacubex/clashauto/common/once"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 
 	"github.com/oschwald/maxminddb-golang"
 )
@@ -88,9 +88,9 @@ func ASNInstance() ASNReader {
 }
 
 func ReloadIP() {
-	mihomoOnce.Reset(&ipOnce)
+	clashautoOnce.Reset(&ipOnce)
 }
 
 func ReloadASN() {
-	mihomoOnce.Reset(&asnOnce)
+	clashautoOnce.Reset(&asnOnce)
 }

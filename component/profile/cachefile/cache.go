@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/profile"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/profile"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 
 	"github.com/metacubex/bbolt"
 )
@@ -19,6 +19,7 @@ var (
 
 	bucketSelected         = []byte("selected")
 	bucketFakeip           = []byte("fakeip")
+	bucketFakeip6          = []byte("fakeip6")
 	bucketETag             = []byte("etag")
 	bucketSubscriptionInfo = []byte("subscriptioninfo")
 )

@@ -2,18 +2,13 @@ package outbound
 
 import (
 	"context"
-	"errors"
-	"os"
-	"strconv"
+	"fmt"
 
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/loopback"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/features"
+	"github.com/metacubex/clashauto/component/dialer"
+	"github.com/metacubex/clashauto/component/loopback"
+	"github.com/metacubex/clashauto/component/resolver"
+	C "github.com/metacubex/clashauto/constant"
 )
-
-var DisableLoopBackDetector, _ = strconv.ParseBool(os.Getenv("DISABLE_LOOPBACK_DETECTOR"))
 
 type Direct struct {
 	*Base
@@ -26,14 +21,13 @@ type DirectOption struct {
 }
 
 // DialContext implements C.ProxyAdapter
-func (d *Direct) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.Conn, error) {
-	if !features.CMFA && !DisableLoopBackDetector {
-		if err := d.loopBack.CheckConn(metadata); err != nil {
-			return nil, err
-		}
+func (d *Direct) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+	if err := d.loopBack.CheckConn(metadata); err != nil {
+		return nil, err
 	}
+	opts := d.DialOptions()
 	opts = append(opts, dialer.WithResolver(resolver.DirectHostResolver))
-	c, err := dialer.DialContext(ctx, "tcp", metadata.RemoteAddress(), d.Base.DialOptions(opts...)...)
+	c, err := dialer.DialContext(ctx, "tcp", metadata.RemoteAddress(), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -41,25 +35,29 @@ func (d *Direct) DialContext(ctx context.Context, metadata *C.Metadata, opts ...
 }
 
 // ListenPacketContext implements C.ProxyAdapter
-func (d *Direct) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.PacketConn, error) {
-	if !features.CMFA && !DisableLoopBackDetector {
-		if err := d.loopBack.CheckPacketConn(metadata); err != nil {
-			return nil, err
-		}
+func (d *Direct) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (C.PacketConn, error) {
+	if err := d.loopBack.CheckPacketConn(metadata); err != nil {
+		return nil, err
 	}
-	// net.UDPConn.WriteTo only working with *net.UDPAddr, so we need a net.UDPAddr
-	if !metadata.Resolved() {
-		ip, err := resolver.ResolveIPWithResolver(ctx, metadata.Host, resolver.DirectHostResolver)
-		if err != nil {
-			return nil, errors.New("can't resolve ip")
-		}
-		metadata.DstIP = ip
+	if err := d.ResolveUDP(ctx, metadata); err != nil {
+		return nil, err
 	}
-	pc, err := dialer.NewDialer(d.Base.DialOptions(opts...)...).ListenPacket(ctx, "udp", "", metadata.AddrPort())
+	pc, err := dialer.NewDialer(d.DialOptions()...).ListenPacket(ctx, "udp", "", metadata.AddrPort())
 	if err != nil {
 		return nil, err
 	}
 	return d.loopBack.NewPacketConn(newPacketConn(pc, d)), nil
+}
+
+func (d *Direct) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {
+	if (!metadata.Resolved() || resolver.DirectHostResolver != resolver.DefaultResolver) && metadata.Host != "" {
+		ip, err := resolver.ResolveIPWithResolver(ctx, metadata.Host, resolver.DirectHostResolver)
+		if err != nil {
+			return fmt.Errorf("can't resolve ip: %w", err)
+		}
+		metadata.DstIP = ip
+	}
+	return nil
 }
 
 func (d *Direct) IsL3Protocol(metadata *C.Metadata) bool {

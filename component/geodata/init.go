@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	mihomoHttp "github.com/metacubex/mihomo/component/http"
-	"github.com/metacubex/mihomo/component/mmdb"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/common/atomic"
+	clashautoHttp "github.com/metacubex/clashauto/component/http"
+	"github.com/metacubex/clashauto/component/mmdb"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 )
 
 var (
@@ -70,7 +70,7 @@ func SetASNUrl(url string) {
 func downloadToPath(url string, path string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*90)
 	defer cancel()
-	resp, err := mihomoHttp.HttpRequest(ctx, url, http.MethodGet, nil, nil)
+	resp, err := clashautoHttp.HttpRequest(ctx, url, http.MethodGet, nil, nil)
 	if err != nil {
 		return
 	}

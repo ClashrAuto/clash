@@ -3,12 +3,12 @@ package socks
 import (
 	"net"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/sockopt"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/socks5"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	N "github.com/metacubex/clashauto/common/net"
+	"github.com/metacubex/clashauto/common/sockopt"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
+	"github.com/metacubex/clashauto/transport/socks5"
 )
 
 type UDPListener struct {
@@ -40,12 +40,12 @@ func NewUDP(addr string, tunnel C.Tunnel, additions ...inbound.Addition) (*UDPLi
 			inbound.WithSpecialRules(""),
 		}
 	}
-	l, err := net.ListenPacket("udp", addr)
+	l, err := inbound.ListenPacket("udp", addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sockopt.UDPReuseaddr(l.(*net.UDPConn)); err != nil {
+	if err := sockopt.UDPReuseaddr(l); err != nil {
 		log.Warnln("Failed to Reuse UDP Address: %s", err)
 	}
 

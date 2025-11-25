@@ -9,16 +9,17 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/ca"
+	tlsC "github.com/metacubex/clashauto/component/tls"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
+
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/quic-go/http3"
 	D "github.com/miekg/dns"
@@ -37,13 +38,14 @@ const (
 	transportDefaultIdleConnTimeout = 5 * time.Minute
 
 	// dohMaxConnsPerHost controls the maximum number of connections for
-	// each host.
-	dohMaxConnsPerHost = 1
+	// each host.  Note, that setting it to 1 may cause issues with Go's http
+	// implementation, see https://github.com/AdguardTeam/dnsproxy/issues/278.
+	dohMaxConnsPerHost = 2
 	dialTimeout        = 10 * time.Second
 
 	// dohMaxIdleConns controls the maximum number of connections being idle
 	// at the same time.
-	dohMaxIdleConns = 1
+	dohMaxIdleConns = 2
 	maxElapsedTime  = time.Second * 30
 )
 
@@ -68,8 +70,6 @@ type dnsOverHTTPS struct {
 	dialer         *dnsDialer
 	addr           string
 	skipCertVerify bool
-	ecsPrefix      netip.Prefix
-	ecsOverride    bool
 }
 
 // type check
@@ -102,28 +102,6 @@ func newDoHClient(urlString string, r *Resolver, preferH3 bool, params map[strin
 		doh.skipCertVerify = true
 	}
 
-	if ecs := params["ecs"]; ecs != "" {
-		prefix, err := netip.ParsePrefix(ecs)
-		if err != nil {
-			addr, err := netip.ParseAddr(ecs)
-			if err != nil {
-				log.Warnln("DOH [%s] config with invalid ecs: %s", doh.addr, ecs)
-			} else {
-				doh.ecsPrefix = netip.PrefixFrom(addr, addr.BitLen())
-			}
-		} else {
-			doh.ecsPrefix = prefix
-		}
-	}
-
-	if doh.ecsPrefix.IsValid() {
-		log.Debugln("DOH [%s] config with ecs: %s", doh.addr, doh.ecsPrefix)
-	}
-
-	if params["ecs-override"] == "true" {
-		doh.ecsOverride = true
-	}
-
 	runtime.SetFinalizer(doh, (*dnsOverHTTPS).Close)
 
 	return doh
@@ -150,10 +128,6 @@ func (doh *dnsOverHTTPS) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.
 			msg.Id = id
 		}
 	}()
-
-	if doh.ecsPrefix.IsValid() {
-		setEdns0Subnet(m, doh.ecsPrefix, doh.ecsOverride)
-	}
 
 	// Check if there was already an active client before sending the request.
 	// We'll only attempt to re-connect if there was one.
@@ -423,12 +397,16 @@ func (doh *dnsOverHTTPS) createTransport(ctx context.Context) (t http.RoundTripp
 		return transport, nil
 	}
 
-	tlsConfig := ca.GetGlobalTLSConfig(
-		&tls.Config{
+	tlsConfig, err := ca.GetTLSConfig(ca.Option{
+		TLSConfig: &tls.Config{
 			InsecureSkipVerify:     doh.skipCertVerify,
 			MinVersion:             tls.VersionTLS12,
 			SessionTicketsDisabled: false,
-		})
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
 	var nextProtos []string
 	for _, v := range doh.httpVersions {
 		nextProtos = append(nextProtos, string(v))
@@ -473,12 +451,12 @@ func (doh *dnsOverHTTPS) createTransport(ctx context.Context) (t http.RoundTripp
 	return transport, nil
 }
 
-// http3Transport is a wrapper over *http3.RoundTripper that tries to optimize
+// http3Transport is a wrapper over *http3.Transport that tries to optimize
 // its behavior.  The main thing that it does is trying to force use a single
 // connection to a host instead of creating a new one all the time.  It also
 // helps mitigate race issues with quic-go.
 type http3Transport struct {
-	baseTransport *http3.RoundTripper
+	baseTransport *http3.Transport
 
 	closed bool
 	mu     sync.RWMutex
@@ -531,7 +509,7 @@ func (h *http3Transport) CloseIdleConnections() {
 // We should be able to fall back to H1/H2 in case if HTTP/3 is unavailable or
 // if it is too slow.  In order to do that, this method will run two probes
 // in parallel (one for TLS, the other one for QUIC) and if QUIC is faster it
-// will create the *http3.RoundTripper instance.
+// will create the *http3.Transport instance.
 func (doh *dnsOverHTTPS) createTransportH3(
 	ctx context.Context,
 	tlsConfig *tls.Config,
@@ -545,27 +523,27 @@ func (doh *dnsOverHTTPS) createTransportH3(
 		return nil, err
 	}
 
-	rt := &http3.RoundTripper{
+	rt := &http3.Transport{
 		Dial: func(
 			ctx context.Context,
 
 			// Ignore the address and always connect to the one that we got
 			// from the bootstrapper.
 			_ string,
-			tlsCfg *tls.Config,
+			tlsCfg *tlsC.Config,
 			cfg *quic.Config,
-		) (c quic.EarlyConnection, err error) {
+		) (c *quic.Conn, err error) {
 			return doh.dialQuic(ctx, addr, tlsCfg, cfg)
 		},
 		DisableCompression: true,
-		TLSClientConfig:    tlsConfig,
+		TLSClientConfig:    tlsC.UConfig(tlsConfig),
 		QUICConfig:         doh.getQUICConfig(),
 	}
 
 	return &http3Transport{baseTransport: rt}, nil
 }
 
-func (doh *dnsOverHTTPS) dialQuic(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
+func (doh *dnsOverHTTPS) dialQuic(ctx context.Context, addr string, tlsCfg *tlsC.Config, cfg *quic.Config) (*quic.Conn, error) {
 	ip, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -634,7 +612,7 @@ func (doh *dnsOverHTTPS) probeH3(
 	// Run probeQUIC and probeTLS in parallel and see which one is faster.
 	chQuic := make(chan error, 1)
 	chTLS := make(chan error, 1)
-	go doh.probeQUIC(ctx, addr, probeTLSCfg, chQuic)
+	go doh.probeQUIC(ctx, addr, tlsC.UConfig(probeTLSCfg), chQuic)
 	go doh.probeTLS(ctx, probeTLSCfg, chTLS)
 
 	select {
@@ -659,7 +637,7 @@ func (doh *dnsOverHTTPS) probeH3(
 
 // probeQUIC attempts to establish a QUIC connection to the specified address.
 // We run probeQUIC and probeTLS in parallel and see which one is faster.
-func (doh *dnsOverHTTPS) probeQUIC(ctx context.Context, addr string, tlsConfig *tls.Config, ch chan error) {
+func (doh *dnsOverHTTPS) probeQUIC(ctx context.Context, addr string, tlsConfig *tlsC.Config, ch chan error) {
 	startTime := time.Now()
 	conn, err := doh.dialQuic(ctx, addr, tlsConfig, doh.getQUICConfig())
 	if err != nil {

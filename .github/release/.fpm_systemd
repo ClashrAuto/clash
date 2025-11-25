@@ -1,0 +1,18 @@
+-s dir
+--name clashauto
+--category net
+--license GPL-3.0-or-later
+--description "The universal proxy platform."
+--url "https://wiki.metacubex.one/"
+--maintainer "MetaCubeX <none@example.com>"
+--deb-field "Bug: https://github.com/MetaCubeX/clashauto/issues"
+--no-deb-generate-changes
+--config-files /etc/clashauto/config.yaml
+
+.github/release/config.yaml=/etc/clashauto/config.yaml
+
+.github/release/clashauto.service=/usr/lib/systemd/system/clashauto.service
+.github/release/clashauto@.service=/usr/lib/systemd/system/clashauto@.service
+
+
+LICENSE=/usr/share/licenses/clashauto/LICENSE

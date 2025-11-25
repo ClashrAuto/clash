@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/metacubex/mihomo/component/updater"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/updater"
+	"github.com/metacubex/clashauto/log"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -14,9 +14,11 @@ import (
 
 func upgradeRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Post("/", upgradeCore)
 	r.Post("/ui", updateUI)
-	r.Post("/geo", updateGeoDatabases)
+	if !embedMode { // disallow upgrade core/geo in embed mode
+		r.Post("/", upgradeCore)
+		r.Post("/geo", updateGeoDatabases)
+	}
 	return r
 }
 
@@ -30,7 +32,11 @@ func upgradeCore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = updater.UpdateCore(execPath)
+	query := r.URL.Query()
+	channel := query.Get("channel")
+	force := query.Get("force") == "true"
+
+	err = updater.DefaultCoreUpdater.Update(execPath, channel, force)
 	if err != nil {
 		log.Warnln("%s", err)
 		render.Status(r, http.StatusInternalServerError)

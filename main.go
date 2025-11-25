@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -13,15 +14,16 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/metacubex/mihomo/component/geodata"
-	"github.com/metacubex/mihomo/component/updater"
-	"github.com/metacubex/mihomo/config"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/features"
-	"github.com/metacubex/mihomo/hub"
-	"github.com/metacubex/mihomo/hub/executor"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/rules/provider"
+	"github.com/metacubex/clashauto/component/generator"
+	"github.com/metacubex/clashauto/component/geodata"
+	"github.com/metacubex/clashauto/component/updater"
+	"github.com/metacubex/clashauto/config"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/constant/features"
+	"github.com/metacubex/clashauto/hub"
+	"github.com/metacubex/clashauto/hub/executor"
+	"github.com/metacubex/clashauto/log"
+	"github.com/metacubex/clashauto/rules/provider"
 
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -51,7 +53,7 @@ func init() {
 	flag.StringVar(&externalControllerPipe, "ext-ctl-pipe", os.Getenv("CLASH_OVERRIDE_EXTERNAL_CONTROLLER_PIPE"), "override external controller pipe address")
 	flag.StringVar(&secret, "secret", os.Getenv("CLASH_OVERRIDE_SECRET"), "override secret for RESTful API")
 	flag.BoolVar(&geodataMode, "m", false, "set geodata mode")
-	flag.BoolVar(&version, "v", false, "show current version of mihomo")
+	flag.BoolVar(&version, "v", false, "show current version of clashauto")
 	flag.BoolVar(&testConfig, "t", false, "test configuration and exit")
 	flag.Parse()
 }
@@ -60,13 +62,30 @@ func main() {
 	// Defensive programming: panic when code mistakenly calls net.DefaultResolver
 	net.DefaultResolver.PreferGo = true
 	net.DefaultResolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
-		panic("should never be called")
+		//panic("should never be called")
+		buf := make([]byte, 1024)
+		for {
+			n := runtime.Stack(buf, true)
+			if n < len(buf) {
+				buf = buf[:n]
+				break
+			}
+			buf = make([]byte, 2*len(buf))
+		}
+		fmt.Fprintf(os.Stderr, "panic: should never be called\n\n%s", buf) // always print all goroutine stack
+		os.Exit(2)
+		return nil, nil
 	}
 
 	_, _ = maxprocs.Set(maxprocs.Logger(func(string, ...any) {}))
 
 	if len(os.Args) > 1 && os.Args[1] == "convert-ruleset" {
 		provider.ConvertMain(os.Args[2:])
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "generate" {
+		generator.Main(os.Args[2:])
 		return
 	}
 
@@ -95,6 +114,13 @@ func main() {
 	if configString != "" {
 		var err error
 		configBytes, err = base64.StdEncoding.DecodeString(configString)
+		if err != nil {
+			log.Fatalln("Initial configuration error: %s", err.Error())
+			return
+		}
+	} else if configFile == "-" {
+		var err error
+		configBytes, err = io.ReadAll(os.Stdin)
 		if err != nil {
 			log.Fatalln("Initial configuration error: %s", err.Error())
 			return

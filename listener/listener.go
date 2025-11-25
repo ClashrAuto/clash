@@ -7,20 +7,20 @@ import (
 	"strings"
 	"sync"
 
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/http"
-	"github.com/metacubex/mihomo/listener/mixed"
-	"github.com/metacubex/mihomo/listener/redir"
-	embedSS "github.com/metacubex/mihomo/listener/shadowsocks"
-	"github.com/metacubex/mihomo/listener/sing_shadowsocks"
-	"github.com/metacubex/mihomo/listener/sing_tun"
-	"github.com/metacubex/mihomo/listener/sing_vmess"
-	"github.com/metacubex/mihomo/listener/socks"
-	"github.com/metacubex/mihomo/listener/tproxy"
-	"github.com/metacubex/mihomo/listener/tuic"
-	LT "github.com/metacubex/mihomo/listener/tunnel"
-	"github.com/metacubex/mihomo/log"
+	C "github.com/metacubex/clashauto/constant"
+	LC "github.com/metacubex/clashauto/listener/config"
+	"github.com/metacubex/clashauto/listener/http"
+	"github.com/metacubex/clashauto/listener/mixed"
+	"github.com/metacubex/clashauto/listener/redir"
+	embedSS "github.com/metacubex/clashauto/listener/shadowsocks"
+	"github.com/metacubex/clashauto/listener/sing_shadowsocks"
+	"github.com/metacubex/clashauto/listener/sing_tun"
+	"github.com/metacubex/clashauto/listener/sing_vmess"
+	"github.com/metacubex/clashauto/listener/socks"
+	"github.com/metacubex/clashauto/listener/tproxy"
+	"github.com/metacubex/clashauto/listener/tuic"
+	LT "github.com/metacubex/clashauto/listener/tunnel"
+	"github.com/metacubex/clashauto/log"
 
 	"github.com/samber/lo"
 )
@@ -512,8 +512,8 @@ func ReCreateTun(tunConf LC.Tun, tunnel C.Tunnel) {
 	}()
 
 	if tunConf.Equal(LastTunConf) {
-		if tunLister != nil {
-			tunLister.FlushDefaultInterface()
+		if tunLister != nil { // some default value in dialer maybe changed when config reload, reset at here
+			tunLister.OnReload()
 		}
 		return
 	}

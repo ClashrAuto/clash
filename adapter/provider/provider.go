@@ -4,19 +4,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter"
-	"github.com/metacubex/mihomo/common/convert"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/profile/cachefile"
-	"github.com/metacubex/mihomo/component/resource"
-	C "github.com/metacubex/mihomo/constant"
-	types "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/tunnel/statistic"
+	"github.com/metacubex/clashauto/adapter"
+	"github.com/metacubex/clashauto/common/convert"
+	"github.com/metacubex/clashauto/common/utils"
+	"github.com/metacubex/clashauto/component/profile/cachefile"
+	"github.com/metacubex/clashauto/component/resource"
+	C "github.com/metacubex/clashauto/constant"
+	P "github.com/metacubex/clashauto/constant/provider"
+	"github.com/metacubex/clashauto/tunnel/statistic"
 
 	"github.com/dlclark/regexp2"
 	"gopkg.in/yaml.v3"
@@ -30,42 +31,107 @@ type ProxySchema struct {
 	Proxies []map[string]any `yaml:"proxies"`
 }
 
+type providerForApi struct {
+	Name             string            `json:"name"`
+	Type             string            `json:"type"`
+	VehicleType      string            `json:"vehicleType"`
+	Proxies          []C.Proxy         `json:"proxies"`
+	TestUrl          string            `json:"testUrl"`
+	ExpectedStatus   string            `json:"expectedStatus"`
+	UpdatedAt        time.Time         `json:"updatedAt,omitempty"`
+	SubscriptionInfo *SubscriptionInfo `json:"subscriptionInfo,omitempty"`
+}
+
+type baseProvider struct {
+	name        string
+	proxies     []C.Proxy
+	healthCheck *HealthCheck
+	version     uint32
+}
+
+func (bp *baseProvider) Name() string {
+	return bp.name
+}
+
+func (bp *baseProvider) Version() uint32 {
+	return bp.version
+}
+
+func (bp *baseProvider) Initial() error {
+	if bp.healthCheck.auto() {
+		go bp.healthCheck.process()
+	}
+	return nil
+}
+
+func (bp *baseProvider) HealthCheck() {
+	bp.healthCheck.check()
+}
+
+func (bp *baseProvider) Type() P.ProviderType {
+	return P.Proxy
+}
+
+func (bp *baseProvider) Proxies() []C.Proxy {
+	return bp.proxies
+}
+
+func (bp *baseProvider) Count() int {
+	return len(bp.proxies)
+}
+
+func (bp *baseProvider) Touch() {
+	bp.healthCheck.touch()
+}
+
+func (bp *baseProvider) HealthCheckURL() string {
+	return bp.healthCheck.url
+}
+
+func (bp *baseProvider) RegisterHealthCheckTask(url string, expectedStatus utils.IntRanges[uint16], filter string, interval uint) {
+	bp.healthCheck.registerHealthCheckTask(url, expectedStatus, filter, interval)
+}
+
+func (bp *baseProvider) setProxies(proxies []C.Proxy) {
+	bp.proxies = proxies
+	bp.version += 1
+	bp.healthCheck.setProxies(proxies)
+	if bp.healthCheck.auto() {
+		go bp.healthCheck.check()
+	}
+}
+
+func (bp *baseProvider) Close() error {
+	bp.healthCheck.close()
+	return nil
+}
+
 // ProxySetProvider for auto gc
 type ProxySetProvider struct {
 	*proxySetProvider
 }
 
 type proxySetProvider struct {
+	baseProvider
 	*resource.Fetcher[[]C.Proxy]
-	proxies          []C.Proxy
-	healthCheck      *HealthCheck
-	version          uint32
 	subscriptionInfo *SubscriptionInfo
 }
 
 func (pp *proxySetProvider) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"name":             pp.Name(),
-		"type":             pp.Type().String(),
-		"vehicleType":      pp.VehicleType().String(),
-		"proxies":          pp.Proxies(),
-		"testUrl":          pp.healthCheck.url,
-		"expectedStatus":   pp.healthCheck.expectedStatus.String(),
-		"updatedAt":        pp.UpdatedAt(),
-		"subscriptionInfo": pp.subscriptionInfo,
+	return json.Marshal(providerForApi{
+		Name:             pp.Name(),
+		Type:             pp.Type().String(),
+		VehicleType:      pp.VehicleType().String(),
+		Proxies:          pp.Proxies(),
+		TestUrl:          pp.healthCheck.url,
+		ExpectedStatus:   pp.healthCheck.expectedStatus.String(),
+		UpdatedAt:        pp.UpdatedAt(),
+		SubscriptionInfo: pp.subscriptionInfo,
 	})
-}
-
-func (pp *proxySetProvider) Version() uint32 {
-	return pp.version
 }
 
 func (pp *proxySetProvider) Name() string {
 	return pp.Fetcher.Name()
-}
-
-func (pp *proxySetProvider) HealthCheck() {
-	pp.healthCheck.check()
 }
 
 func (pp *proxySetProvider) Update() error {
@@ -74,57 +140,18 @@ func (pp *proxySetProvider) Update() error {
 }
 
 func (pp *proxySetProvider) Initial() error {
+	if err := pp.baseProvider.Initial(); err != nil {
+		return err
+	}
 	_, err := pp.Fetcher.Initial()
 	if err != nil {
 		return err
 	}
 	if subscriptionInfo := cachefile.Cache().GetSubscriptionInfo(pp.Name()); subscriptionInfo != "" {
-		pp.SetSubscriptionInfo(subscriptionInfo)
+		pp.subscriptionInfo = NewSubscriptionInfo(subscriptionInfo)
 	}
 	pp.closeAllConnections()
 	return nil
-}
-
-func (pp *proxySetProvider) Type() types.ProviderType {
-	return types.Proxy
-}
-
-func (pp *proxySetProvider) Proxies() []C.Proxy {
-	return pp.proxies
-}
-
-func (pp *proxySetProvider) Count() int {
-	return len(pp.proxies)
-}
-
-func (pp *proxySetProvider) Touch() {
-	pp.healthCheck.touch()
-}
-
-func (pp *proxySetProvider) HealthCheckURL() string {
-	return pp.healthCheck.url
-}
-
-func (pp *proxySetProvider) RegisterHealthCheckTask(url string, expectedStatus utils.IntRanges[uint16], filter string, interval uint) {
-	pp.healthCheck.registerHealthCheckTask(url, expectedStatus, filter, interval)
-}
-
-func (pp *proxySetProvider) setProxies(proxies []C.Proxy) {
-	pp.proxies = proxies
-	pp.healthCheck.setProxy(proxies)
-	if pp.healthCheck.auto() {
-		go pp.healthCheck.check()
-	}
-}
-
-func (pp *proxySetProvider) SetSubscriptionInfo(userInfo string) {
-	pp.subscriptionInfo = NewSubscriptionInfo(userInfo)
-}
-
-func (pp *proxySetProvider) SetProvider(provider types.ProxyProvider) {
-	if httpVehicle, ok := pp.Vehicle().(*resource.HTTPVehicle); ok {
-		httpVehicle.SetProvider(provider)
-	}
 }
 
 func (pp *proxySetProvider) closeAllConnections() {
@@ -140,44 +167,46 @@ func (pp *proxySetProvider) closeAllConnections() {
 }
 
 func (pp *proxySetProvider) Close() error {
-	pp.healthCheck.close()
+	_ = pp.baseProvider.Close()
 	return pp.Fetcher.Close()
 }
 
-func NewProxySetProvider(name string, interval time.Duration, filter string, excludeFilter string, excludeType string, dialerProxy string, override OverrideSchema, vehicle types.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
-	excludeFilterReg, err := regexp2.Compile(excludeFilter, regexp2.None)
-	if err != nil {
-		return nil, fmt.Errorf("invalid excludeFilter regex: %w", err)
-	}
-	var excludeTypeArray []string
-	if excludeType != "" {
-		excludeTypeArray = strings.Split(excludeType, "|")
-	}
-
-	var filterRegs []*regexp2.Regexp
-	for _, filter := range strings.Split(filter, "`") {
-		filterReg, err := regexp2.Compile(filter, regexp2.None)
-		if err != nil {
-			return nil, fmt.Errorf("invalid filter regex: %w", err)
-		}
-		filterRegs = append(filterRegs, filterReg)
-	}
-
-	if hc.auto() {
-		go hc.process()
-	}
-
+func NewProxySetProvider(name string, interval time.Duration, payload []map[string]any, parser resource.Parser[[]C.Proxy], vehicle P.Vehicle, hc *HealthCheck) (*ProxySetProvider, error) {
 	pd := &proxySetProvider{
-		proxies:     []C.Proxy{},
-		healthCheck: hc,
+		baseProvider: baseProvider{
+			name:        name,
+			proxies:     []C.Proxy{},
+			healthCheck: hc,
+		},
 	}
 
-	fetcher := resource.NewFetcher[[]C.Proxy](name, interval, vehicle, proxiesParseAndFilter(filter, excludeFilter, excludeTypeArray, filterRegs, excludeFilterReg, dialerProxy, override), proxiesOnUpdate(pd))
-	pd.Fetcher = fetcher
-	wrapper := &ProxySetProvider{pd}
-	if httpVehicle, ok := vehicle.(*resource.HTTPVehicle); ok {
-		httpVehicle.SetProvider(wrapper)
+	if len(payload) > 0 { // using as fallback proxies
+		ps := ProxySchema{Proxies: payload}
+		buf, err := yaml.Marshal(ps)
+		if err != nil {
+			return nil, err
+		}
+		proxies, err := parser(buf)
+		if err != nil {
+			return nil, err
+		}
+		pd.proxies = proxies
+		// direct call setProxies on hc to avoid starting a health check process immediately, it should be done by Initial()
+		hc.setProxies(proxies)
 	}
+
+	fetcher := resource.NewFetcher[[]C.Proxy](name, interval, vehicle, parser, pd.setProxies)
+	pd.Fetcher = fetcher
+	if httpVehicle, ok := vehicle.(*resource.HTTPVehicle); ok {
+		httpVehicle.SetInRead(func(resp *http.Response) {
+			if subscriptionInfo := resp.Header.Get("subscription-userinfo"); subscriptionInfo != "" {
+				cachefile.Cache().SetSubscriptionInfo(name, subscriptionInfo)
+				pd.subscriptionInfo = NewSubscriptionInfo(subscriptionInfo)
+			}
+		})
+	}
+
+	wrapper := &ProxySetProvider{pd}
 	runtime.SetFinalizer(wrapper, (*ProxySetProvider).Close)
 	return wrapper, nil
 }
@@ -187,8 +216,67 @@ func (pp *ProxySetProvider) Close() error {
 	return pp.proxySetProvider.Close()
 }
 
-func (pp *ProxySetProvider) SetProvider(provider types.ProxyProvider) {
-	pp.proxySetProvider.SetProvider(provider)
+// InlineProvider for auto gc
+type InlineProvider struct {
+	*inlineProvider
+}
+
+type inlineProvider struct {
+	baseProvider
+	updateAt time.Time
+}
+
+func (ip *inlineProvider) MarshalJSON() ([]byte, error) {
+	return json.Marshal(providerForApi{
+		Name:           ip.Name(),
+		Type:           ip.Type().String(),
+		VehicleType:    ip.VehicleType().String(),
+		Proxies:        ip.Proxies(),
+		TestUrl:        ip.healthCheck.url,
+		ExpectedStatus: ip.healthCheck.expectedStatus.String(),
+		UpdatedAt:      ip.updateAt,
+	})
+}
+
+func (ip *inlineProvider) VehicleType() P.VehicleType {
+	return P.Inline
+}
+
+func (ip *inlineProvider) Update() error {
+	// make api update happy
+	ip.updateAt = time.Now()
+	return nil
+}
+
+func NewInlineProvider(name string, payload []map[string]any, parser resource.Parser[[]C.Proxy], hc *HealthCheck) (*InlineProvider, error) {
+	ps := ProxySchema{Proxies: payload}
+	buf, err := yaml.Marshal(ps)
+	if err != nil {
+		return nil, err
+	}
+	proxies, err := parser(buf)
+	if err != nil {
+		return nil, err
+	}
+	// direct call setProxies on hc to avoid starting a health check process immediately, it should be done by Initial()
+	hc.setProxies(proxies)
+
+	ip := &inlineProvider{
+		baseProvider: baseProvider{
+			name:        name,
+			proxies:     proxies,
+			healthCheck: hc,
+		},
+		updateAt: time.Now(),
+	}
+	wrapper := &InlineProvider{ip}
+	runtime.SetFinalizer(wrapper, (*InlineProvider).Close)
+	return wrapper, nil
+}
+
+func (ip *InlineProvider) Close() error {
+	runtime.SetFinalizer(ip, nil)
+	return ip.baseProvider.Close()
 }
 
 // CompatibleProvider for auto gc
@@ -197,82 +285,26 @@ type CompatibleProvider struct {
 }
 
 type compatibleProvider struct {
-	name             string
-	healthCheck      *HealthCheck
-	subscriptionInfo *SubscriptionInfo
-	proxies          []C.Proxy
-	version          uint32
+	baseProvider
 }
 
 func (cp *compatibleProvider) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"name":           cp.Name(),
-		"type":           cp.Type().String(),
-		"vehicleType":    cp.VehicleType().String(),
-		"proxies":        cp.Proxies(),
-		"testUrl":        cp.healthCheck.url,
-		"expectedStatus": cp.healthCheck.expectedStatus.String(),
+	return json.Marshal(providerForApi{
+		Name:           cp.Name(),
+		Type:           cp.Type().String(),
+		VehicleType:    cp.VehicleType().String(),
+		Proxies:        cp.Proxies(),
+		TestUrl:        cp.healthCheck.url,
+		ExpectedStatus: cp.healthCheck.expectedStatus.String(),
 	})
-}
-
-func (cp *compatibleProvider) Version() uint32 {
-	return cp.version
-}
-
-func (cp *compatibleProvider) Name() string {
-	return cp.name
-}
-
-func (cp *compatibleProvider) HealthCheck() {
-	cp.healthCheck.check()
 }
 
 func (cp *compatibleProvider) Update() error {
 	return nil
 }
 
-func (cp *compatibleProvider) Initial() error {
-	if cp.healthCheck.interval != 0 && cp.healthCheck.url != "" {
-		cp.HealthCheck()
-	}
-	return nil
-}
-
-func (cp *compatibleProvider) VehicleType() types.VehicleType {
-	return types.Compatible
-}
-
-func (cp *compatibleProvider) Type() types.ProviderType {
-	return types.Proxy
-}
-
-func (cp *compatibleProvider) Proxies() []C.Proxy {
-	return cp.proxies
-}
-
-func (cp *compatibleProvider) Count() int {
-	return len(cp.proxies)
-}
-
-func (cp *compatibleProvider) Touch() {
-	cp.healthCheck.touch()
-}
-
-func (cp *compatibleProvider) HealthCheckURL() string {
-	return cp.healthCheck.url
-}
-
-func (cp *compatibleProvider) RegisterHealthCheckTask(url string, expectedStatus utils.IntRanges[uint16], filter string, interval uint) {
-	cp.healthCheck.registerHealthCheckTask(url, expectedStatus, filter, interval)
-}
-
-func (cp *compatibleProvider) Close() error {
-	cp.healthCheck.close()
-	return nil
-}
-
-func (cp *compatibleProvider) SetSubscriptionInfo(userInfo string) {
-	cp.subscriptionInfo = NewSubscriptionInfo(userInfo)
+func (cp *compatibleProvider) VehicleType() P.VehicleType {
+	return P.Compatible
 }
 
 func NewCompatibleProvider(name string, proxies []C.Proxy, hc *HealthCheck) (*CompatibleProvider, error) {
@@ -280,14 +312,12 @@ func NewCompatibleProvider(name string, proxies []C.Proxy, hc *HealthCheck) (*Co
 		return nil, errors.New("provider need one proxy at least")
 	}
 
-	if hc.auto() {
-		go hc.process()
-	}
-
 	pd := &compatibleProvider{
-		name:        name,
-		proxies:     proxies,
-		healthCheck: hc,
+		baseProvider: baseProvider{
+			name:        name,
+			proxies:     proxies,
+			healthCheck: hc,
+		},
 	}
 
 	wrapper := &CompatibleProvider{pd}
@@ -300,14 +330,32 @@ func (cp *CompatibleProvider) Close() error {
 	return cp.compatibleProvider.Close()
 }
 
-func proxiesOnUpdate(pd *proxySetProvider) func([]C.Proxy) {
-	return func(elm []C.Proxy) {
-		pd.setProxies(elm)
-		pd.version += 1
+func NewProxiesParser(filter string, excludeFilter string, excludeType string, dialerProxy string, override OverrideSchema) (resource.Parser[[]C.Proxy], error) {
+	var excludeTypeArray []string
+	if excludeType != "" {
+		excludeTypeArray = strings.Split(excludeType, "|")
 	}
-}
 
-func proxiesParseAndFilter(filter string, excludeFilter string, excludeTypeArray []string, filterRegs []*regexp2.Regexp, excludeFilterReg *regexp2.Regexp, dialerProxy string, override OverrideSchema) resource.Parser[[]C.Proxy] {
+	var excludeFilterRegs []*regexp2.Regexp
+	if excludeFilter != "" {
+		for _, excludeFilter := range strings.Split(excludeFilter, "`") {
+			excludeFilterReg, err := regexp2.Compile(excludeFilter, regexp2.None)
+			if err != nil {
+				return nil, fmt.Errorf("invalid excludeFilter regex: %w", err)
+			}
+			excludeFilterRegs = append(excludeFilterRegs, excludeFilterReg)
+		}
+	}
+
+	var filterRegs []*regexp2.Regexp
+	for _, filter := range strings.Split(filter, "`") {
+		filterReg, err := regexp2.Compile(filter, regexp2.None)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter regex: %w", err)
+		}
+		filterRegs = append(filterRegs, filterReg)
+	}
+
 	return func(buf []byte) ([]C.Proxy, error) {
 		schema := &ProxySchema{}
 
@@ -326,8 +374,9 @@ func proxiesParseAndFilter(filter string, excludeFilter string, excludeTypeArray
 		proxies := []C.Proxy{}
 		proxiesSet := map[string]struct{}{}
 		for _, filterReg := range filterRegs {
+		LOOP1:
 			for idx, mapping := range schema.Proxies {
-				if nil != excludeTypeArray && len(excludeTypeArray) > 0 {
+				if len(excludeTypeArray) > 0 {
 					mType, ok := mapping["type"]
 					if !ok {
 						continue
@@ -336,18 +385,11 @@ func proxiesParseAndFilter(filter string, excludeFilter string, excludeTypeArray
 					if !ok {
 						continue
 					}
-					flag := false
-					for i := range excludeTypeArray {
-						if strings.EqualFold(pType, excludeTypeArray[i]) {
-							flag = true
-							break
+					for _, excludeType := range excludeTypeArray {
+						if strings.EqualFold(pType, excludeType) {
+							continue LOOP1
 						}
-
 					}
-					if flag {
-						continue
-					}
-
 				}
 				mName, ok := mapping["name"]
 				if !ok {
@@ -357,9 +399,11 @@ func proxiesParseAndFilter(filter string, excludeFilter string, excludeTypeArray
 				if !ok {
 					continue
 				}
-				if len(excludeFilter) > 0 {
-					if mat, _ := excludeFilterReg.MatchString(name); mat {
-						continue
+				if len(excludeFilterRegs) > 0 {
+					for _, excludeFilterReg := range excludeFilterRegs {
+						if mat, _ := excludeFilterReg.MatchString(name); mat {
+							continue LOOP1
+						}
 					}
 				}
 				if len(filter) > 0 {
@@ -422,5 +466,5 @@ func proxiesParseAndFilter(filter string, excludeFilter string, excludeTypeArray
 		}
 
 		return proxies, nil
-	}
+	}, nil
 }

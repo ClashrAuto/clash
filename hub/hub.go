@@ -1,10 +1,10 @@
 package hub
 
 import (
-	"github.com/metacubex/mihomo/config"
-	"github.com/metacubex/mihomo/hub/executor"
-	"github.com/metacubex/mihomo/hub/route"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/config"
+	"github.com/metacubex/clashauto/hub/executor"
+	"github.com/metacubex/clashauto/hub/route"
+	"github.com/metacubex/clashauto/log"
 )
 
 type Option func(*config.Config)
@@ -50,15 +50,18 @@ func applyRoute(cfg *config.Config) {
 		route.SetUIPath(cfg.Controller.ExternalUI)
 	}
 	route.ReCreateServer(&route.Config{
-		Addr:        cfg.Controller.ExternalController,
-		TLSAddr:     cfg.Controller.ExternalControllerTLS,
-		UnixAddr:    cfg.Controller.ExternalControllerUnix,
-		PipeAddr:    cfg.Controller.ExternalControllerPipe,
-		Secret:      cfg.Controller.Secret,
-		Certificate: cfg.TLS.Certificate,
-		PrivateKey:  cfg.TLS.PrivateKey,
-		DohServer:   cfg.Controller.ExternalDohServer,
-		IsDebug:     cfg.General.LogLevel == log.DEBUG,
+		Addr:           cfg.Controller.ExternalController,
+		TLSAddr:        cfg.Controller.ExternalControllerTLS,
+		UnixAddr:       cfg.Controller.ExternalControllerUnix,
+		PipeAddr:       cfg.Controller.ExternalControllerPipe,
+		Secret:         cfg.Controller.Secret,
+		Certificate:    cfg.TLS.Certificate,
+		PrivateKey:     cfg.TLS.PrivateKey,
+		ClientAuthType: cfg.TLS.ClientAuthType,
+		ClientAuthCert: cfg.TLS.ClientAuthCert,
+		EchKey:         cfg.TLS.EchKey,
+		DohServer:      cfg.Controller.ExternalDohServer,
+		IsDebug:        cfg.General.LogLevel == log.DEBUG,
 		Cors: route.Cors{
 			AllowOrigins:        cfg.Controller.Cors.AllowOrigins,
 			AllowPrivateNetwork: cfg.Controller.Cors.AllowPrivateNetwork,
@@ -66,7 +69,7 @@ func applyRoute(cfg *config.Config) {
 	})
 }
 
-// Parse call at the beginning of mihomo
+// Parse call at the beginning of clashauto
 func Parse(configBytes []byte, options ...Option) error {
 	var cfg *config.Config
 	var err error

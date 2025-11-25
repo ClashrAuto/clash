@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/metacubex/mihomo/component/geodata"
-	"github.com/metacubex/mihomo/component/geodata/router"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/clashauto/component/geodata"
+	"github.com/metacubex/clashauto/component/geodata/router"
+	C "github.com/metacubex/clashauto/constant"
 
 	"google.golang.org/protobuf/proto"
 )

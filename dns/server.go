@@ -1,13 +1,13 @@
 package dns
 
 import (
-	stdContext "context"
-	"errors"
+	"context"
 	"net"
 
-	"github.com/metacubex/mihomo/common/sockopt"
-	"github.com/metacubex/mihomo/context"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	"github.com/metacubex/clashauto/common/sockopt"
+	"github.com/metacubex/clashauto/component/resolver"
+	"github.com/metacubex/clashauto/log"
 
 	D "github.com/miekg/dns"
 )
@@ -20,48 +20,49 @@ var (
 )
 
 type Server struct {
-	*D.Server
-	handler handler
+	service   resolver.Service
+	tcpServer *D.Server
+	udpServer *D.Server
 }
 
 // ServeDNS implement D.Handler ServeDNS
 func (s *Server) ServeDNS(w D.ResponseWriter, r *D.Msg) {
-	msg, err := handlerWithContext(stdContext.Background(), s.handler, r)
+	msg, err := s.service.ServeMsg(context.Background(), r)
 	if err != nil {
-		D.HandleFailed(w, r)
+		m := new(D.Msg)
+		m.SetRcode(r, D.RcodeServerFailure)
+		// does not matter if this write fails
+		w.WriteMsg(m)
 		return
 	}
 	msg.Compress = true
 	w.WriteMsg(msg)
 }
 
-func handlerWithContext(stdCtx stdContext.Context, handler handler, msg *D.Msg) (*D.Msg, error) {
-	if len(msg.Question) == 0 {
-		return nil, errors.New("at least one question is required")
-	}
-
-	ctx := context.NewDNSContext(stdCtx, msg)
-	return handler(ctx, msg)
+func (s *Server) SetService(service resolver.Service) {
+	s.service = service
 }
 
-func (s *Server) SetHandler(handler handler) {
-	s.handler = handler
-}
-
-func ReCreateServer(addr string, resolver *Resolver, mapper *ResolverEnhancer) {
-	if addr == address && resolver != nil {
-		handler := NewHandler(resolver, mapper)
-		server.SetHandler(handler)
+func ReCreateServer(addr string, service resolver.Service) {
+	if addr == address && service != nil {
+		server.SetService(service)
 		return
 	}
 
-	if server.Server != nil {
-		server.Shutdown()
-		server = &Server{}
-		address = ""
+	if server.tcpServer != nil {
+		_ = server.tcpServer.Shutdown()
+		server.tcpServer = nil
 	}
 
-	if addr == "" {
+	if server.udpServer != nil {
+		_ = server.udpServer.Shutdown()
+		server.udpServer = nil
+	}
+
+	server.service = nil
+	address = ""
+
+	if addr == "" || service == nil {
 		return
 	}
 
@@ -77,31 +78,35 @@ func ReCreateServer(addr string, resolver *Resolver, mapper *ResolverEnhancer) {
 		return
 	}
 
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		return
-	}
-
-	p, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return
-	}
-
-	err = sockopt.UDPReuseaddr(p)
-	if err != nil {
-		log.Warnln("Failed to Reuse UDP Address: %s", err)
-
-		err = nil
-	}
-
 	address = addr
-	handler := NewHandler(resolver, mapper)
-	server = &Server{handler: handler}
-	server.Server = &D.Server{Addr: addr, PacketConn: p, Handler: server}
+	server = &Server{service: service}
 
 	go func() {
-		server.ActivateAndServe()
+		p, err := inbound.ListenPacket("udp", addr)
+		if err != nil {
+			log.Errorln("Start DNS server(UDP) error: %s", err.Error())
+			return
+		}
+
+		if err := sockopt.UDPReuseaddr(p); err != nil {
+			log.Warnln("Failed to Reuse UDP Address: %s", err)
+		}
+
+		log.Infoln("DNS server(UDP) listening at: %s", p.LocalAddr().String())
+		server.udpServer = &D.Server{Addr: addr, PacketConn: p, Handler: server}
+		_ = server.udpServer.ActivateAndServe()
 	}()
 
-	log.Infoln("DNS server listening at: %s", p.LocalAddr().String())
+	go func() {
+		l, err := inbound.Listen("tcp", addr)
+		if err != nil {
+			log.Errorln("Start DNS server(TCP) error: %s", err.Error())
+			return
+		}
+
+		log.Infoln("DNS server(TCP) listening at: %s", l.Addr().String())
+		server.tcpServer = &D.Server{Addr: addr, Listener: l, Handler: server}
+		_ = server.tcpServer.ActivateAndServe()
+	}()
+
 }

@@ -9,7 +9,7 @@ import (
 	"net/netip"
 	"strconv"
 
-	"github.com/metacubex/mihomo/component/auth"
+	"github.com/metacubex/clashauto/component/auth"
 )
 
 // Error represents a SOCKS error
@@ -118,6 +118,10 @@ func ServerHandshake(rw net.Conn, authenticator auth.Authenticator) (addr Addr, 
 		return
 	}
 
+	if nmethods == 1 && buf[0] == 0x02 /* will use password */ && authenticator == nil {
+		authenticator = auth.AlwaysValid
+	}
+
 	// write VER METHOD
 	if authenticator != nil {
 		if _, err = rw.Write([]byte{5, 2}); err != nil {
@@ -189,7 +193,7 @@ func ServerHandshake(rw net.Conn, authenticator auth.Authenticator) (addr Addr, 
 	switch command {
 	case CmdConnect, CmdUDPAssociate:
 		// Acquire server listened address info
-		localAddr := ParseAddr(rw.LocalAddr().String())
+		localAddr := ParseAddrToSocksAddr(rw.LocalAddr())
 		if localAddr == nil {
 			err = ErrAddressNotSupported
 		} else {
@@ -414,12 +418,15 @@ func ParseAddr(s string) Addr {
 func ParseAddrToSocksAddr(addr net.Addr) Addr {
 	var hostip net.IP
 	var port int
-	if udpaddr, ok := addr.(*net.UDPAddr); ok {
-		hostip = udpaddr.IP
-		port = udpaddr.Port
-	} else if tcpaddr, ok := addr.(*net.TCPAddr); ok {
-		hostip = tcpaddr.IP
-		port = tcpaddr.Port
+	switch addr := addr.(type) {
+	case *net.UDPAddr:
+		hostip = addr.IP
+		port = addr.Port
+	case *net.TCPAddr:
+		hostip = addr.IP
+		port = addr.Port
+	case nil:
+		return nil
 	}
 
 	// fallback parse

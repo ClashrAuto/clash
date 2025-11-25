@@ -53,6 +53,12 @@ func (d *Decoder) Decode(src map[string]any, dst any) error {
 		key, omitKey, found := strings.Cut(tag, ",")
 		omitempty := found && omitKey == "omitempty"
 
+		// As a special case, if the field tag is "-", the field is always omitted.
+		// Note that a field with name "-" can still be generated using the tag "-,".
+		if key == "-" {
+			continue
+		}
+
 		value, ok := src[key]
 		if !ok {
 			if d.option.KeyReplacer != nil {
@@ -86,7 +92,27 @@ func (d *Decoder) Decode(src map[string]any, dst any) error {
 	return nil
 }
 
+// isNil returns true if the input is nil or a typed nil pointer.
+func isNil(input any) bool {
+	if input == nil {
+		return true
+	}
+	val := reflect.ValueOf(input)
+	return val.Kind() == reflect.Pointer && val.IsNil()
+}
+
 func (d *Decoder) decode(name string, data any, val reflect.Value) error {
+	if isNil(data) {
+		// If the data is nil, then we don't set anything
+		// Maybe we should set to zero value?
+		return nil
+	}
+	if !reflect.ValueOf(data).IsValid() {
+		// If the input value is invalid, then we just set the value
+		// to be the zero value.
+		val.Set(reflect.Zero(val.Type()))
+		return nil
+	}
 	for {
 		kind := val.Kind()
 		if kind == reflect.Pointer && val.IsNil() {

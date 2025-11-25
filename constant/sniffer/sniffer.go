@@ -1,6 +1,6 @@
 package sniffer
 
-import "github.com/metacubex/mihomo/constant"
+import "github.com/metacubex/clashauto/constant"
 
 type Sniffer interface {
 	SupportNetwork() constant.NetWork
@@ -8,6 +8,12 @@ type Sniffer interface {
 	SniffData(bytes []byte) (string, error)
 	Protocol() string
 	SupportPort(port uint16) bool
+}
+
+type ReplaceDomain func(metadata *constant.Metadata, host string)
+
+type MultiPacketSniffer interface {
+	WrapperSender(packetSender constant.PacketSender, replaceDomain ReplaceDomain) constant.PacketSender
 }
 
 const (

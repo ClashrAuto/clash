@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/netip"
 
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 var skipAuthPrefixes []netip.Prefix
@@ -34,12 +34,5 @@ func SkipAuthRemoteAddress(addr string) bool {
 }
 
 func skipAuth(addr netip.Addr) bool {
-	if addr.IsValid() {
-		for _, prefix := range skipAuthPrefixes {
-			if prefix.Contains(addr.Unmap()) {
-				return true
-			}
-		}
-	}
-	return false
+	return prefixesContains(skipAuthPrefixes, addr)
 }

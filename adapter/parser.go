@@ -3,11 +3,9 @@ package adapter
 import (
 	"fmt"
 
-	tlsC "github.com/metacubex/mihomo/component/tls"
-
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/common/structure"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/clashauto/adapter/outbound"
+	"github.com/metacubex/clashauto/common/structure"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 func ParseProxy(mapping map[string]any) (C.Proxy, error) {
@@ -18,12 +16,12 @@ func ParseProxy(mapping map[string]any) (C.Proxy, error) {
 	}
 
 	var (
-		proxy C.ProxyAdapter
+		proxy outbound.ProxyAdapter
 		err   error
 	)
 	switch proxyType {
 	case "ss":
-		ssOption := &outbound.ShadowSocksOption{ClientFingerprint: tlsC.GetGlobalFingerprint()}
+		ssOption := &outbound.ShadowSocksOption{}
 		err = decoder.Decode(mapping, ssOption)
 		if err != nil {
 			break
@@ -51,21 +49,14 @@ func ParseProxy(mapping map[string]any) (C.Proxy, error) {
 		}
 		proxy, err = outbound.NewHttp(*httpOption)
 	case "vmess":
-		vmessOption := &outbound.VmessOption{
-			HTTPOpts: outbound.HTTPOptions{
-				Method: "GET",
-				Path:   []string{"/"},
-			},
-			ClientFingerprint: tlsC.GetGlobalFingerprint(),
-		}
-
+		vmessOption := &outbound.VmessOption{}
 		err = decoder.Decode(mapping, vmessOption)
 		if err != nil {
 			break
 		}
 		proxy, err = outbound.NewVmess(*vmessOption)
 	case "vless":
-		vlessOption := &outbound.VlessOption{ClientFingerprint: tlsC.GetGlobalFingerprint()}
+		vlessOption := &outbound.VlessOption{}
 		err = decoder.Decode(mapping, vlessOption)
 		if err != nil {
 			break
@@ -79,7 +70,7 @@ func ParseProxy(mapping map[string]any) (C.Proxy, error) {
 		}
 		proxy, err = outbound.NewSnell(*snellOption)
 	case "trojan":
-		trojanOption := &outbound.TrojanOption{ClientFingerprint: tlsC.GetGlobalFingerprint()}
+		trojanOption := &outbound.TrojanOption{}
 		err = decoder.Decode(mapping, trojanOption)
 		if err != nil {
 			break
@@ -141,6 +132,20 @@ func ParseProxy(mapping map[string]any) (C.Proxy, error) {
 			break
 		}
 		proxy, err = outbound.NewSsh(*sshOption)
+	case "mieru":
+		mieruOption := &outbound.MieruOption{}
+		err = decoder.Decode(mapping, mieruOption)
+		if err != nil {
+			break
+		}
+		proxy, err = outbound.NewMieru(*mieruOption)
+	case "anytls":
+		anytlsOption := &outbound.AnyTLSOption{}
+		err = decoder.Decode(mapping, anytlsOption)
+		if err != nil {
+			break
+		}
+		proxy, err = outbound.NewAnyTLS(*anytlsOption)
 	default:
 		return nil, fmt.Errorf("unsupport proxy type: %s", proxyType)
 	}
@@ -156,12 +161,13 @@ func ParseProxy(mapping map[string]any) (C.Proxy, error) {
 			return nil, err
 		}
 		if muxOption.Enabled {
-			proxy, err = outbound.NewSingMux(*muxOption, proxy, proxy.(outbound.ProxyBase))
+			proxy, err = outbound.NewSingMux(*muxOption, proxy)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
+	proxy = outbound.NewAutoCloseProxyAdapter(proxy)
 	return NewProxy(proxy), nil
 }

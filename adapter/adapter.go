@@ -2,27 +2,22 @@ package adapter
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
-	"strconv"
+	"io"
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	"github.com/metacubex/mihomo/common/queue"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
-	"github.com/puzpuzpuz/xsync/v3"
-
+	"github.com/metacubex/clashauto/common/atomic"
+	"github.com/metacubex/clashauto/common/queue"
+	"github.com/metacubex/clashauto/common/utils"
+	"github.com/metacubex/clashauto/common/xsync"
+	"github.com/metacubex/clashauto/component/ca"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 	"github.com/VividCortex/ewma"
 )
 
@@ -41,7 +36,7 @@ type Proxy struct {
 	C.ProxyAdapter
 	alive   atomic.Bool
 	history *queue.Queue[C.DelayHistory]
-	extra   *xsync.MapOf[string, *internalProxyState]
+	extra   xsync.Map[string, *internalProxyState]
 }
 
 // Adapter implements C.Proxy
@@ -58,29 +53,15 @@ func (p *Proxy) AliveForTestUrl(url string) bool {
 	return p.alive.Load()
 }
 
-// Dial implements C.Proxy
-func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTCPTimeout)
-	defer cancel()
-	return p.DialContext(ctx, metadata)
-}
-
 // DialContext implements C.ProxyAdapter
-func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.Conn, error) {
-	conn, err := p.ProxyAdapter.DialContext(ctx, metadata, opts...)
+func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+	conn, err := p.ProxyAdapter.DialContext(ctx, metadata)
 	return conn, err
 }
 
-// DialUDP implements C.ProxyAdapter
-func (p *Proxy) DialUDP(metadata *C.Metadata) (C.PacketConn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
-	defer cancel()
-	return p.ListenPacketContext(ctx, metadata)
-}
-
 // ListenPacketContext implements C.ProxyAdapter
-func (p *Proxy) ListenPacketContext(ctx context.Context, metadata *C.Metadata, opts ...dialer.Option) (C.PacketConn, error) {
-	pc, err := p.ProxyAdapter.ListenPacketContext(ctx, metadata, opts...)
+func (p *Proxy) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (C.PacketConn, error) {
+	pc, err := p.ProxyAdapter.ListenPacketContext(ctx, metadata)
 	return pc, err
 }
 
@@ -166,8 +147,17 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 	mapping["alive"] = p.alive.Load()
 	mapping["name"] = p.Name()
 	mapping["udp"] = p.SupportUDP()
-	mapping["xudp"] = p.SupportXUDP()
-	mapping["tfo"] = p.SupportTFO()
+	mapping["uot"] = p.SupportUOT()
+
+	proxyInfo := p.ProxyInfo()
+	mapping["xudp"] = proxyInfo.XUDP
+	mapping["tfo"] = proxyInfo.TFO
+	mapping["mptcp"] = proxyInfo.MPTCP
+	mapping["smux"] = proxyInfo.SMUX
+	mapping["interface"] = proxyInfo.Interface
+	mapping["dialer-proxy"] = proxyInfo.DialerProxy
+	mapping["routing-mark"] = proxyInfo.RoutingMark
+
 	return json.Marshal(mapping)
 }
 
@@ -233,6 +223,11 @@ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.In
 	}
 	req = req.WithContext(ctx)
 
+	tlsConfig, err := ca.GetTLSConfig(ca.Option{})
+	if err != nil {
+		return
+	}
+
 	transport := &http.Transport{
 		DialContext: func(context.Context, string, string) (net.Conn, error) {
 			return instance, nil
@@ -242,7 +237,7 @@ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.In
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       ca.GetGlobalTLSConfig(&tls.Config{}),
+		TLSClientConfig:       tlsConfig,
 	}
 
 	client := http.Client{
@@ -284,12 +279,13 @@ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.In
 	t = uint16(time.Since(start) / time.Millisecond)
 	return
 }
+
 func NewProxy(adapter C.ProxyAdapter) *Proxy {
 	return &Proxy{
 		ProxyAdapter: adapter,
 		history:      queue.New[C.DelayHistory](defaultHistoriesNum),
 		alive:        atomic.NewBool(true),
-		extra:        xsync.NewMapOf[string, *internalProxyState]()}
+	}
 }
 
 func urlToMetadata(rawURL string) (addr C.Metadata, err error) {
@@ -310,26 +306,17 @@ func urlToMetadata(rawURL string) (addr C.Metadata, err error) {
 			return
 		}
 	}
-	uintPort, err := strconv.ParseUint(port, 10, 16)
-	if err != nil {
-		return
-	}
 
-	addr = C.Metadata{
-		Host:    u.Hostname(),
-		DstIP:   netip.Addr{},
-		DstPort: uint16(uintPort),
-	}
+	err = addr.SetRemoteAddress(net.JoinHostPort(u.Hostname(), port))
 	return
 }
 
-// implements C.Proxy
+// LastDelay returns the last recorded delay; if not alive or no delay, returns max uint16.
 func (p *Proxy) LastDelay() (delay uint16) {
 	var max uint16 = 0xffff
 	if !p.alive.Load() {
 		return max
 	}
-
 	history := p.history.Last()
 	if history.Delay == 0 {
 		return max
@@ -337,20 +324,19 @@ func (p *Proxy) LastDelay() (delay uint16) {
 	return history.Delay
 }
 
-// implements C.Proxy
+// LastSpeed returns the last recorded download speed; 0 when not available or not alive.
 func (p *Proxy) LastSpeed() (speed float64) {
-	var max float64 = 0
 	if !p.alive.Load() {
-		return max
+		return 0
 	}
-
 	history := p.history.Last()
 	if history.Speed == 0 {
-		return max
+		return 0
 	}
 	return history.Speed
 }
 
+// URLDownload performs a timed HTTP GET through this proxy and returns estimated download speed.
 func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 	defer func() {
 		p.alive.Store(err == nil)
@@ -377,9 +363,7 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
-		_ = instance.Close()
-	}()
+	defer func() { _ = instance.Close() }()
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -391,7 +375,6 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 		Dial: func(string, string) (net.Conn, error) {
 			return instance, nil
 		},
-		// from http.DefaultTransport
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -406,54 +389,56 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 	}
 
 	resp, err := client.Do(req)
-
 	if err != nil {
 		t = 0
-	} else {
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode == 200 {
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
 
-			var downloadTestTime = time.Millisecond * time.Duration(timeout)
+	if resp.StatusCode == http.StatusOK {
+		downloadTestTime := time.Millisecond * time.Duration(timeout)
+		timeStart := time.Now()
+		timeEnd := timeStart.Add(downloadTestTime)
 
-			timeStart := time.Now()
-			timeEnd := timeStart.Add(downloadTestTime)
+		contentLength := resp.ContentLength
+		if contentLength <= 0 {
+			contentLength = 1 << 20 // fallback buffer when unknown length
+		}
+		buffer := make([]byte, contentLength)
 
-			contentLength := resp.ContentLength
-			buffer := make([]byte, contentLength)
+		var contentRead int64 = 0
+		timeSlice := downloadTestTime / 100
+		timeCounter := 1
+		var lastContentRead int64 = 0
+		nextTime := timeStart.Add(timeSlice * time.Duration(timeCounter))
+		e := ewma.NewMovingAverage()
 
-			var contentRead int64 = 0
-			var timeSlice = downloadTestTime / 100
-			var timeCounter = 1
-			var lastContentRead int64 = 0
-
-			var nextTime = timeStart.Add(timeSlice * time.Duration(timeCounter))
-			e := ewma.NewMovingAverage()
-
-			for contentLength != contentRead {
-				var currentTime = time.Now()
-				if currentTime.After(nextTime) {
-					timeCounter += 1
-					nextTime = timeStart.Add(timeSlice * time.Duration(timeCounter))
-					e.Add(float64(contentRead - lastContentRead))
-					lastContentRead = contentRead
-				}
-				if currentTime.After(timeEnd) {
+		for {
+			currentTime := time.Now()
+			if currentTime.After(nextTime) {
+				timeCounter++
+				nextTime = timeStart.Add(timeSlice * time.Duration(timeCounter))
+				e.Add(float64(contentRead - lastContentRead))
+				lastContentRead = contentRead
+			}
+			if currentTime.After(timeEnd) {
+				break
+			}
+			n, rerr := resp.Body.Read(buffer)
+			contentRead += int64(n)
+			if rerr != nil {
+				if rerr != io.EOF {
 					break
 				}
-				bufferRead, err := resp.Body.Read(buffer)
-				contentRead += int64(bufferRead)
-				if err != nil {
-					if err != io.EOF {
-						break
-					} else {
-						e.Add(float64(contentRead-lastContentRead) / (float64(nextTime.Sub(currentTime)) / float64(timeSlice)))
-					}
-				}
+				// finalize EWMA with remaining proportion
+				e.Add(float64(contentRead-lastContentRead) / (float64(nextTime.Sub(currentTime)) / float64(timeSlice)))
+				break
 			}
-			t = e.Value() / (downloadTestTime.Seconds() / 100)
-		} else {
-			t = 0
 		}
+		// average bytes per slice; convert to bytes per second
+		t = e.Value() / (downloadTestTime.Seconds() / 100)
+	} else {
+		t = 0
 	}
 	return
 }

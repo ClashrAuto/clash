@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	P "github.com/metacubex/mihomo/constant/provider"
+	P "github.com/metacubex/clashauto/constant/provider"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -34,7 +34,7 @@ func ConvertToMrs(buf []byte, behavior P.RuleBehavior, format P.RuleFormat, w io
 		}
 
 		var encoder *zstd.Encoder
-		encoder, err = zstd.NewWriter(w, zstd.WithEncoderLevel(zstd.SpeedBestCompression))
+		encoder, err = zstd.NewWriter(w)
 		if err != nil {
 			return err
 		}

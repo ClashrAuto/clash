@@ -1,12 +1,10 @@
 package common
 
 import (
-	"strconv"
-
-	"github.com/metacubex/mihomo/component/geodata"
-	"github.com/metacubex/mihomo/component/mmdb"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/geodata"
+	"github.com/metacubex/clashauto/component/mmdb"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 )
 
 type ASN struct {
@@ -17,7 +15,11 @@ type ASN struct {
 	isSourceIP  bool
 }
 
-func (a *ASN) Match(metadata *C.Metadata) (bool, string) {
+func (a *ASN) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
+	if !a.noResolveIP && !a.isSourceIP && helper.ResolveIP != nil {
+		helper.ResolveIP()
+	}
+
 	ip := metadata.DstIP
 	if a.isSourceIP {
 		ip = metadata.SrcIP
@@ -26,17 +28,14 @@ func (a *ASN) Match(metadata *C.Metadata) (bool, string) {
 		return false, ""
 	}
 
-	result := mmdb.ASNInstance().LookupASN(ip.AsSlice())
-	asnNumber := strconv.FormatUint(uint64(result.AutonomousSystemNumber), 10)
-	ipASN := asnNumber + " " + result.AutonomousSystemOrganization
+	asn, aso := mmdb.ASNInstance().LookupASN(ip.AsSlice())
 	if a.isSourceIP {
-		metadata.SrcIPASN = ipASN
+		metadata.SrcIPASN = asn + " " + aso
 	} else {
-		metadata.DstIPASN = ipASN
+		metadata.DstIPASN = asn + " " + aso
 	}
 
-	match := a.asn == asnNumber
-	return match, a.adapter
+	return a.asn == asn, a.adapter
 }
 
 func (a *ASN) RuleType() C.RuleType {
@@ -52,10 +51,6 @@ func (a *ASN) Adapter() string {
 
 func (a *ASN) Payload() string {
 	return a.asn
-}
-
-func (a *ASN) ShouldResolveIP() bool {
-	return !a.noResolveIP
 }
 
 func (a *ASN) GetASN() string {

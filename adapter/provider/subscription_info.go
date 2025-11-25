@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/log"
 )
 
 type SubscriptionInfo struct {
@@ -42,7 +42,6 @@ func NewSubscriptionInfo(userinfo string) (si *SubscriptionInfo) {
 			si.Expire = intValue
 		}
 	}
-
 	return si
 }
 

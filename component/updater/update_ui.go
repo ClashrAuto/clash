@@ -1,7 +1,11 @@
 package updater
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"bytes"
+	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,9 +13,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 )
 
 type UIUpdater struct {
@@ -20,6 +25,25 @@ type UIUpdater struct {
 	autoDownloadUI bool
 
 	mutex sync.Mutex
+}
+
+type compressionType int
+
+const (
+	typeUnknown compressionType = iota
+	typeZip
+	typeTarGzip
+)
+
+func (t compressionType) String() string {
+	switch t {
+	case typeZip:
+		return "zip"
+	case typeTarGzip:
+		return "tar.gz"
+	default:
+		return "unknown"
+	}
 }
 
 var DefaultUiUpdater = &UIUpdater{}
@@ -70,38 +94,57 @@ func (u *UIUpdater) DownloadUI() error {
 	return u.downloadUI()
 }
 
-func (u *UIUpdater) downloadUI() error {
-	err := u.prepareUIPath()
-	if err != nil {
-		return fmt.Errorf("prepare UI path failed: %w", err)
+func detectFileType(data []byte) compressionType {
+	if len(data) < 4 {
+		return typeUnknown
 	}
 
+	// Zip: 0x50 0x4B 0x03 0x04
+	if data[0] == 0x50 && data[1] == 0x4B && data[2] == 0x03 && data[3] == 0x04 {
+		return typeZip
+	}
+
+	// GZip: 0x1F 0x8B
+	if data[0] == 0x1F && data[1] == 0x8B {
+		return typeTarGzip
+	}
+
+	return typeUnknown
+}
+
+func (u *UIUpdater) downloadUI() error {
 	data, err := downloadForBytes(u.externalUIURL)
 	if err != nil {
-		return fmt.Errorf("can't download  file: %w", err)
+		return fmt.Errorf("can't download file: %w", err)
 	}
 
-	saved := path.Join(C.Path.HomeDir(), "download.zip")
-	if err = saveFile(data, saved); err != nil {
-		return fmt.Errorf("can't save zip file: %w", err)
-	}
-	defer os.Remove(saved)
+	tmpDir := C.Path.Resolve("downloadUI.tmp")
+	defer os.RemoveAll(tmpDir)
 
-	err = cleanup(u.externalUIPath)
+	os.RemoveAll(tmpDir) // cleanup tmp dir before extract
+	log.Debugln("extractedFolder: %s", tmpDir)
+	err = extract(data, tmpDir)
+	if err != nil {
+		return fmt.Errorf("can't extract compressed file: %w", err)
+	}
+
+	log.Debugln("cleanupFolder: %s", u.externalUIPath)
+	err = cleanup(u.externalUIPath) // cleanup files in dir don't remove dir itself
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return fmt.Errorf("cleanup exist file error: %w", err)
 		}
 	}
 
-	unzipFolder, err := unzip(saved, C.Path.HomeDir())
+	err = u.prepareUIPath()
 	if err != nil {
-		return fmt.Errorf("can't extract zip file: %w", err)
+		return fmt.Errorf("prepare UI path failed: %w", err)
 	}
 
-	err = os.Rename(unzipFolder, u.externalUIPath)
+	log.Debugln("moveFolder from %s to %s", tmpDir, u.externalUIPath)
+	err = moveDir(tmpDir, u.externalUIPath) // move files from tmp to target
 	if err != nil {
-		return fmt.Errorf("rename UI folder failed: %w", err)
+		return fmt.Errorf("move UI folder failed: %w", err)
 	}
 	return nil
 }
@@ -116,63 +159,223 @@ func (u *UIUpdater) prepareUIPath() error {
 	return nil
 }
 
-func unzip(src, dest string) (string, error) {
-	r, err := zip.OpenReader(src)
+func unzip(data []byte, dest string) error {
+	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer r.Close()
-	var extractedFolder string
+
+	// check whether or not only exists singleRoot dir
+
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return "", fmt.Errorf("invalid file path: %s", fpath)
+
+		if !inDest(fpath, dest) {
+			return fmt.Errorf("invalid file path: %s", fpath)
 		}
-		if f.FileInfo().IsDir() {
+		info := f.FileInfo()
+		if info.IsDir() {
 			os.MkdirAll(fpath, os.ModePerm)
 			continue
 		}
-		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-			return "", err
+		if info.Mode()&os.ModeSymlink != 0 {
+			continue // disallow symlink
 		}
-		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode().Perm())
 		if err != nil {
-			return "", err
+			return err
 		}
 		rc, err := f.Open()
 		if err != nil {
-			return "", err
+			return err
 		}
 		_, err = io.Copy(outFile, rc)
 		outFile.Close()
 		rc.Close()
 		if err != nil {
-			return "", err
-		}
-		if extractedFolder == "" {
-			extractedFolder = filepath.Dir(fpath)
+			return err
 		}
 	}
-	return extractedFolder, nil
+	return nil
 }
 
-func cleanup(root string) error {
-	if _, err := os.Stat(root); os.IsNotExist(err) {
-		return nil
+func untgz(data []byte, dest string) error {
+	gzr, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return err
 	}
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			if err := os.RemoveAll(path); err != nil {
+
+		fpath := filepath.Join(dest, header.Name)
+
+		if !inDest(fpath, dest) {
+			return fmt.Errorf("invalid file path: %s", fpath)
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err = os.MkdirAll(fpath, os.FileMode(header.Mode)); err != nil {
 				return err
 			}
-		} else {
-			if err := os.Remove(path); err != nil {
+		case tar.TypeReg:
+			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
 				return err
+			}
+			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(header.Mode).Perm())
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		}
+	}
+	return nil
+}
+
+func extract(data []byte, dest string) error {
+	fileType := detectFileType(data)
+	log.Debugln("compression Type: %s", fileType)
+	switch fileType {
+	case typeZip:
+		return unzip(data, dest)
+	case typeTarGzip:
+		return untgz(data, dest)
+	default:
+		return fmt.Errorf("unknown or unsupported file type")
+	}
+}
+
+func cleanTarPath(path string) string {
+	// remove prefix ./ or ../
+	path = strings.TrimPrefix(path, "./")
+	path = strings.TrimPrefix(path, "../")
+
+	// normalize path
+	path = filepath.Clean(path)
+
+	// transfer delimiters to system std
+	path = filepath.FromSlash(path)
+
+	// remove prefix path delimiters
+	path = strings.TrimPrefix(path, string(os.PathSeparator))
+
+	return path
+}
+
+func cleanup(root string) error {
+	dirEntryList, err := os.ReadDir(root)
+	if err != nil {
+		return err
+	}
+
+	for _, dirEntry := range dirEntryList {
+		err = os.RemoveAll(filepath.Join(root, dirEntry.Name()))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func moveDir(src string, dst string) error {
+	dirEntryList, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	if len(dirEntryList) == 1 && dirEntryList[0].IsDir() {
+		src = filepath.Join(src, dirEntryList[0].Name())
+		log.Debugln("match the singleRoot: %s", src)
+		dirEntryList, err = os.ReadDir(src)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, dirEntry := range dirEntryList {
+		srcPath := filepath.Join(src, dirEntry.Name())
+		dstPath := filepath.Join(dst, dirEntry.Name())
+		err = os.Rename(srcPath, dstPath)
+		if err != nil {
+			// Fallback for invalid cross-device link (errno:18).
+			if errors.Is(err, syscall.Errno(18)) {
+				err = copyAll(srcPath, dstPath)
+				_ = os.RemoveAll(srcPath)
 			}
 		}
-		return nil
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// copyAll copy the src path and any children it contains to dst
+// modify from [os.CopyFS]
+func copyAll(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		fpath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		newPath := filepath.Join(dst, fpath)
+
+		switch info.Mode().Type() {
+		case os.ModeDir:
+			return os.MkdirAll(newPath, info.Mode().Perm())
+		case os.ModeSymlink:
+			target, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			return os.Symlink(target, newPath)
+		case 0:
+			r, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer r.Close()
+			w, err := os.OpenFile(newPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
+			if err != nil {
+				return err
+			}
+
+			if _, err := io.Copy(w, r); err != nil {
+				w.Close()
+				return &os.PathError{Op: "Copy", Path: newPath, Err: err}
+			}
+			return w.Close()
+		default:
+			return &os.PathError{Op: "CopyFS", Path: path, Err: os.ErrInvalid}
+		}
 	})
+}
+
+func inDest(fpath, dest string) bool {
+	if rel, err := filepath.Rel(dest, fpath); err == nil {
+		if filepath.IsLocal(rel) {
+			return true
+		}
+	}
+	return false
 }

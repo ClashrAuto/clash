@@ -1,8 +1,8 @@
 package buf
 
 import (
-	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/common/buf"
+	"github.com/metacubex/sing/common"
+	"github.com/metacubex/sing/common/buf"
 )
 
 const BufferSize = buf.BufferSize
@@ -14,6 +14,7 @@ var NewPacket = buf.NewPacket
 var NewSize = buf.NewSize
 var With = buf.With
 var As = buf.As
+var ReleaseMulti = buf.ReleaseMulti
 
 var (
 	Must  = common.Must

@@ -7,12 +7,12 @@ import (
 
 	"github.com/dlclark/regexp2"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/adapter/provider"
-	"github.com/metacubex/mihomo/common/structure"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	types "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/clashauto/adapter/provider"
+	"github.com/metacubex/clashauto/common/structure"
+	"github.com/metacubex/clashauto/common/utils"
+	C "github.com/metacubex/clashauto/constant"
+	P "github.com/metacubex/clashauto/constant/provider"
+	"github.com/metacubex/clashauto/log"
 )
 
 var (
@@ -23,7 +23,6 @@ var (
 )
 
 type GroupCommonOption struct {
-	outbound.BasicOption
 	Name                string   `group:"name"`
 	Type                string   `group:"type"`
 	Proxies             []string `group:"proxies,omitempty"`
@@ -43,9 +42,13 @@ type GroupCommonOption struct {
 	IncludeAllProviders bool     `group:"include-all-providers,omitempty"`
 	Hidden              bool     `group:"hidden,omitempty"`
 	Icon                string   `group:"icon,omitempty"`
+
+	// removed configs, only for error logging
+	Interface   string `group:"interface-name,omitempty"`
+	RoutingMark int    `group:"routing-mark,omitempty"`
 }
 
-func ParseProxyGroup(config map[string]any, proxyMap map[string]C.Proxy, providersMap map[string]types.ProxyProvider, AllProxies []string, AllProviders []string) (C.ProxyAdapter, error) {
+func ParseProxyGroup(config map[string]any, proxyMap map[string]C.Proxy, providersMap map[string]P.ProxyProvider, AllProxies []string, AllProviders []string) (C.ProxyAdapter, error) {
 	decoder := structure.NewDecoder(structure.Option{TagName: "group", WeaklyTypedInput: true})
 
 	groupOption := &GroupCommonOption{
@@ -59,9 +62,16 @@ func ParseProxyGroup(config map[string]any, proxyMap map[string]C.Proxy, provide
 		return nil, errFormat
 	}
 
+	if groupOption.RoutingMark != 0 {
+		log.Errorln("The group [%s] with routing-mark configuration was removed, please set it directly on the proxy instead", groupOption.Name)
+	}
+	if groupOption.Interface != "" {
+		log.Errorln("The group [%s] with interface-name configuration was removed, please set it directly on the proxy instead", groupOption.Name)
+	}
+
 	groupName := groupOption.Name
 
-	providers := []types.ProxyProvider{}
+	providers := []P.ProxyProvider{}
 
 	if groupOption.IncludeAll {
 		groupOption.IncludeAllProviders = true
@@ -159,7 +169,7 @@ func ParseProxyGroup(config map[string]any, proxyMap map[string]C.Proxy, provide
 			return nil, fmt.Errorf("%s: %w", groupName, err)
 		}
 
-		providers = append([]types.ProxyProvider{pd}, providers...)
+		providers = append([]P.ProxyProvider{pd}, providers...)
 		providersMap[groupName] = pd
 	}
 
@@ -196,15 +206,15 @@ func getProxies(mapping map[string]C.Proxy, list []string) ([]C.Proxy, error) {
 	return ps, nil
 }
 
-func getProviders(mapping map[string]types.ProxyProvider, list []string) ([]types.ProxyProvider, error) {
-	var ps []types.ProxyProvider
+func getProviders(mapping map[string]P.ProxyProvider, list []string) ([]P.ProxyProvider, error) {
+	var ps []P.ProxyProvider
 	for _, name := range list {
 		p, ok := mapping[name]
 		if !ok {
 			return nil, fmt.Errorf("'%s' not found", name)
 		}
 
-		if p.VehicleType() == types.Compatible {
+		if p.VehicleType() == P.Compatible {
 			return nil, fmt.Errorf("proxy group %s can't contains in `use`", name)
 		}
 		ps = append(ps, p)
@@ -212,7 +222,7 @@ func getProviders(mapping map[string]types.ProxyProvider, list []string) ([]type
 	return ps, nil
 }
 
-func addTestUrlToProviders(providers []types.ProxyProvider, url string, expectedStatus utils.IntRanges[uint16], filter string, interval uint) {
+func addTestUrlToProviders(providers []P.ProxyProvider, url string, expectedStatus utils.IntRanges[uint16], filter string, interval uint) {
 	if len(providers) == 0 || len(url) == 0 {
 		return
 	}

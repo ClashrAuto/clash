@@ -11,36 +11,36 @@ import (
 	"time"
 	_ "unsafe"
 
-	"github.com/metacubex/mihomo/adapter"
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/adapter/outboundgroup"
-	"github.com/metacubex/mihomo/component/auth"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/geodata"
-	mihomoHttp "github.com/metacubex/mihomo/component/http"
-	"github.com/metacubex/mihomo/component/iface"
-	"github.com/metacubex/mihomo/component/keepalive"
-	"github.com/metacubex/mihomo/component/profile"
-	"github.com/metacubex/mihomo/component/profile/cachefile"
-	"github.com/metacubex/mihomo/component/resolver"
-	"github.com/metacubex/mihomo/component/resource"
-	"github.com/metacubex/mihomo/component/sniffer"
-	tlsC "github.com/metacubex/mihomo/component/tls"
-	"github.com/metacubex/mihomo/component/trie"
-	"github.com/metacubex/mihomo/component/updater"
-	"github.com/metacubex/mihomo/config"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/dns"
-	"github.com/metacubex/mihomo/listener"
-	authStore "github.com/metacubex/mihomo/listener/auth"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/inner"
-	"github.com/metacubex/mihomo/listener/tproxy"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/ntp"
-	"github.com/metacubex/mihomo/tunnel"
+	"github.com/metacubex/clashauto/adapter"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	"github.com/metacubex/clashauto/adapter/outboundgroup"
+	"github.com/metacubex/clashauto/component/auth"
+	"github.com/metacubex/clashauto/component/ca"
+	"github.com/metacubex/clashauto/component/dialer"
+	"github.com/metacubex/clashauto/component/geodata"
+	clashautoHttp "github.com/metacubex/clashauto/component/http"
+	"github.com/metacubex/clashauto/component/iface"
+	"github.com/metacubex/clashauto/component/keepalive"
+	"github.com/metacubex/clashauto/component/profile"
+	"github.com/metacubex/clashauto/component/profile/cachefile"
+	"github.com/metacubex/clashauto/component/resolver"
+	"github.com/metacubex/clashauto/component/resource"
+	"github.com/metacubex/clashauto/component/sniffer"
+	tlsC "github.com/metacubex/clashauto/component/tls"
+	"github.com/metacubex/clashauto/component/trie"
+	"github.com/metacubex/clashauto/component/updater"
+	"github.com/metacubex/clashauto/config"
+	C "github.com/metacubex/clashauto/constant"
+	P "github.com/metacubex/clashauto/constant/provider"
+	"github.com/metacubex/clashauto/dns"
+	"github.com/metacubex/clashauto/listener"
+	authStore "github.com/metacubex/clashauto/listener/auth"
+	LC "github.com/metacubex/clashauto/listener/config"
+	"github.com/metacubex/clashauto/listener/inner"
+	"github.com/metacubex/clashauto/listener/tproxy"
+	"github.com/metacubex/clashauto/log"
+	"github.com/metacubex/clashauto/ntp/ntp"
+	"github.com/metacubex/clashauto/tunnel"
 )
 
 var mux sync.Mutex
@@ -113,12 +113,11 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	tunnel.OnInnerLoading()
 
 	initInnerTcp()
-	loadProxyProvider(cfg.Providers)
+	loadProvider(cfg.Providers)
 	updateProfile(cfg)
-	loadRuleProvider(cfg.RuleProviders)
+	loadProvider(cfg.RuleProviders)
 	runtime.GC()
 	tunnel.OnRunning()
-	hcCompatibleProvider(cfg.Providers)
 	updateUpdater(cfg)
 
 	resolver.ResetConnection()
@@ -176,7 +175,7 @@ func GetGeneral() *config.General {
 		FindProcessMode:         tunnel.FindProcessMode(),
 		Sniffing:                tunnel.IsSniffing(),
 		GlobalClientFingerprint: tlsC.GetGlobalFingerprint(),
-		GlobalUA:                mihomoHttp.UA(),
+		GlobalUA:                clashautoHttp.UA(),
 		ETagSupport:             resource.ETag(),
 		KeepAliveInterval:       int(keepalive.KeepAliveInterval() / time.Second),
 		KeepAliveIdle:           int(keepalive.KeepAliveIdle() / time.Second),
@@ -221,7 +220,7 @@ func updateExperimental(c *config.Experimental) {
 	if c.QUICGoDisableECN {
 		_ = os.Setenv("QUIC_GO_DISABLE_ECN", strconv.FormatBool(true))
 	}
-	dialer.GetIP4PEnable(c.IP4PEnable)
+	resolver.SetIP4PEnable(c.IP4PEnable)
 }
 
 func updateNTP(c *config.NTP) {
@@ -232,6 +231,8 @@ func updateNTP(c *config.NTP) {
 			c.DialerProxy,
 			c.WriteToSystem,
 		)
+	} else {
+		ntp.ReCreateNTPService("", 0, "", false)
 	}
 }
 
@@ -239,20 +240,19 @@ func updateDNS(c *config.DNS, generalIPv6 bool) {
 	if !c.Enable {
 		resolver.DefaultResolver = nil
 		resolver.DefaultHostMapper = nil
-		resolver.DefaultLocalServer = nil
+		resolver.DefaultService = nil
 		resolver.ProxyServerHostResolver = nil
 		resolver.DirectHostResolver = nil
-		dns.ReCreateServer("", nil, nil)
+		dns.ReCreateServer("", nil)
 		return
 	}
-	cfg := dns.Config{
+
+	ipv6 := c.IPv6 && generalIPv6
+	r := dns.NewResolver(dns.Config{
 		Main:                 c.NameServer,
 		Fallback:             c.Fallback,
-		IPv6:                 c.IPv6 && generalIPv6,
+		IPv6:                 ipv6,
 		IPv6Timeout:          c.IPv6Timeout,
-		EnhancedMode:         c.EnhancedMode,
-		Pool:                 c.FakeIPRange,
-		Hosts:                c.Hosts,
 		FallbackIPFilter:     c.FallbackIPFilter,
 		FallbackDomainFilter: c.FallbackDomainFilter,
 		Default:              c.DefaultNameserver,
@@ -261,19 +261,28 @@ func updateDNS(c *config.DNS, generalIPv6 bool) {
 		DirectServer:         c.DirectNameServer,
 		DirectFollowPolicy:   c.DirectFollowPolicy,
 		CacheAlgorithm:       c.CacheAlgorithm,
-	}
-
-	r := dns.NewResolver(cfg)
-	m := dns.NewEnhancer(cfg)
+		CacheMaxSize:         c.CacheMaxSize,
+	})
+	m := dns.NewEnhancer(dns.EnhancerConfig{
+		IPv6:          ipv6,
+		EnhancedMode:  c.EnhancedMode,
+		FakeIPPool:    c.FakeIPPool,
+		FakeIPPool6:   c.FakeIPPool6,
+		FakeIPSkipper: c.FakeIPSkipper,
+		FakeIPTTL:     c.FakeIPTTL,
+		UseHosts:      c.UseHosts,
+	})
 
 	// reuse cache of old host mapper
 	if old := resolver.DefaultHostMapper; old != nil {
 		m.PatchFrom(old.(*dns.ResolverEnhancer))
 	}
 
+	s := dns.NewService(r.Resolver, m)
+
 	resolver.DefaultResolver = r
 	resolver.DefaultHostMapper = m
-	resolver.DefaultLocalServer = dns.NewLocalServer(r.Resolver, m)
+	resolver.DefaultService = s
 	resolver.UseSystemHosts = c.UseSystemHosts
 
 	if r.ProxyResolver.Invalid() {
@@ -288,96 +297,56 @@ func updateDNS(c *config.DNS, generalIPv6 bool) {
 		resolver.DirectHostResolver = r.Resolver
 	}
 
-	dns.ReCreateServer(c.Listen, r.Resolver, m)
+	dns.ReCreateServer(c.Listen, s)
 }
 
 func updateHosts(tree *trie.DomainTrie[resolver.HostValue]) {
 	resolver.DefaultHosts = resolver.NewHosts(tree)
 }
 
-func updateProxies(proxies map[string]C.Proxy, providers map[string]provider.ProxyProvider) {
+func updateProxies(proxies map[string]C.Proxy, providers map[string]P.ProxyProvider) {
 	tunnel.UpdateProxies(proxies, providers)
 }
 
-func updateRules(rules []C.Rule, subRules map[string][]C.Rule, ruleProviders map[string]provider.RuleProvider) {
+func updateRules(rules []C.Rule, subRules map[string][]C.Rule, ruleProviders map[string]P.RuleProvider) {
 	tunnel.UpdateRules(rules, subRules, ruleProviders)
 }
 
-func loadProvider(pv provider.Provider) {
-	if pv.VehicleType() == provider.Compatible {
-		return
-	} else {
-		log.Infoln("Start initial provider %s", (pv).Name())
-	}
-
-	if err := pv.Initial(); err != nil {
-		switch pv.Type() {
-		case provider.Proxy:
-			{
-				log.Errorln("initial proxy provider %s error: %v", (pv).Name(), err)
-			}
-		case provider.Rule:
-			{
-				log.Errorln("initial rule provider %s error: %v", (pv).Name(), err)
-			}
-
+func loadProvider[T P.Provider](providers map[string]T) {
+	load := func(pv T) {
+		name := pv.Name()
+		if pv.VehicleType() == P.Compatible {
+			log.Infoln("Start initial compatible provider %s", name)
+		} else {
+			log.Infoln("Start initial provider %s", name)
 		}
-	}
-}
 
-func loadRuleProvider(ruleProviders map[string]provider.RuleProvider) {
-	wg := sync.WaitGroup{}
-	ch := make(chan struct{}, concurrentCount)
-	for _, ruleProvider := range ruleProviders {
-		ruleProvider := ruleProvider
-		wg.Add(1)
-		ch <- struct{}{}
-		go func() {
-			defer func() { <-ch; wg.Done() }()
-			loadProvider(ruleProvider)
-
-		}()
-	}
-
-	wg.Wait()
-}
-
-func loadProxyProvider(proxyProviders map[string]provider.ProxyProvider) {
-	// limit concurrent size
-	wg := sync.WaitGroup{}
-	ch := make(chan struct{}, concurrentCount)
-	for _, proxyProvider := range proxyProviders {
-		proxyProvider := proxyProvider
-		wg.Add(1)
-		ch <- struct{}{}
-		go func() {
-			defer func() { <-ch; wg.Done() }()
-			loadProvider(proxyProvider)
-		}()
-	}
-
-	wg.Wait()
-}
-func hcCompatibleProvider(proxyProviders map[string]provider.ProxyProvider) {
-	// limit concurrent size
-	wg := sync.WaitGroup{}
-	ch := make(chan struct{}, concurrentCount)
-	for _, proxyProvider := range proxyProviders {
-		proxyProvider := proxyProvider
-		if proxyProvider.VehicleType() == provider.Compatible {
-			log.Infoln("Start initial Compatible provider %s", proxyProvider.Name())
-			wg.Add(1)
-			ch <- struct{}{}
-			go func() {
-				defer func() { <-ch; wg.Done() }()
-				if err := proxyProvider.Initial(); err != nil {
-					log.Errorln("initial Compatible provider %s error: %v", proxyProvider.Name(), err)
+		if err := pv.Initial(); err != nil {
+			switch pv.Type() {
+			case P.Proxy:
+				{
+					log.Errorln("initial proxy provider %s error: %v", name, err)
 				}
-			}()
+			case P.Rule:
+				{
+					log.Errorln("initial rule provider %s error: %v", name, err)
+				}
+			}
 		}
-
 	}
 
+	wg := sync.WaitGroup{}
+	ch := make(chan struct{}, concurrentCount)
+	for _, pv := range providers {
+		pv := pv
+		wg.Add(1)
+		ch <- struct{}{}
+		go func() {
+			defer func() { <-ch; wg.Done() }()
+			load(pv)
+		}()
+	}
+	wg.Wait()
 }
 
 func updateSniffer(snifferConfig *sniffer.Config) {
@@ -409,7 +378,7 @@ func updateUpdater(cfg *config.Config) {
 	updater.DefaultUiUpdater.AutoDownloadUI()
 }
 
-//go:linkname temporaryUpdateGeneral github.com/metacubex/mihomo/config.temporaryUpdateGeneral
+//go:linkname temporaryUpdateGeneral github.com/metacubex/clashauto/config.temporaryUpdateGeneral
 func temporaryUpdateGeneral(general *config.General) func() {
 	oldGeneral := GetGeneral()
 	updateGeneral(general, false)
@@ -452,10 +421,10 @@ func updateGeneral(general *config.General, logging bool) {
 	geodata.SetGeoSiteUrl(general.GeoXUrl.GeoSite)
 	geodata.SetMmdbUrl(general.GeoXUrl.Mmdb)
 	geodata.SetASNUrl(general.GeoXUrl.ASN)
-	mihomoHttp.SetUA(general.GlobalUA)
+	clashautoHttp.SetUA(general.GlobalUA)
 	resource.SetETag(general.ETagSupport)
 
-	tlsC.SetGlobalUtlsClient(general.GlobalClientFingerprint)
+	tlsC.SetGlobalFingerprint(general.GlobalClientFingerprint)
 }
 
 func updateUsers(users []auth.AuthUser) {
@@ -481,12 +450,7 @@ func patchSelectGroup(proxies map[string]C.Proxy) {
 		return
 	}
 
-	for name, proxy := range proxies {
-		outbound, ok := proxy.(C.Proxy)
-		if !ok {
-			continue
-		}
-
+	for name, outbound := range proxies {
 		selector, ok := outbound.Adapter().(outboundgroup.SelectAble)
 		if !ok {
 			continue

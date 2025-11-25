@@ -1,12 +1,18 @@
 package http
 
 import (
+	"errors"
 	"net"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/component/auth"
-	C "github.com/metacubex/mihomo/constant"
-	authStore "github.com/metacubex/mihomo/listener/auth"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	"github.com/metacubex/clashauto/component/ca"
+	"github.com/metacubex/clashauto/component/ech"
+	tlsC "github.com/metacubex/clashauto/component/tls"
+	C "github.com/metacubex/clashauto/constant"
+	authStore "github.com/metacubex/clashauto/listener/auth"
+	LC "github.com/metacubex/clashauto/listener/config"
+	"github.com/metacubex/clashauto/listener/reality"
+	"github.com/metacubex/clashauto/ntp"
 )
 
 type Listener struct {
@@ -32,7 +38,7 @@ func (l *Listener) Close() error {
 }
 
 func New(addr string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
-	return NewWithAuthenticator(addr, tunnel, authStore.Default, additions...)
+	return NewWithConfig(LC.AuthServer{Enable: true, Listen: addr, AuthStore: authStore.Default}, tunnel, additions...)
 }
 
 // NewWithAuthenticate
@@ -40,12 +46,12 @@ func New(addr string, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener
 func NewWithAuthenticate(addr string, tunnel C.Tunnel, authenticate bool, additions ...inbound.Addition) (*Listener, error) {
 	store := authStore.Default
 	if !authenticate {
-		store = authStore.Default
+		store = authStore.Nil
 	}
-	return NewWithAuthenticator(addr, tunnel, store, additions...)
+	return NewWithConfig(LC.AuthServer{Enable: true, Listen: addr, AuthStore: store}, tunnel, additions...)
 }
 
-func NewWithAuthenticator(addr string, tunnel C.Tunnel, store auth.AuthStore, additions ...inbound.Addition) (*Listener, error) {
+func NewWithConfig(config LC.AuthServer, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
 	isDefault := false
 	if len(additions) == 0 {
 		isDefault = true
@@ -55,15 +61,65 @@ func NewWithAuthenticator(addr string, tunnel C.Tunnel, store auth.AuthStore, ad
 		}
 	}
 
-	l, err := inbound.Listen("tcp", addr)
+	l, err := inbound.Listen("tcp", config.Listen)
 	if err != nil {
 		return nil, err
 	}
 
+	tlsConfig := &tlsC.Config{Time: ntp.Now}
+	var realityBuilder *reality.Builder
+
+	if config.Certificate != "" && config.PrivateKey != "" {
+		cert, err := ca.LoadTLSKeyPair(config.Certificate, config.PrivateKey, C.Path)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.Certificates = []tlsC.Certificate{tlsC.UCertificate(cert)}
+
+		if config.EchKey != "" {
+			err = ech.LoadECHKey(config.EchKey, tlsConfig, C.Path)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	tlsConfig.ClientAuth = tlsC.ClientAuthTypeFromString(config.ClientAuthType)
+	if len(config.ClientAuthCert) > 0 {
+		if tlsConfig.ClientAuth == tlsC.NoClientCert {
+			tlsConfig.ClientAuth = tlsC.RequireAndVerifyClientCert
+		}
+	}
+	if tlsConfig.ClientAuth == tlsC.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tlsC.RequireAndVerifyClientCert {
+		pool, err := ca.LoadCertificates(config.ClientAuthCert, C.Path)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.ClientCAs = pool
+	}
+	if config.RealityConfig.PrivateKey != "" {
+		if tlsConfig.Certificates != nil {
+			return nil, errors.New("certificate is unavailable in reality")
+		}
+		if tlsConfig.ClientAuth != tlsC.NoClientCert {
+			return nil, errors.New("client-auth is unavailable in reality")
+		}
+		realityBuilder, err = config.RealityConfig.Build(tunnel)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if realityBuilder != nil {
+		l = realityBuilder.NewListener(l)
+	} else if len(tlsConfig.Certificates) > 0 {
+		l = tlsC.NewListener(l, tlsConfig)
+	}
+
 	hl := &Listener{
 		listener: l,
-		addr:     addr,
+		addr:     config.Listen,
 	}
+
 	go func() {
 		for {
 			conn, err := hl.listener.Accept()
@@ -74,7 +130,7 @@ func NewWithAuthenticator(addr string, tunnel C.Tunnel, store auth.AuthStore, ad
 				continue
 			}
 
-			store := store
+			store := config.AuthStore
 			if isDefault || store == authStore.Default { // only apply on default listener
 				if !inbound.IsRemoteAddrDisAllowed(conn.RemoteAddr()) {
 					_ = conn.Close()

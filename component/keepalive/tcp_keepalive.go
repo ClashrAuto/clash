@@ -5,37 +5,37 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/clashauto/common/atomic"
+	"github.com/metacubex/clashauto/common/utils"
 )
 
 var (
-	keepAliveIdle     = atomic.NewTypedValue[time.Duration](0 * time.Second)
-	keepAliveInterval = atomic.NewTypedValue[time.Duration](0 * time.Second)
+	keepAliveIdle     = atomic.NewInt64(0)
+	keepAliveInterval = atomic.NewInt64(0)
 	disableKeepAlive  = atomic.NewBool(false)
 
 	SetDisableKeepAliveCallback = utils.NewCallback[bool]()
 )
 
 func SetKeepAliveIdle(t time.Duration) {
-	keepAliveIdle.Store(t)
+	keepAliveIdle.Store(int64(t))
 }
 
 func SetKeepAliveInterval(t time.Duration) {
-	keepAliveInterval.Store(t)
+	keepAliveInterval.Store(int64(t))
 }
 
 func KeepAliveIdle() time.Duration {
-	return keepAliveIdle.Load()
+	return time.Duration(keepAliveIdle.Load())
 }
 
 func KeepAliveInterval() time.Duration {
-	return keepAliveInterval.Load()
+	return time.Duration(keepAliveInterval.Load())
 }
 
 func SetDisableKeepAlive(disable bool) {
 	if runtime.GOOS == "android" {
-		setDisableKeepAlive(false)
+		setDisableKeepAlive(true)
 	} else {
 		setDisableKeepAlive(disable)
 	}
@@ -59,7 +59,7 @@ func SetNetListenConfig(lc *net.ListenConfig) {
 }
 
 func TCPKeepAlive(c net.Conn) {
-	if tcp, ok := c.(*net.TCPConn); ok && tcp != nil {
+	if tcp, ok := c.(TCPConn); ok && tcp != nil {
 		tcpKeepAlive(tcp)
 	}
 }

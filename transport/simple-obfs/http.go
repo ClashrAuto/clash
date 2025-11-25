@@ -9,7 +9,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/clashauto/common/pool"
 
 	"github.com/metacubex/randv2"
 )

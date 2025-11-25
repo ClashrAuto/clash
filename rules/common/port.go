@@ -3,8 +3,8 @@ package common
 import (
 	"fmt"
 
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/clashauto/common/utils"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 type Port struct {
@@ -19,7 +19,7 @@ func (p *Port) RuleType() C.RuleType {
 	return p.ruleType
 }
 
-func (p *Port) Match(metadata *C.Metadata) (bool, string) {
+func (p *Port) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
 	targetPort := metadata.DstPort
 	switch p.ruleType {
 	case C.InPort:

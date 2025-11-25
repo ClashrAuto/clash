@@ -5,23 +5,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/transport/tuic/common"
+	"github.com/metacubex/clashauto/common/atomic"
+	N "github.com/metacubex/clashauto/common/net"
+	"github.com/metacubex/clashauto/common/pool"
+	"github.com/metacubex/clashauto/transport/tuic/common"
 
 	"github.com/metacubex/quic-go"
 )
 
 type quicStreamPacketConn struct {
 	connId    uint32
-	quicConn  quic.Connection
+	quicConn  *quic.Conn
 	inputConn *N.BufferedConn
 
 	udpRelayMode          common.UdpRelayMode
 	maxUdpRelayPacketSize int
 
-	deferQuicConnFn func(quicConn quic.Connection, err error)
+	deferQuicConnFn func(quicConn *quic.Conn, err error)
 	closeDeferFn    func()
 	writeClosed     *atomic.Bool
 
@@ -57,7 +57,7 @@ func (q *quicStreamPacketConn) close() (err error) {
 		if err != nil {
 			return
 		}
-		var stream quic.SendStream
+		var stream *quic.SendStream
 		stream, err = q.quicConn.OpenUniStream()
 		if err != nil {
 			return
@@ -149,7 +149,7 @@ func (q *quicStreamPacketConn) WriteTo(p []byte, addr net.Addr) (n int, err erro
 	}
 	switch q.udpRelayMode {
 	case common.QUIC:
-		var stream quic.SendStream
+		var stream *quic.SendStream
 		stream, err = q.quicConn.OpenUniStream()
 		if err != nil {
 			return

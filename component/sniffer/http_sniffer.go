@@ -7,9 +7,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/sniffer"
+	"github.com/metacubex/clashauto/common/utils"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/constant/sniffer"
 )
 
 var (

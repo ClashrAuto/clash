@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/metacubex/mihomo/listener/sing"
+	"github.com/metacubex/clashauto/listener/sing"
 
 	"encoding/json"
 )
@@ -13,6 +13,9 @@ type TuicServer struct {
 	Users                 map[string]string `yaml:"users" json:"users,omitempty"`
 	Certificate           string            `yaml:"certificate" json:"certificate"`
 	PrivateKey            string            `yaml:"private-key" json:"private-key"`
+	ClientAuthType        string            `yaml:"client-auth-type" json:"client-auth-type,omitempty"`
+	ClientAuthCert        string            `yaml:"client-auth-cert" json:"client-auth-cert,omitempty"`
+	EchKey                string            `yaml:"ech-key" json:"ech-key"`
 	CongestionController  string            `yaml:"congestion-controller" json:"congestion-controller,omitempty"`
 	MaxIdleTime           int               `yaml:"max-idle-time" json:"max-idle-time,omitempty"`
 	AuthenticationTimeout int               `yaml:"authentication-timeout" json:"authentication-timeout,omitempty"`

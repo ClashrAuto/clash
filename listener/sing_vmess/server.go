@@ -2,23 +2,27 @@ package sing_vmess
 
 import (
 	"context"
-	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/sing"
-	"github.com/metacubex/mihomo/ntp"
-	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	"github.com/metacubex/clashauto/component/ca"
+	"github.com/metacubex/clashauto/component/ech"
+	tlsC "github.com/metacubex/clashauto/component/tls"
+	C "github.com/metacubex/clashauto/constant"
+	LC "github.com/metacubex/clashauto/listener/config"
+	"github.com/metacubex/clashauto/listener/reality"
+	"github.com/metacubex/clashauto/listener/sing"
+	"github.com/metacubex/clashauto/ntp"
+	"github.com/metacubex/clashauto/transport/gun"
+	clashautoVMess "github.com/metacubex/clashauto/transport/vmess"
 
 	vmess "github.com/metacubex/sing-vmess"
-	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/common/metadata"
+	"github.com/metacubex/sing/common"
+	"github.com/metacubex/sing/common/metadata"
 )
 
 type Listener struct {
@@ -72,27 +76,71 @@ func New(config LC.VmessServer, tunnel C.Tunnel, additions ...inbound.Addition) 
 
 	sl = &Listener{false, config, nil, service}
 
-	tlsConfig := &tls.Config{}
-	var httpMux *http.ServeMux
+	tlsConfig := &tlsC.Config{Time: ntp.Now}
+	var realityBuilder *reality.Builder
+	var httpServer http.Server
 
 	if config.Certificate != "" && config.PrivateKey != "" {
-		cert, err := N.ParseCert(config.Certificate, config.PrivateKey, C.Path)
+		cert, err := ca.LoadTLSKeyPair(config.Certificate, config.PrivateKey, C.Path)
 		if err != nil {
 			return nil, err
 		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
+		tlsConfig.Certificates = []tlsC.Certificate{tlsC.UCertificate(cert)}
+
+		if config.EchKey != "" {
+			err = ech.LoadECHKey(config.EchKey, tlsConfig, C.Path)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	tlsConfig.ClientAuth = tlsC.ClientAuthTypeFromString(config.ClientAuthType)
+	if len(config.ClientAuthCert) > 0 {
+		if tlsConfig.ClientAuth == tlsC.NoClientCert {
+			tlsConfig.ClientAuth = tlsC.RequireAndVerifyClientCert
+		}
+	}
+	if tlsConfig.ClientAuth == tlsC.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tlsC.RequireAndVerifyClientCert {
+		pool, err := ca.LoadCertificates(config.ClientAuthCert, C.Path)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.ClientCAs = pool
+	}
+	if config.RealityConfig.PrivateKey != "" {
+		if tlsConfig.Certificates != nil {
+			return nil, errors.New("certificate is unavailable in reality")
+		}
+		if tlsConfig.ClientAuth != tlsC.NoClientCert {
+			return nil, errors.New("client-auth is unavailable in reality")
+		}
+		realityBuilder, err = config.RealityConfig.Build(tunnel)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if config.WsPath != "" {
-		httpMux = http.NewServeMux()
+		httpMux := http.NewServeMux()
 		httpMux.HandleFunc(config.WsPath, func(w http.ResponseWriter, r *http.Request) {
-			conn, err := mihomoVMess.StreamUpgradedWebsocketConn(w, r)
+			conn, err := clashautoVMess.StreamUpgradedWebsocketConn(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
 			}
-			sl.HandleConn(conn, tunnel)
+			sl.HandleConn(conn, tunnel, additions...)
 		})
+		httpServer.Handler = httpMux
 		tlsConfig.NextProtos = append(tlsConfig.NextProtos, "http/1.1")
+	}
+	if config.GrpcServiceName != "" {
+		httpServer.Handler = gun.NewServerHandler(gun.ServerOption{
+			ServiceName: config.GrpcServiceName,
+			ConnHandler: func(conn net.Conn) {
+				sl.HandleConn(conn, tunnel, additions...)
+			},
+			HttpHandler: httpServer.Handler,
+		})
+		tlsConfig.NextProtos = append([]string{"h2"}, tlsConfig.NextProtos...) // h2 must before http/1.1
 	}
 
 	for _, addr := range strings.Split(config.Listen, ",") {
@@ -103,14 +151,20 @@ func New(config LC.VmessServer, tunnel C.Tunnel, additions ...inbound.Addition) 
 		if err != nil {
 			return nil, err
 		}
-		if len(tlsConfig.Certificates) > 0 {
-			l = tls.NewListener(l, tlsConfig)
+		if realityBuilder != nil {
+			l = realityBuilder.NewListener(l)
+		} else if len(tlsConfig.Certificates) > 0 {
+			if httpServer.Handler != nil {
+				l = tlsC.NewListenerForHttps(l, &httpServer, tlsConfig)
+			} else {
+				l = tlsC.NewListener(l, tlsConfig)
+			}
 		}
 		sl.listeners = append(sl.listeners, l)
 
 		go func() {
-			if httpMux != nil {
-				_ = http.Serve(l, httpMux)
+			if httpServer.Handler != nil {
+				_ = httpServer.Serve(l)
 				return
 			}
 			for {
@@ -161,7 +215,7 @@ func (l *Listener) HandleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbou
 	ctx := sing.WithAdditions(context.TODO(), additions...)
 	err := l.service.NewConnection(ctx, conn, metadata.Metadata{
 		Protocol: "vmess",
-		Source:   metadata.ParseSocksaddr(conn.RemoteAddr().String()),
+		Source:   metadata.SocksaddrFromNet(conn.RemoteAddr()),
 	})
 	if err != nil {
 		_ = conn.Close()

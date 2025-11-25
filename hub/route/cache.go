@@ -3,7 +3,7 @@ package route
 import (
 	"net/http"
 
-	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/clashauto/component/resolver"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -12,6 +12,7 @@ import (
 func cacheRouter() http.Handler {
 	r := chi.NewRouter()
 	r.Post("/fakeip/flush", flushFakeIPPool)
+	r.Post("/dns/flush", flushDnsCache)
 	return r
 }
 
@@ -22,5 +23,10 @@ func flushFakeIPPool(w http.ResponseWriter, r *http.Request) {
 		render.JSON(w, r, newError(err.Error()))
 		return
 	}
+	render.NoContent(w, r)
+}
+
+func flushDnsCache(w http.ResponseWriter, r *http.Request) {
+	resolver.ClearCache()
 	render.NoContent(w, r)
 }

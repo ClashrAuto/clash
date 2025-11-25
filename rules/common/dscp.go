@@ -3,8 +3,8 @@ package common
 import (
 	"fmt"
 
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/clashauto/common/utils"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 type DSCP struct {
@@ -18,7 +18,7 @@ func (d *DSCP) RuleType() C.RuleType {
 	return C.DSCP
 }
 
-func (d *DSCP) Match(metadata *C.Metadata) (bool, string) {
+func (d *DSCP) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
 	return d.ranges.Check(metadata.DSCP), d.adapter
 }
 

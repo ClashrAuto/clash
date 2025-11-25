@@ -6,12 +6,12 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/metacubex/mihomo/component/geodata"
-	"github.com/metacubex/mihomo/component/geodata/router"
-	"github.com/metacubex/mihomo/component/mmdb"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/geodata"
+	"github.com/metacubex/clashauto/component/geodata/router"
+	"github.com/metacubex/clashauto/component/mmdb"
+	"github.com/metacubex/clashauto/component/resolver"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 
 	"golang.org/x/exp/slices"
 )
@@ -33,7 +33,11 @@ func (g *GEOIP) RuleType() C.RuleType {
 	return C.GEOIP
 }
 
-func (g *GEOIP) Match(metadata *C.Metadata) (bool, string) {
+func (g *GEOIP) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
+	if !g.noResolveIP && !g.isSourceIP && helper.ResolveIP != nil {
+		helper.ResolveIP()
+	}
+
 	ip := metadata.DstIP
 	if g.isSourceIP {
 		ip = metadata.SrcIP
@@ -159,10 +163,6 @@ func (g *GEOIP) Adapter() string {
 
 func (g *GEOIP) Payload() string {
 	return g.country
-}
-
-func (g *GEOIP) ShouldResolveIP() bool {
-	return !g.noResolveIP
 }
 
 func (g *GEOIP) GetCountry() string {

@@ -10,8 +10,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/metacubex/mihomo/common/nnip"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/log"
 )
 
 // store process name for when dealing with multiple PROCESS-NAME rules
@@ -136,13 +135,14 @@ func (s *searcher) Search(buf []byte, ip netip.Addr, port uint16, isTCP bool) (u
 		switch {
 		case flag&0x1 > 0 && isIPv4:
 			// ipv4
-			srcIP = nnip.IpToAddr(buf[inp+s.ip : inp+s.ip+4])
+			srcIP, _ = netip.AddrFromSlice(buf[inp+s.ip : inp+s.ip+4])
 		case flag&0x2 > 0 && !isIPv4:
 			// ipv6
-			srcIP = nnip.IpToAddr(buf[inp+s.ip-12 : inp+s.ip+4])
+			srcIP, _ = netip.AddrFromSlice(buf[inp+s.ip-12 : inp+s.ip+4])
 		default:
 			continue
 		}
+		srcIP = srcIP.Unmap()
 
 		if ip != srcIP {
 			continue

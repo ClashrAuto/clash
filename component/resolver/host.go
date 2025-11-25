@@ -8,9 +8,9 @@ import (
 	"strings"
 	_ "unsafe"
 
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/resolver/hosts"
-	"github.com/metacubex/mihomo/component/trie"
+	"github.com/metacubex/clashauto/common/utils"
+	"github.com/metacubex/clashauto/component/resolver/hosts"
+	"github.com/metacubex/clashauto/component/trie"
 	"github.com/metacubex/randv2"
 )
 
@@ -77,7 +77,7 @@ func NewHostValue(value any) (HostValue, error) {
 			isDomain = false
 			for _, str := range valueArr {
 				if ip, err := netip.ParseAddr(str); err == nil {
-					ips = append(ips, ip)
+					ips = append(ips, ip.Unmap())
 				} else {
 					return HostValue{}, err
 				}
@@ -85,7 +85,7 @@ func NewHostValue(value any) (HostValue, error) {
 		} else if len(valueArr) == 1 {
 			host := valueArr[0]
 			if ip, err := netip.ParseAddr(host); err == nil {
-				ips = append(ips, ip)
+				ips = append(ips, ip.Unmap())
 				isDomain = false
 			} else {
 				domain = host
@@ -113,7 +113,7 @@ func NewHostValueByDomain(domain string) (HostValue, error) {
 	domain = strings.Trim(domain, ".")
 	item := strings.Split(domain, ".")
 	if len(item) < 2 {
-		return HostValue{}, errors.New("invaild domain")
+		return HostValue{}, errors.New("invalid domain")
 	}
 	return HostValue{
 		IsDomain: true,

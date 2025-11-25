@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/metacubex/mihomo/listener/sing"
+	"github.com/metacubex/clashauto/listener/sing"
 
 	"encoding/json"
 )
@@ -14,6 +14,9 @@ type Hysteria2Server struct {
 	ObfsPassword          string            `yaml:"obfs-password" json:"obfs-password,omitempty"`
 	Certificate           string            `yaml:"certificate" json:"certificate"`
 	PrivateKey            string            `yaml:"private-key" json:"private-key"`
+	ClientAuthType        string            `yaml:"client-auth-type" json:"client-auth-type,omitempty"`
+	ClientAuthCert        string            `yaml:"client-auth-cert" json:"client-auth-cert,omitempty"`
+	EchKey                string            `yaml:"ech-key" json:"ech-key,omitempty"`
 	MaxIdleTime           int               `yaml:"max-idle-time" json:"max-idle-time,omitempty"`
 	ALPN                  []string          `yaml:"alpn" json:"alpn,omitempty"`
 	Up                    string            `yaml:"up" json:"up,omitempty"`
@@ -23,6 +26,12 @@ type Hysteria2Server struct {
 	CWND                  int               `yaml:"cwnd" json:"cwnd,omitempty"`
 	UdpMTU                int               `yaml:"udp-mtu" json:"udp-mtu,omitempty"`
 	MuxOption             sing.MuxOption    `yaml:"mux-option" json:"mux-option,omitempty"`
+
+	// quic-go special config
+	InitialStreamReceiveWindow     uint64 `yaml:"initial-stream-receive-window" json:"initial-stream-receive-window,omitempty"`
+	MaxStreamReceiveWindow         uint64 `yaml:"max-stream-receive-window" json:"max-stream-receive-window,omitempty"`
+	InitialConnectionReceiveWindow uint64 `yaml:"initial-connection-receive-window" json:"initial-connection-receive-window,omitempty"`
+	MaxConnectionReceiveWindow     uint64 `yaml:"max-connection-receive-window" json:"max-connection-receive-window,omitempty"`
 }
 
 func (h Hysteria2Server) String() string {

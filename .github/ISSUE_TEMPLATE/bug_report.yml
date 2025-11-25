@@ -13,7 +13,7 @@ Please verify that you've followed these steps
 "
       options:
         - label: "
-确保你使用的是**本仓库**最新的的 mihomo 或 mihomo Alpha 版本
+确保你使用的是**本仓库**最新的的 clashauto 或 clashauto Alpha 版本
 Ensure you are using the latest version of Mihomo or Mihomo Alpha from **this repository**.
 "
           required: true
@@ -45,7 +45,7 @@ This is an issue of the Mihomo core *per se*, not to the derivatives of Mihomo, 
   - type: input
     attributes:
       label: Mihomo version
-      description: "use `mihomo -v`"
+      description: "use `clashauto -v`"
     validations:
       required: true
   - type: dropdown

@@ -3,23 +3,11 @@ package config
 import (
 	"net/netip"
 
-	"github.com/metacubex/mihomo/common/nnip"
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/metacubex/clashauto/constant"
 
+	"go4.org/netipx"
 	"golang.org/x/exp/slices"
 )
-
-func StringSliceToNetipPrefixSlice(ss []string) ([]netip.Prefix, error) {
-	lps := make([]netip.Prefix, 0, len(ss))
-	for _, s := range ss {
-		prefix, err := netip.ParsePrefix(s)
-		if err != nil {
-			return nil, err
-		}
-		lps = append(lps, prefix)
-	}
-	return lps, nil
-}
 
 type Tun struct {
 	Enable              bool       `yaml:"enable" json:"enable"`
@@ -39,6 +27,7 @@ type Tun struct {
 	AutoRedirect           bool           `yaml:"auto-redirect" json:"auto-redirect,omitempty"`
 	AutoRedirectInputMark  uint32         `yaml:"auto-redirect-input-mark" json:"auto-redirect-input-mark,omitempty"`
 	AutoRedirectOutputMark uint32         `yaml:"auto-redirect-output-mark" json:"auto-redirect-output-mark,omitempty"`
+	LoopbackAddress        []netip.Addr   `yaml:"loopback-address" json:"loopback-address,omitempty"`
 	StrictRoute            bool           `yaml:"strict-route" json:"strict-route,omitempty"`
 	RouteAddress           []netip.Prefix `yaml:"route-address" json:"route-address,omitempty"`
 	RouteAddressSet        []string       `yaml:"route-address-set" json:"route-address-set,omitempty"`
@@ -50,27 +39,36 @@ type Tun struct {
 	IncludeUIDRange        []string       `yaml:"include-uid-range" json:"include-uid-range,omitempty"`
 	ExcludeUID             []uint32       `yaml:"exclude-uid" json:"exclude-uid,omitempty"`
 	ExcludeUIDRange        []string       `yaml:"exclude-uid-range" json:"exclude-uid-range,omitempty"`
+	ExcludeSrcPort         []uint16       `yaml:"exclude-src-port" json:"exclude-src-port,omitempty"`
+	ExcludeSrcPortRange    []string       `yaml:"exclude-src-port-range" json:"exclude-src-port-range,omitempty"`
+	ExcludeDstPort         []uint16       `yaml:"exclude-dst-port" json:"exclude-dst-port,omitempty"`
+	ExcludeDstPortRange    []string       `yaml:"exclude-dst-port-range" json:"exclude-dst-port-range,omitempty"`
 	IncludeAndroidUser     []int          `yaml:"include-android-user" json:"include-android-user,omitempty"`
 	IncludePackage         []string       `yaml:"include-package" json:"include-package,omitempty"`
 	ExcludePackage         []string       `yaml:"exclude-package" json:"exclude-package,omitempty"`
 	EndpointIndependentNat bool           `yaml:"endpoint-independent-nat" json:"endpoint-independent-nat,omitempty"`
 	UDPTimeout             int64          `yaml:"udp-timeout" json:"udp-timeout,omitempty"`
+	DisableICMPForwarding  bool           `yaml:"disable-icmp-forwarding" json:"disable-icmp-forwarding,omitempty"`
 	FileDescriptor         int            `yaml:"file-descriptor" json:"file-descriptor"`
 
 	Inet4RouteAddress        []netip.Prefix `yaml:"inet4-route-address" json:"inet4-route-address,omitempty"`
 	Inet6RouteAddress        []netip.Prefix `yaml:"inet6-route-address" json:"inet6-route-address,omitempty"`
 	Inet4RouteExcludeAddress []netip.Prefix `yaml:"inet4-route-exclude-address" json:"inet4-route-exclude-address,omitempty"`
 	Inet6RouteExcludeAddress []netip.Prefix `yaml:"inet6-route-exclude-address" json:"inet6-route-exclude-address,omitempty"`
+
+	// darwin special config
+	RecvMsgX bool `yaml:"recvmsgx" json:"recvmsgx,omitempty"`
+	SendMsgX bool `yaml:"sendmsgx" json:"sendmsgx,omitempty"`
 }
 
 func (t *Tun) Sort() {
 	slices.Sort(t.DNSHijack)
 
-	slices.SortFunc(t.Inet4Address, nnip.PrefixCompare)
-	slices.SortFunc(t.Inet6Address, nnip.PrefixCompare)
-	slices.SortFunc(t.RouteAddress, nnip.PrefixCompare)
+	slices.SortFunc(t.Inet4Address, netipx.ComparePrefix)
+	slices.SortFunc(t.Inet6Address, netipx.ComparePrefix)
+	slices.SortFunc(t.RouteAddress, netipx.ComparePrefix)
 	slices.Sort(t.RouteAddressSet)
-	slices.SortFunc(t.RouteExcludeAddress, nnip.PrefixCompare)
+	slices.SortFunc(t.RouteExcludeAddress, netipx.ComparePrefix)
 	slices.Sort(t.RouteExcludeAddressSet)
 	slices.Sort(t.IncludeInterface)
 	slices.Sort(t.ExcludeInterface)
@@ -82,10 +80,10 @@ func (t *Tun) Sort() {
 	slices.Sort(t.IncludePackage)
 	slices.Sort(t.ExcludePackage)
 
-	slices.SortFunc(t.Inet4RouteAddress, nnip.PrefixCompare)
-	slices.SortFunc(t.Inet6RouteAddress, nnip.PrefixCompare)
-	slices.SortFunc(t.Inet4RouteExcludeAddress, nnip.PrefixCompare)
-	slices.SortFunc(t.Inet6RouteExcludeAddress, nnip.PrefixCompare)
+	slices.SortFunc(t.Inet4RouteAddress, netipx.ComparePrefix)
+	slices.SortFunc(t.Inet6RouteAddress, netipx.ComparePrefix)
+	slices.SortFunc(t.Inet4RouteExcludeAddress, netipx.ComparePrefix)
+	slices.SortFunc(t.Inet6RouteExcludeAddress, netipx.ComparePrefix)
 }
 
 func (t *Tun) Equal(other Tun) bool {
@@ -138,6 +136,9 @@ func (t *Tun) Equal(other Tun) bool {
 	if t.AutoRedirectOutputMark != other.AutoRedirectOutputMark {
 		return false
 	}
+	if !slices.Equal(t.RouteAddress, other.RouteAddress) {
+		return false
+	}
 	if t.StrictRoute != other.StrictRoute {
 		return false
 	}
@@ -186,6 +187,9 @@ func (t *Tun) Equal(other Tun) bool {
 	if t.UDPTimeout != other.UDPTimeout {
 		return false
 	}
+	if t.DisableICMPForwarding != other.DisableICMPForwarding {
+		return false
+	}
 	if t.FileDescriptor != other.FileDescriptor {
 		return false
 	}
@@ -200,6 +204,13 @@ func (t *Tun) Equal(other Tun) bool {
 		return false
 	}
 	if !slices.Equal(t.Inet6RouteExcludeAddress, other.Inet6RouteExcludeAddress) {
+		return false
+	}
+
+	if t.RecvMsgX != other.RecvMsgX {
+		return false
+	}
+	if t.SendMsgX != other.SendMsgX {
 		return false
 	}
 

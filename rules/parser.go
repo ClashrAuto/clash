@@ -3,13 +3,17 @@ package rules
 import (
 	"fmt"
 
-	C "github.com/metacubex/mihomo/constant"
-	RC "github.com/metacubex/mihomo/rules/common"
-	"github.com/metacubex/mihomo/rules/logic"
-	RP "github.com/metacubex/mihomo/rules/provider"
+	C "github.com/metacubex/clashauto/constant"
+	RC "github.com/metacubex/clashauto/rules/common"
+	"github.com/metacubex/clashauto/rules/logic"
+	RP "github.com/metacubex/clashauto/rules/provider"
 )
 
 func ParseRule(tp, payload, target string, params []string, subRules map[string][]C.Rule) (parsed C.Rule, parseErr error) {
+	if tp != "MATCH" && payload == "" { // only MATCH allowed doesn't contain payload
+		return nil, fmt.Errorf("missing subsequent parameters: %s", tp)
+	}
+
 	switch tp {
 	case "DOMAIN":
 		parsed = RC.NewDomain(payload, target)
@@ -19,6 +23,8 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 		parsed = RC.NewDomainKeyword(payload, target)
 	case "DOMAIN-REGEX":
 		parsed, parseErr = RC.NewDomainRegex(payload, target)
+	case "DOMAIN-WILDCARD":
+		parsed, parseErr = RC.NewDomainWildcard(payload, target)
 	case "GEOSITE":
 		parsed, parseErr = RC.NewGEOSITE(payload, target)
 	case "GEOIP":
@@ -82,7 +88,7 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 		parsed = RC.NewMatch(target)
 		parseErr = nil
 	default:
-		parseErr = fmt.Errorf("unsupported rule type %s", tp)
+		parseErr = fmt.Errorf("unsupported rule type: %s", tp)
 	}
 
 	if parseErr != nil {
@@ -91,3 +97,5 @@ func ParseRule(tp, payload, target string, params []string, subRules map[string]
 
 	return
 }
+
+var _ RC.ParseRuleFunc = ParseRule

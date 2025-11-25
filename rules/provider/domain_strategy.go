@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/metacubex/mihomo/component/trie"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/component/trie"
+	C "github.com/metacubex/clashauto/constant"
+	P "github.com/metacubex/clashauto/constant/provider"
+	"github.com/metacubex/clashauto/log"
 
 	"golang.org/x/exp/slices"
 )
@@ -23,20 +23,12 @@ func (d *domainStrategy) Behavior() P.RuleBehavior {
 	return P.Domain
 }
 
-func (d *domainStrategy) ShouldFindProcess() bool {
-	return false
-}
-
-func (d *domainStrategy) Match(metadata *C.Metadata) bool {
+func (d *domainStrategy) Match(metadata *C.Metadata, helper C.RuleMatchHelper) bool {
 	return d.domainSet != nil && d.domainSet.Has(metadata.RuleHost())
 }
 
 func (d *domainStrategy) Count() int {
 	return d.count
-}
-
-func (d *domainStrategy) ShouldResolveIP() bool {
-	return false
 }
 
 func (d *domainStrategy) Reset() {

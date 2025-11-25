@@ -51,8 +51,8 @@ $ make test
 benchmark (Linux)
 
 > Cannot represent the throughput of the protocol on your machine
-> but you can compare the corresponding throughput of the protocol on mihomo
-> (change chunkSize to measure the maximum throughput of mihomo on your machine)
+> but you can compare the corresponding throughput of the protocol on clashauto
+> (change chunkSize to measure the maximum throughput of clashauto on your machine)
 
 ```
 $ make benchmark

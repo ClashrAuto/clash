@@ -3,18 +3,13 @@
 package dns
 
 import (
-	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/clashauto/component/resolver"
 )
 
 var systemResolver []dnsClient
 
 func FlushCacheWithDefaultResolver() {
-	if r := resolver.DefaultResolver; r != nil {
-		r.ClearCache()
-	}
-	if r := resolver.SystemResolver; r != nil {
-		r.ClearCache()
-	}
+	resolver.ClearCache()
 	resolver.ResetConnection()
 }
 

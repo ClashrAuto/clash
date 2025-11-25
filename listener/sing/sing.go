@@ -8,21 +8,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/adapter/outbound"
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/clashauto/adapter/inbound"
+	"github.com/metacubex/clashauto/adapter/outbound"
+	N "github.com/metacubex/clashauto/common/net"
+	"github.com/metacubex/clashauto/common/utils"
+	C "github.com/metacubex/clashauto/constant"
+	"github.com/metacubex/clashauto/log"
 
+	mux "github.com/metacubex/sing-mux"
 	vmess "github.com/metacubex/sing-vmess"
-	mux "github.com/sagernet/sing-mux"
-	"github.com/sagernet/sing/common/buf"
-	"github.com/sagernet/sing/common/bufio"
-	"github.com/sagernet/sing/common/bufio/deadline"
-	E "github.com/sagernet/sing/common/exceptions"
-	M "github.com/sagernet/sing/common/metadata"
-	"github.com/sagernet/sing/common/network"
-	"github.com/sagernet/sing/common/uot"
+	"github.com/metacubex/sing-vmess/packetaddr"
+	"github.com/metacubex/sing/common"
+	"github.com/metacubex/sing/common/buf"
+	"github.com/metacubex/sing/common/bufio"
+	"github.com/metacubex/sing/common/bufio/deadline"
+	E "github.com/metacubex/sing/common/exceptions"
+	M "github.com/metacubex/sing/common/metadata"
+	"github.com/metacubex/sing/common/network"
+	"github.com/metacubex/sing/common/uot"
 )
 
 const UDPTimeout = 5 * time.Minute
@@ -72,7 +75,7 @@ func NewListenerHandler(lc ListenerConfig) (h *ListenerHandler, err error) {
 		NewStreamContext: func(ctx context.Context, conn net.Conn) context.Context {
 			return ctx
 		},
-		Logger:  log.SingLogger,
+		Logger:  log.SingInfoToDebugLogger, // convert sing-mux info log to debug
 		Handler: h,
 		Padding: lc.MuxOption.Padding,
 		Brutal: mux.BrutalOptions{
@@ -101,7 +104,7 @@ func (h *ListenerHandler) ParseSpecialFqdn(ctx context.Context, conn net.Conn, m
 	case mux.Destination.Fqdn:
 		return h.muxService.NewConnection(ctx, conn, UpstreamMetadata(metadata))
 	case vmess.MuxDestination.Fqdn:
-		return vmess.HandleMuxConnection(ctx, conn, h)
+		return vmess.HandleMuxConnection(ctx, conn, metadata, h)
 	case uot.MagicAddress:
 		request, err := uot.ReadRequest(conn)
 		if err != nil {
@@ -136,21 +139,27 @@ func (h *ListenerHandler) NewConnection(ctx context.Context, conn net.Conn, meta
 		cMetadata.RawDstAddr = metadata.Destination.Unwrap().TCPAddr()
 	}
 	inbound.ApplyAdditions(cMetadata, inbound.WithDstAddr(metadata.Destination), inbound.WithSrcAddr(metadata.Source), inbound.WithInAddr(conn.LocalAddr()))
-	inbound.ApplyAdditions(cMetadata, getAdditions(ctx)...)
 	inbound.ApplyAdditions(cMetadata, h.Additions...)
+	inbound.ApplyAdditions(cMetadata, getAdditions(ctx)...)
 
 	h.Tunnel.HandleTCPConn(conn, cMetadata) // this goroutine must exit after conn unused
 	return nil
 }
 
 func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.PacketConn, metadata M.Metadata) error {
+	if metadata.Destination.Fqdn == packetaddr.SeqPacketMagicAddress {
+		conn = packetaddr.NewConn(bufio.NewNetPacketConn(conn), M.Socksaddr{})
+	}
+
+	connID := utils.NewUUIDV4().String() // make a new SNAT key
+
 	defer func() { _ = conn.Close() }()
 	mutex := sync.Mutex{}
-	conn2 := bufio.NewNetPacketConn(conn) // a new interface to set nil in defer
+	writer := bufio.NewNetPacketWriter(conn) // a new interface to set nil in defer
 	defer func() {
 		mutex.Lock() // this goroutine must exit after all conn.WritePacket() is not running
 		defer mutex.Unlock()
-		conn2 = nil
+		writer = nil
 	}()
 	rwOptions := network.ReadWaitOptions{}
 	readWaiter, isReadWaiter := bufio.CreatePacketReadWaiter(conn)
@@ -180,30 +189,56 @@ func (h *ListenerHandler) NewPacketConnection(ctx context.Context, conn network.
 			return err
 		}
 		cPacket := &packet{
-			conn:  &conn2,
-			mutex: &mutex,
-			rAddr: metadata.Source.UDPAddr(),
-			lAddr: conn.LocalAddr(),
-			buff:  buff,
+			writer: &writer,
+			mutex:  &mutex,
+			rAddr:  metadata.Source.UDPAddr(),
+			lAddr:  conn.LocalAddr(),
+			buff:   buff,
 		}
-
-		cMetadata := &C.Metadata{
-			NetWork: C.UDP,
-			Type:    h.Type,
+		cPacket.rAddr = N.NewCustomAddr(h.Type.String(), connID, cPacket.rAddr) // for tunnel's handleUDPConn
+		if lAddr := getInAddr(ctx); lAddr != nil {
+			cPacket.lAddr = lAddr
 		}
-		if metadata.Source.IsIP() && metadata.Source.Fqdn == "" {
-			cMetadata.RawSrcAddr = metadata.Source.Unwrap().UDPAddr()
-		}
-		if dest.IsIP() && dest.Fqdn == "" {
-			cMetadata.RawDstAddr = dest.Unwrap().UDPAddr()
-		}
-		inbound.ApplyAdditions(cMetadata, inbound.WithDstAddr(dest), inbound.WithSrcAddr(metadata.Source), inbound.WithInAddr(conn.LocalAddr()))
-		inbound.ApplyAdditions(cMetadata, getAdditions(ctx)...)
-		inbound.ApplyAdditions(cMetadata, h.Additions...)
-
-		h.Tunnel.HandleUDPPacket(cPacket, cMetadata)
+		h.handlePacket(ctx, cPacket, metadata.Source, dest)
 	}
 	return nil
+}
+
+type localAddr interface {
+	LocalAddr() net.Addr
+}
+
+func (h *ListenerHandler) NewPacket(ctx context.Context, key netip.AddrPort, buffer *buf.Buffer, metadata M.Metadata, init func(natConn network.PacketConn) network.PacketWriter) {
+	writer := bufio.NewNetPacketWriter(init(nil))
+	mutex := sync.Mutex{}
+	cPacket := &packet{
+		writer: &writer,
+		mutex:  &mutex,
+		rAddr:  metadata.Source.UDPAddr(), // TODO: using key argument to make a SNAT key
+		buff:   buffer,
+	}
+	if conn, ok := common.Cast[localAddr](writer); ok { // tun does not have real inAddr
+		cPacket.lAddr = conn.LocalAddr()
+	}
+	h.handlePacket(ctx, cPacket, metadata.Source, metadata.Destination)
+}
+
+func (h *ListenerHandler) handlePacket(ctx context.Context, cPacket *packet, source M.Socksaddr, destination M.Socksaddr) {
+	cMetadata := &C.Metadata{
+		NetWork: C.UDP,
+		Type:    h.Type,
+	}
+	if source.IsIP() && source.Fqdn == "" {
+		cMetadata.RawSrcAddr = source.Unwrap().UDPAddr()
+	}
+	if destination.IsIP() && destination.Fqdn == "" {
+		cMetadata.RawDstAddr = destination.Unwrap().UDPAddr()
+	}
+	inbound.ApplyAdditions(cMetadata, inbound.WithDstAddr(destination), inbound.WithSrcAddr(source), inbound.WithInAddr(cPacket.InAddr()))
+	inbound.ApplyAdditions(cMetadata, h.Additions...)
+	inbound.ApplyAdditions(cMetadata, getAdditions(ctx)...)
+
+	h.Tunnel.HandleUDPPacket(cPacket, cMetadata)
 }
 
 func (h *ListenerHandler) NewError(ctx context.Context, err error) {
@@ -225,11 +260,11 @@ func ShouldIgnorePacketError(err error) bool {
 }
 
 type packet struct {
-	conn  *network.NetPacketConn
-	mutex *sync.Mutex
-	rAddr net.Addr
-	lAddr net.Addr
-	buff  *buf.Buffer
+	writer *network.NetPacketWriter
+	mutex  *sync.Mutex
+	rAddr  net.Addr
+	lAddr  net.Addr
+	buff   *buf.Buffer
 }
 
 func (c *packet) Data() []byte {
@@ -245,7 +280,7 @@ func (c *packet) WriteBack(b []byte, addr net.Addr) (n int, err error) {
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	conn := *c.conn
+	conn := *c.writer
 	if conn == nil {
 		err = errors.New("writeBack to closed connection")
 		return

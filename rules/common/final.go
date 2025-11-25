@@ -1,7 +1,7 @@
 package common
 
 import (
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/metacubex/clashauto/constant"
 )
 
 type Match struct {
@@ -13,7 +13,7 @@ func (f *Match) RuleType() C.RuleType {
 	return C.MATCH
 }
 
-func (f *Match) Match(metadata *C.Metadata) (bool, string) {
+func (f *Match) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool, string) {
 	return true, f.adapter
 }
 
