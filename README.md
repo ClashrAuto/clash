@@ -6,14 +6,14 @@
 <h3 align="center">Another Mihomo Kernel.</h3>
 
 <p align="center">
-  <a href="https://goreportcard.com/report/github.com/metacubex/mihomo">
-    <img src="https://goreportcard.com/badge/github.com/metacubex/mihomo?style=flat-square">
+  <a href="https://goreportcard.com/report/github.com/MetaCubeX/mihomo">
+    <img src="https://goreportcard.com/badge/github.com/MetaCubeX/mihomo?style=flat-square">
   </a>
-  <img src="https://img.shields.io/github/go-mod/go-version/metacubex/mihomo/Alpha?style=flat-square">
-  <a href="https://github.com/metacubex/mihomo/releases">
-    <img src="https://img.shields.io/github/release/metacubex/mihomo/all.svg?style=flat-square">
+  <img src="https://img.shields.io/github/go-mod/go-version/MetaCubeX/mihomo/Alpha?style=flat-square">
+  <a href="https://github.com/MetaCubeX/mihomo/releases">
+    <img src="https://img.shields.io/github/release/MetaCubeX/mihomo/all.svg?style=flat-square">
   </a>
-  <a href="https://github.com/metacubex/mihomo">
+  <a href="https://github.com/MetaCubeX/mihomo">
     <img src="https://img.shields.io/badge/release-Meta-00b4f0?style=flat-square">
   </a>
 </p>
@@ -36,22 +36,22 @@ A web dashboard with first-class support for this project has been created; it c
 
 ## Configration example
 
-Configuration example is located at [/docs/config.yaml](https://github.com/metacubex/mihomo/blob/Alpha/docs/config.yaml).
+Configuration example is located at [/docs/config.yaml](https://github.com/MetaCubeX/mihomo/blob/Alpha/docs/config.yaml).
 
 ## Docs
 
-Documentation can be found in [clashauto Docs](https://wiki.metacubex.one/).
+Documentation can be found in [mihomo Docs](https://wiki.metacubex.one/).
 
 ## For development
 
 Requirements:
 [Go 1.20 or newer](https://go.dev/dl/)
 
-Build clashauto:
+Build mihomo:
 
 ```shell
-git clone https://github.com/metacubex/mihomo.git
-cd clashauto && go mod download
+git clone https://github.com/MetaCubeX/mihomo.git
+cd mihomo && go mod download
 go build
 ```
 
@@ -98,4 +98,4 @@ API.
 
 This software is released under the GPL-3.0 license.
 
-**In addition, any downstream projects not affiliated with `MetaCubeX` shall not contain the word `clashauto` in their names.**
+**In addition, any downstream projects not affiliated with `MetaCubeX` shall not contain the word `mihomo` in their names.**

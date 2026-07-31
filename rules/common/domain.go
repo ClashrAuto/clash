@@ -4,11 +4,10 @@ import (
 	"strings"
 
 	C "github.com/metacubex/mihomo/constant"
-	"golang.org/x/net/idna"
 )
 
 type Domain struct {
-	*Base
+	Base
 	domain  string
 	adapter string
 }
@@ -30,12 +29,11 @@ func (d *Domain) Payload() string {
 }
 
 func NewDomain(domain string, adapter string) *Domain {
-	punycode, _ := idna.ToASCII(strings.ToLower(domain))
 	return &Domain{
-		Base:    &Base{},
-		domain:  punycode,
+		Base:    Base{},
+		domain:  strings.ToLower(domain),
 		adapter: adapter,
 	}
 }
 
-//var _ C.Rule = (*Domain)(nil)
+var _ C.Rule = (*Domain)(nil)

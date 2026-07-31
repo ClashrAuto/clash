@@ -14,12 +14,8 @@ import (
 	P "github.com/metacubex/mihomo/constant/provider"
 )
 
-type urlTestOption func(*URLTest)
-
-func urlTestWithTolerance(tolerance uint16) urlTestOption {
-	return func(u *URLTest) {
-		u.tolerance = tolerance
-	}
+type URLTestOption struct {
+	Tolerance uint16 `group:"tolerance,omitempty"`
 }
 
 type URLTest struct {
@@ -29,8 +25,6 @@ type URLTest struct {
 	expectedStatus string
 	tolerance      uint16
 	disableUDP     bool
-	Hidden         bool
-	Icon           string
 	fastNode       C.Proxy
 	fastSingle     *singledo.Single[C.Proxy]
 }
@@ -196,51 +190,48 @@ func (u *URLTest) MarshalJSON() ([]byte, error) {
 		"testUrl":        u.testUrl,
 		"expectedStatus": u.expectedStatus,
 		"fixed":          u.selected,
-		"hidden":         u.Hidden,
-		"icon":           u.Icon,
+		"hidden":         u.Hidden(),
+		"icon":           u.Icon(),
+		"emptyFallback":  u.EmptyFallback().Name(),
 	})
+}
+
+func (u *URLTest) Providers() []P.ProxyProvider {
+	return u.providers
+}
+
+func (u *URLTest) Proxies() []C.Proxy {
+	return u.GetProxies(false)
 }
 
 func (u *URLTest) URLTest(ctx context.Context, url string, expectedStatus utils.IntRanges[uint16]) (map[string]uint16, error) {
 	return u.GroupBase.URLTest(ctx, u.testUrl, expectedStatus)
 }
 
-func parseURLTestOption(config map[string]any) []urlTestOption {
-	opts := []urlTestOption{}
-
-	// tolerance
-	if elm, ok := config["tolerance"]; ok {
-		if tolerance, ok := elm.(int); ok {
-			opts = append(opts, urlTestWithTolerance(uint16(tolerance)))
-		}
+func NewURLTest(option GroupCommonOption, urlTestOption URLTestOption, emptyFallback C.Proxy, providers []P.ProxyProvider) (*URLTest, error) {
+	if emptyFallback == nil {
+		return nil, errors.New("empty fallback proxy not exist")
 	}
-
-	return opts
-}
-
-func NewURLTest(option *GroupCommonOption, providers []P.ProxyProvider, options ...urlTestOption) *URLTest {
 	urlTest := &URLTest{
 		GroupBase: NewGroupBase(GroupBaseOption{
 			Name:           option.Name,
 			Type:           C.URLTest,
+			Hidden:         option.Hidden,
+			Icon:           option.Icon,
 			Filter:         option.Filter,
 			ExcludeFilter:  option.ExcludeFilter,
 			ExcludeType:    option.ExcludeType,
 			TestTimeout:    option.TestTimeout,
 			MaxFailedTimes: option.MaxFailedTimes,
+			EmptyFallback:  emptyFallback,
 			Providers:      providers,
 		}),
 		fastSingle:     singledo.NewSingle[C.Proxy](time.Second * 10),
 		disableUDP:     option.DisableUDP,
 		testUrl:        option.URL,
 		expectedStatus: option.ExpectedStatus,
-		Hidden:         option.Hidden,
-		Icon:           option.Icon,
+		tolerance:      urlTestOption.Tolerance,
 	}
 
-	for _, option := range options {
-		option(urlTest)
-	}
-
-	return urlTest
+	return urlTest, nil
 }

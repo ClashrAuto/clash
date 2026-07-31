@@ -43,6 +43,7 @@ type Resolver struct {
 	fallback              []dnsClient
 	fallbackDomainFilters []C.DomainMatcher
 	fallbackIPFilters     []C.IpMatcher
+	fallbackLazyQuery     bool
 	group                 singleflight.Group[*D.Msg]
 	cache                 dnsCache
 	policy                []dnsPolicy
@@ -165,13 +166,10 @@ func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, e
 
 	q := m.Question[0]
 	domain := msgToDomain(m)
-	_, qTypeStr := msgToQtype(m)
-	cacheM, expireTime, hit := r.cache.GetWithExpire(q.String())
+	msg, expireTime, hit := getMsgFromCache(r.cache, q)
 	if hit {
-		ips := msgToIP(cacheM)
-		log.Debugln("[DNS] cache hit %s --> %s %s, expire at %s", domain, ips, qTypeStr, expireTime.Format("2006-01-02 15:04:05"))
+		log.Debugln("[DNS] cache hit %s --> %s, expire at %s", domain, msgToLogString(msg), expireTime.Format("2006-01-02 15:04:05"))
 		now := time.Now()
-		msg = cacheM.Copy()
 		if expireTime.Before(now) {
 			setMsgTTL(msg, uint32(1)) // Continue fetch
 			continueFetch = true
@@ -203,14 +201,8 @@ func (r *Resolver) exchangeWithoutCache(ctx context.Context, m *D.Msg) (msg *D.M
 				return
 			}
 
-			msg := result
-
 			if cache {
-				// OPT RRs MUST NOT be cached, forwarded, or stored in or loaded from master files.
-				msg.Extra = lo.Filter(msg.Extra, func(rr D.RR, index int) bool {
-					return rr.Header().Rrtype != D.TypeOPT
-				})
-				putMsgToCache(r.cache, q.String(), q, msg)
+				putMsgToCache(r.cache, q, result)
 			}
 		}()
 
@@ -319,12 +311,16 @@ func (r *Resolver) ipExchange(ctx context.Context, m *D.Msg) (msg *D.Msg, err er
 
 	msgCh := r.asyncExchange(ctx, r.main, m)
 
-	if r.fallback == nil || len(r.fallback) == 0 { // directly return if no fallback servers are available
+	if r.fallback == nil { // directly return if no fallback servers are available
 		res := <-msgCh
 		msg, err = res.Msg, res.Error
 		return
 	}
 
+	var fallbackMsg <-chan *result
+	if !r.fallbackLazyQuery {
+		fallbackMsg = r.asyncExchange(ctx, r.fallback, m)
+	}
 	res := <-msgCh
 	if res.Error == nil {
 		if ips := msgToIP(res.Msg); len(ips) != 0 {
@@ -338,7 +334,10 @@ func (r *Resolver) ipExchange(ctx context.Context, m *D.Msg) (msg *D.Msg, err er
 		}
 	}
 
-	res = <-r.asyncExchange(ctx, r.fallback, m)
+	if fallbackMsg == nil {
+		fallbackMsg = r.asyncExchange(ctx, r.fallback, m)
+	}
+	res = <-fallbackMsg
 	msg, err = res.Msg, res.Error
 	return
 }
@@ -452,7 +451,9 @@ type Config struct {
 	IPv6Timeout          uint
 	FallbackIPFilter     []C.IpMatcher
 	FallbackDomainFilter []C.DomainMatcher
+	FallbackLazyQuery    bool
 	Policy               []Policy
+	ProxyServerPolicy    []Policy
 	CacheAlgorithm       string
 	CacheMaxSize         int
 }
@@ -485,6 +486,14 @@ func (rs Resolvers) ResetConnection() {
 	rs.Resolver.ResetConnection()
 	rs.ProxyResolver.ResetConnection()
 	rs.DirectResolver.ResetConnection()
+}
+
+func NewResolverFromClient(client dnsClient) *Resolver {
+	return &Resolver{
+		ipv6:  true,
+		main:  []dnsClient{client},
+		cache: Config{}.newCache(),
+	}
 }
 
 func NewResolver(config Config) (rs Resolvers) {
@@ -521,55 +530,20 @@ func NewResolver(config Config) (rs Resolvers) {
 		return
 	}
 
-	r := &Resolver{
-		ipv6:        config.IPv6,
-		main:        cacheTransform(config.Main),
-		cache:       config.newCache(),
-		ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
-	}
-	r.defaultResolver = defaultResolver
-	rs.Resolver = r
-
-	if len(config.ProxyServer) != 0 {
-		rs.ProxyResolver = &Resolver{
-			ipv6:        config.IPv6,
-			main:        cacheTransform(config.ProxyServer),
-			cache:       config.newCache(),
-			ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
-		}
-	}
-
-	if len(config.DirectServer) != 0 {
-		rs.DirectResolver = &Resolver{
-			ipv6:        config.IPv6,
-			main:        cacheTransform(config.DirectServer),
-			cache:       config.newCache(),
-			ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
-		}
-	}
-
-	if len(config.Fallback) != 0 {
-		r.fallback = cacheTransform(config.Fallback)
-		r.fallbackIPFilters = config.FallbackIPFilter
-		r.fallbackDomainFilters = config.FallbackDomainFilter
-	}
-
-	if len(config.Policy) != 0 {
-		r.policy = make([]dnsPolicy, 0)
-
+	makePolicy := func(policies []Policy) (dnsPolicies []dnsPolicy) {
 		var triePolicy *trie.DomainTrie[[]dnsClient]
 		insertPolicy := func(policy dnsPolicy) {
 			if triePolicy != nil {
 				triePolicy.Optimize()
-				r.policy = append(r.policy, domainTriePolicy{triePolicy})
+				dnsPolicies = append(dnsPolicies, domainTriePolicy{triePolicy})
 				triePolicy = nil
 			}
 			if policy != nil {
-				r.policy = append(r.policy, policy)
+				dnsPolicies = append(dnsPolicies, policy)
 			}
 		}
 
-		for _, policy := range config.Policy {
+		for _, policy := range policies {
 			if policy.Matcher != nil {
 				insertPolicy(domainMatcherPolicy{matcher: policy.Matcher, dnsClients: cacheTransform(policy.NameServers)})
 			} else {
@@ -580,10 +554,46 @@ func NewResolver(config Config) (rs Resolvers) {
 			}
 		}
 		insertPolicy(nil)
+		return
+	}
 
-		if rs.DirectResolver != nil && config.DirectFollowPolicy {
+	r := &Resolver{
+		ipv6:        config.IPv6,
+		main:        cacheTransform(config.Main),
+		cache:       config.newCache(),
+		ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
+		policy:      makePolicy(config.Policy),
+	}
+	r.defaultResolver = defaultResolver
+	rs.Resolver = r
+
+	if len(config.ProxyServer) != 0 {
+		rs.ProxyResolver = &Resolver{
+			ipv6:        config.IPv6,
+			main:        cacheTransform(config.ProxyServer),
+			cache:       config.newCache(),
+			ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
+			policy:      makePolicy(config.ProxyServerPolicy),
+		}
+	}
+
+	if len(config.DirectServer) != 0 {
+		rs.DirectResolver = &Resolver{
+			ipv6:        config.IPv6,
+			main:        cacheTransform(config.DirectServer),
+			cache:       config.newCache(),
+			ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
+		}
+		if config.DirectFollowPolicy {
 			rs.DirectResolver.policy = r.policy
 		}
+	}
+
+	if len(config.Fallback) != 0 {
+		r.fallback = cacheTransform(config.Fallback)
+		r.fallbackIPFilters = config.FallbackIPFilter
+		r.fallbackDomainFilters = config.FallbackDomainFilter
+		r.fallbackLazyQuery = config.FallbackLazyQuery
 	}
 
 	return

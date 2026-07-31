@@ -5,27 +5,32 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
-	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/adapter/outbound"
 	"github.com/metacubex/mihomo/common/sockopt"
+	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/ech"
-	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
+	"github.com/metacubex/mihomo/listener/inner"
 	"github.com/metacubex/mihomo/listener/sing"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/ntp"
+	"github.com/metacubex/mihomo/transport/tuic/common"
 
-	"github.com/metacubex/sing-quic/hysteria2"
-
+	"github.com/metacubex/http"
+	"github.com/metacubex/http/httputil"
 	"github.com/metacubex/quic-go"
+	"github.com/metacubex/sing-quic/hysteria2"
+	"github.com/metacubex/sing-quic/hysteria2/realm"
 	E "github.com/metacubex/sing/common/exceptions"
+	"github.com/metacubex/tls"
 )
 
 type Listener struct {
@@ -35,7 +40,7 @@ type Listener struct {
 	services     []*hysteria2.Service[string]
 }
 
-func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
+func New(config LC.Hysteria2Server, lc C.InboundListenConfig, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
 	var sl *Listener
 	var err error
 	if len(additions) == 0 {
@@ -57,23 +62,25 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 
 	sl = &Listener{false, config, nil, nil}
 
-	cert, err := ca.LoadTLSKeyPair(config.Certificate, config.PrivateKey, C.Path)
+	tlsConfig := &tls.Config{
+		Time:       ntp.Now,
+		MinVersion: tls.VersionTLS13,
+	}
+	certLoader, err := ca.NewTLSKeyPairLoader(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig := &tlsC.Config{
-		Time:       ntp.Now,
-		MinVersion: tlsC.VersionTLS13,
+	tlsConfig.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return certLoader()
 	}
-	tlsConfig.Certificates = []tlsC.Certificate{tlsC.UCertificate(cert)}
-	tlsConfig.ClientAuth = tlsC.ClientAuthTypeFromString(config.ClientAuthType)
+	tlsConfig.ClientAuth = ca.ClientAuthTypeFromString(config.ClientAuthType)
 	if len(config.ClientAuthCert) > 0 {
-		if tlsConfig.ClientAuth == tlsC.NoClientCert {
-			tlsConfig.ClientAuth = tlsC.RequireAndVerifyClientCert
+		if tlsConfig.ClientAuth == tls.NoClientCert {
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
 	}
-	if tlsConfig.ClientAuth == tlsC.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tlsC.RequireAndVerifyClientCert {
-		pool, err := ca.LoadCertificates(config.ClientAuthCert, C.Path)
+	if tlsConfig.ClientAuth == tls.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tls.RequireAndVerifyClientCert {
+		pool, err := ca.LoadCertificates(config.ClientAuthCert)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +88,7 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 	}
 
 	if config.EchKey != "" {
-		err = ech.LoadECHKey(config.EchKey, tlsConfig, C.Path)
+		err = ech.LoadECHKey(config.EchKey, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -93,6 +100,8 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 	}
 
 	var salamanderPassword string
+	var geckoPassword string
+	var geckoMinPacketSize, geckoMaxPacketSize int
 	if len(config.Obfs) > 0 {
 		if config.ObfsPassword == "" {
 			return nil, errors.New("missing obfs password")
@@ -100,6 +109,10 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 		switch config.Obfs {
 		case hysteria2.ObfsTypeSalamander:
 			salamanderPassword = config.ObfsPassword
+		case hysteria2.ObfsTypeGecko:
+			geckoPassword = config.ObfsPassword
+			geckoMinPacketSize = config.ObfsMinPacketSize
+			geckoMaxPacketSize = config.ObfsMaxPacketSize
 		default:
 			return nil, fmt.Errorf("unknown obfs type: %s", config.Obfs)
 		}
@@ -122,9 +135,68 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 				ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 					w.WriteHeader(http.StatusBadGateway)
 				},
+				Transport: &http.Transport{
+					// fellow hysteria2's code skip verify
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+					// from http.DefaultTransport
+					ForceAttemptHTTP2:     true,
+					MaxIdleConns:          100,
+					IdleConnTimeout:       90 * time.Second,
+					TLSHandshakeTimeout:   10 * time.Second,
+					ExpectContinueTimeout: 1 * time.Second,
+					DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+						return inner.HandleTcp(tunnel, address, "")
+					},
+				},
 			}
 		default:
 			return nil, E.New("unknown masquerade URL scheme: ", masqueradeURL.Scheme)
+		}
+	}
+	var realmOptions *realm.Options
+	if config.RealmOpts.Enable {
+		httpTLSClientConfig, err := ca.GetTLSConfig(ca.Option{
+			TLSConfig: &tls.Config{
+				ServerName:         config.RealmOpts.SNI,
+				InsecureSkipVerify: config.RealmOpts.SkipCertVerify,
+				NextProtos:         config.RealmOpts.ALPN,
+			},
+			Fingerprint:    config.RealmOpts.Fingerprint,
+			NameCertVerify: config.RealmOpts.NameCertVerify,
+			Certificate:    config.RealmOpts.Certificate,
+			PrivateKey:     config.RealmOpts.PrivateKey,
+		})
+		if err != nil {
+			return nil, err
+		}
+		realmOptions = &realm.Options{
+			ServerURL:   config.RealmOpts.ServerURL,
+			Token:       config.RealmOpts.Token,
+			RealmID:     config.RealmOpts.RealmID,
+			STUNServers: config.RealmOpts.STUNServers,
+			HTTPClient: &http.Client{Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+					return inner.HandleTcp(tunnel, address, config.RealmOpts.Proxy)
+				},
+				TLSClientConfig: httpTLSClientConfig,
+				// from http.DefaultTransport
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			}},
+			Resolver: func(ctx context.Context, host string, ipv4, ipv6 bool) ([]netip.Addr, error) {
+				if ipv4 && !ipv6 {
+					return resolver.LookupIPv4WithResolver(ctx, host, resolver.ProxyServerHostResolver)
+				} else if ipv6 && !ipv4 {
+					return resolver.LookupIPv6WithResolver(ctx, host, resolver.ProxyServerHostResolver)
+				}
+				return resolver.LookupIPWithResolver(ctx, host, resolver.ProxyServerHostResolver)
+			},
+			Logger: log.SingLogger,
 		}
 	}
 
@@ -144,17 +216,23 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 	service, err := hysteria2.NewService[string](hysteria2.ServiceOptions{
 		Context:               context.Background(),
 		Logger:                log.SingLogger,
-		SendBPS:               outbound.StringToBps(config.Up),
-		ReceiveBPS:            outbound.StringToBps(config.Down),
+		SendBPS:               utils.StringToBps(config.Up),
+		ReceiveBPS:            utils.StringToBps(config.Down),
 		SalamanderPassword:    salamanderPassword,
+		GeckoPassword:         geckoPassword,
+		GeckoMinPacketSize:    geckoMinPacketSize,
+		GeckoMaxPacketSize:    geckoMaxPacketSize,
 		TLSConfig:             tlsConfig,
 		QUICConfig:            quicConfig,
 		IgnoreClientBandwidth: config.IgnoreClientBandwidth,
 		UDPTimeout:            sing.UDPTimeout,
 		Handler:               h,
 		MasqueradeHandler:     masqueradeHandler,
-		CWND:                  config.CWND,
 		UdpMTU:                config.UdpMTU,
+		RealmOptions:          realmOptions,
+		SetBBRCongestion: func(quicConn *quic.Conn) {
+			common.SetCongestionController(quicConn, "bbr", config.CWND, config.BBRProfile)
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -173,7 +251,7 @@ func New(config LC.Hysteria2Server, tunnel C.Tunnel, additions ...inbound.Additi
 		_service := *service
 		service := &_service // make a copy
 
-		ul, err := inbound.ListenPacket("udp", addr)
+		ul, err := lc.ListenPacket(context.Background(), "udp", addr)
 		if err != nil {
 			return nil, err
 		}

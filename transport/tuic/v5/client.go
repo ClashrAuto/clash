@@ -15,31 +15,26 @@ import (
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/pool"
 	"github.com/metacubex/mihomo/common/xsync"
-	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/tuic/common"
+	"github.com/metacubex/mihomo/transport/tuic/types"
 
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/randv2"
 )
 
 type ClientOption struct {
-	TlsConfig             *tlsC.Config
-	QuicConfig            *quic.Config
 	Uuid                  [16]byte
 	Password              string
-	UdpRelayMode          common.UdpRelayMode
-	CongestionController  string
-	ReduceRtt             bool
+	UdpRelayMode          types.UdpRelayMode
 	MaxUdpRelayPacketSize int
 	MaxOpenStreams        int64
-	CWND                  int
 }
 
 type clientImpl struct {
 	*ClientOption
-	udp bool
+	dialFn types.DialFunc
+	udp    bool
 
 	quicConn  *quic.Conn
 	connMutex sync.Mutex
@@ -50,16 +45,11 @@ type clientImpl struct {
 	udpInputMap xsync.Map[uint16, net.Conn]
 
 	// only ready for PoolClient
-	dialerRef   C.Dialer
 	lastVisited atomic2.TypedValue[time.Time]
 }
 
 func (t *clientImpl) OpenStreams() int64 {
 	return t.openStreams.Load()
-}
-
-func (t *clientImpl) DialerRef() C.Dialer {
-	return t.dialerRef
 }
 
 func (t *clientImpl) LastVisited() time.Time {
@@ -70,33 +60,22 @@ func (t *clientImpl) SetLastVisited(last time.Time) {
 	t.lastVisited.Store(last)
 }
 
-func (t *clientImpl) getQuicConn(ctx context.Context, dialer C.Dialer, dialFn common.DialFunc) (*quic.Conn, error) {
+func (t *clientImpl) getQuicConn(ctx context.Context) (*quic.Conn, error) {
 	t.connMutex.Lock()
 	defer t.connMutex.Unlock()
 	if t.quicConn != nil {
 		return t.quicConn, nil
 	}
-	transport, addr, err := dialFn(ctx, dialer)
+	quicConn, err := t.dialFn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var quicConn *quic.Conn
-	if t.ReduceRtt {
-		quicConn, err = transport.DialEarly(ctx, addr, t.TlsConfig, t.QuicConfig)
-	} else {
-		quicConn, err = transport.Dial(ctx, addr, t.TlsConfig, t.QuicConfig)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	common.SetCongestionController(quicConn, t.CongestionController, t.CWND)
 
 	go func() {
 		_ = t.sendAuthentication(quicConn)
 	}()
 
-	if t.udp && t.UdpRelayMode == common.QUIC {
+	if t.udp && t.UdpRelayMode == types.QUIC {
 		go func() {
 			_ = t.handleUniStream(quicConn)
 		}()
@@ -174,7 +153,7 @@ func (t *clientImpl) handleUniStream(quicConn *quic.Conn) (err error) {
 				if err != nil {
 					return
 				}
-				if t.udp && t.UdpRelayMode == common.QUIC {
+				if t.udp && t.UdpRelayMode == types.QUIC {
 					assocId = packet.ASSOC_ID
 					if val, ok := t.udpInputMap.Load(assocId); ok {
 						if conn, ok := val.(net.Conn); ok {
@@ -224,7 +203,7 @@ func (t *clientImpl) handleMessage(quicConn *quic.Conn) (err error) {
 				if err != nil {
 					return
 				}
-				if t.udp && t.UdpRelayMode == common.NATIVE {
+				if t.udp && t.UdpRelayMode == types.NATIVE {
 					assocId = packet.ASSOC_ID
 					if val, ok := t.udpInputMap.Load(assocId); ok {
 						if conn, ok := val.(net.Conn); ok {
@@ -270,7 +249,7 @@ func (t *clientImpl) forceClose(quicConn *quic.Conn, err error) {
 	if quicConn != nil {
 		_ = quicConn.CloseWithError(ProtocolError, errStr)
 	}
-	udpInputMap := t.udpInputMap
+	udpInputMap := &t.udpInputMap
 	udpInputMap.Range(func(key uint16, value net.Conn) bool {
 		conn := value
 		_ = conn.Close()
@@ -282,19 +261,19 @@ func (t *clientImpl) forceClose(quicConn *quic.Conn, err error) {
 func (t *clientImpl) Close() {
 	t.closed.Store(true)
 	if t.openStreams.Load() == 0 {
-		t.forceClose(nil, common.ClientClosed)
+		t.forceClose(nil, types.ClientClosed)
 	}
 }
 
-func (t *clientImpl) DialContextWithDialer(ctx context.Context, metadata *C.Metadata, dialer C.Dialer, dialFn common.DialFunc) (net.Conn, error) {
-	quicConn, err := t.getQuicConn(ctx, dialer, dialFn)
+func (t *clientImpl) DialContext(ctx context.Context, metadata *C.Metadata) (net.Conn, error) {
+	quicConn, err := t.getQuicConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 	openStreams := t.openStreams.Add(1)
 	if openStreams >= t.MaxOpenStreams {
 		t.openStreams.Add(-1)
-		return nil, common.TooManyOpenStreams
+		return nil, types.TooManyOpenStreams
 	}
 	stream, err := func() (stream net.Conn, err error) {
 		defer func() {
@@ -304,13 +283,15 @@ func (t *clientImpl) DialContextWithDialer(ctx context.Context, metadata *C.Meta
 		defer pool.PutBuffer(buf)
 		err = NewConnect(NewAddress(metadata)).WriteTo(buf)
 		if err != nil {
+			t.openStreams.Add(-1)
 			return nil, err
 		}
 		quicStream, err := quicConn.OpenStream()
 		if err != nil {
+			t.openStreams.Add(-1)
 			return nil, err
 		}
-		stream = common.NewQuicStreamConn(
+		stream = types.NewQuicStreamConn(
 			quicStream,
 			quicConn.LocalAddr(),
 			quicConn.RemoteAddr(),
@@ -318,7 +299,7 @@ func (t *clientImpl) DialContextWithDialer(ctx context.Context, metadata *C.Meta
 				time.AfterFunc(C.DefaultTCPTimeout, func() {
 					openStreams := t.openStreams.Add(-1)
 					if openStreams == 0 && t.closed.Load() {
-						t.forceClose(quicConn, common.ClientClosed)
+						t.forceClose(quicConn, types.ClientClosed)
 					}
 				})
 			},
@@ -337,15 +318,15 @@ func (t *clientImpl) DialContextWithDialer(ctx context.Context, metadata *C.Meta
 	return stream, nil
 }
 
-func (t *clientImpl) ListenPacketWithDialer(ctx context.Context, metadata *C.Metadata, dialer C.Dialer, dialFn common.DialFunc) (net.PacketConn, error) {
-	quicConn, err := t.getQuicConn(ctx, dialer, dialFn)
+func (t *clientImpl) ListenPacket(ctx context.Context, metadata *C.Metadata) (net.PacketConn, error) {
+	quicConn, err := t.getQuicConn(ctx)
 	if err != nil {
 		return nil, err
 	}
 	openStreams := t.openStreams.Add(1)
 	if openStreams >= t.MaxOpenStreams {
 		t.openStreams.Add(-1)
-		return nil, common.TooManyOpenStreams
+		return nil, types.TooManyOpenStreams
 	}
 
 	pipe1, pipe2 := N.Pipe()
@@ -369,7 +350,7 @@ func (t *clientImpl) ListenPacketWithDialer(ctx context.Context, metadata *C.Met
 			time.AfterFunc(C.DefaultUDPTimeout, func() {
 				openStreams := t.openStreams.Add(-1)
 				if openStreams == 0 && t.closed.Load() {
-					t.forceClose(quicConn, common.ClientClosed)
+					t.forceClose(quicConn, types.ClientClosed)
 				}
 			})
 		},
@@ -381,16 +362,16 @@ type Client struct {
 	*clientImpl // use an independent pointer to let Finalizer can work no matter somewhere handle an influence in clientImpl inner
 }
 
-func (t *Client) DialContextWithDialer(ctx context.Context, metadata *C.Metadata, dialer C.Dialer, dialFn common.DialFunc) (net.Conn, error) {
-	conn, err := t.clientImpl.DialContextWithDialer(ctx, metadata, dialer, dialFn)
+func (t *Client) DialContext(ctx context.Context, metadata *C.Metadata) (net.Conn, error) {
+	conn, err := t.clientImpl.DialContext(ctx, metadata)
 	if err != nil {
 		return nil, err
 	}
 	return N.NewRefConn(conn, t), err
 }
 
-func (t *Client) ListenPacketWithDialer(ctx context.Context, metadata *C.Metadata, dialer C.Dialer, dialFn common.DialFunc) (net.PacketConn, error) {
-	pc, err := t.clientImpl.ListenPacketWithDialer(ctx, metadata, dialer, dialFn)
+func (t *Client) ListenPacket(ctx context.Context, metadata *C.Metadata) (net.PacketConn, error) {
+	pc, err := t.clientImpl.ListenPacket(ctx, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -398,14 +379,14 @@ func (t *Client) ListenPacketWithDialer(ctx context.Context, metadata *C.Metadat
 }
 
 func (t *Client) forceClose() {
-	t.clientImpl.forceClose(nil, common.ClientClosed)
+	t.clientImpl.forceClose(nil, types.ClientClosed)
 }
 
-func NewClient(clientOption *ClientOption, udp bool, dialerRef C.Dialer) *Client {
+func NewClient(clientOption *ClientOption, udp bool, dialFn types.DialFunc) *Client {
 	ci := &clientImpl{
 		ClientOption: clientOption,
+		dialFn:       dialFn,
 		udp:          udp,
-		dialerRef:    dialerRef,
 	}
 	c := &Client{ci}
 	runtime.SetFinalizer(c, closeClient)

@@ -8,28 +8,17 @@ import (
 	"strings"
 
 	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/dialer"
 	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/tunnel"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
 type proxyDialer struct {
 	proxy     C.ProxyAdapter
-	dialer    C.Dialer
 	statistic bool
 }
 
-func New(proxy C.ProxyAdapter, dialer C.Dialer, statistic bool) C.Dialer {
-	return proxyDialer{proxy: proxy, dialer: dialer, statistic: statistic}
-}
-
-func NewByName(proxyName string, dialer C.Dialer) (C.Dialer, error) {
-	proxies := tunnel.Proxies()
-	if proxy, ok := proxies[proxyName]; ok {
-		return New(proxy, dialer, true), nil
-	}
-	return nil, fmt.Errorf("proxyName[%s] not found", proxyName)
+func New(proxy C.ProxyAdapter, statistic bool) C.Dialer {
+	return proxyDialer{proxy: proxy, statistic: statistic}
 }
 
 func (p proxyDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
@@ -45,18 +34,13 @@ func (p proxyDialer) DialContext(ctx context.Context, network, address string) (
 		if !currentMeta.Resolved() { // should not happen, maybe by a wrongly implemented proxy, but we can handle this (:
 			err = pc.ResolveUDP(ctx, currentMeta)
 			if err != nil {
+				_ = pc.Close()
 				return nil, err
 			}
 		}
 		return N.NewBindPacketConn(pc, currentMeta.UDPAddr()), nil
 	}
-	var conn C.Conn
-	var err error
-	if _, ok := p.dialer.(dialer.Dialer); ok { // first using old function to let mux work
-		conn, err = p.proxy.DialContext(ctx, currentMeta)
-	} else {
-		conn, err = p.proxy.DialContextWithDialer(ctx, p.dialer, currentMeta)
-	}
+	conn, err := p.proxy.DialContext(ctx, currentMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -67,19 +51,16 @@ func (p proxyDialer) DialContext(ctx context.Context, network, address string) (
 }
 
 func (p proxyDialer) ListenPacket(ctx context.Context, network, address string, rAddrPort netip.AddrPort) (net.PacketConn, error) {
+	if !strings.HasPrefix(network, "udp") {
+		return nil, fmt.Errorf("proxyDialer only support udp network, but got: %s", network)
+	}
 	currentMeta := &C.Metadata{Type: C.INNER, DstIP: rAddrPort.Addr(), DstPort: rAddrPort.Port()}
 	return p.listenPacket(ctx, currentMeta)
 }
 
 func (p proxyDialer) listenPacket(ctx context.Context, currentMeta *C.Metadata) (C.PacketConn, error) {
-	var pc C.PacketConn
-	var err error
 	currentMeta.NetWork = C.UDP
-	if _, ok := p.dialer.(dialer.Dialer); ok { // first using old function to let mux work
-		pc, err = p.proxy.ListenPacketContext(ctx, currentMeta)
-	} else {
-		pc, err = p.proxy.ListenPacketWithDialer(ctx, p.dialer, currentMeta)
-	}
+	pc, err := p.proxy.ListenPacketContext(ctx, currentMeta)
 	if err != nil {
 		return nil, err
 	}

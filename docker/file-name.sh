@@ -1,5 +1,5 @@
 #!/bin/sh
-os="clashauto-linux-"
+os="mihomo-linux-"
 case $TARGETPLATFORM in
     "linux/amd64")
         arch="amd64-v1"
@@ -13,7 +13,7 @@ case $TARGETPLATFORM in
     "linux/arm/v7")
         arch="armv7"
         ;;
-    "riscv64")
+    "linux/riscv64")
         arch="riscv64"
         ;;
     *)

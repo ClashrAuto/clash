@@ -2,13 +2,12 @@ package dns
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
+	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 
@@ -16,11 +15,10 @@ import (
 )
 
 type client struct {
-	port           string
-	host           string
-	dialer         *dnsDialer
-	schema         string
-	skipCertVerify bool
+	port   string
+	host   string
+	dialer *dnsDialer
+	schema string
 }
 
 var _ dnsClient = (*client)(nil)
@@ -42,23 +40,6 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 		return nil, err
 	}
 	defer conn.Close()
-
-	if c.schema == "tls" {
-		tlsConfig, err := ca.GetTLSConfig(ca.Option{
-			TLSConfig: &tls.Config{
-				ServerName:         c.host,
-				InsecureSkipVerify: c.skipCertVerify,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		tlsConn := tls.Client(conn, tlsConfig)
-		if err := tlsConn.HandshakeContext(ctx); err != nil {
-			return nil, err
-		}
-		conn = tlsConn
-	}
 
 	// miekg/dns ExchangeContext doesn't respond to context cancel.
 	// this is a workaround
@@ -107,7 +88,7 @@ func (c *client) ExchangeContext(ctx context.Context, m *D.Msg) (*D.Msg, error) 
 
 func (c *client) ResetConnection() {}
 
-func newClient(addr string, resolver *Resolver, netType string, params map[string]string, proxyAdapter C.ProxyAdapter, proxyName string) *client {
+func newClient(addr string, resolver resolver.Resolver, netType string, params map[string]string, proxyAdapter C.ProxyAdapter, proxyName string) *client {
 	host, port, _ := net.SplitHostPort(addr)
 	c := &client{
 		port:   port,
@@ -117,12 +98,6 @@ func newClient(addr string, resolver *Resolver, netType string, params map[strin
 	}
 	if strings.HasPrefix(netType, "tcp") {
 		c.schema = "tcp"
-		if strings.HasSuffix(netType, "tls") {
-			c.schema = "tls"
-		}
-	}
-	if params["skip-cert-verify"] == "true" {
-		c.skipCertVerify = true
 	}
 	return c
 }

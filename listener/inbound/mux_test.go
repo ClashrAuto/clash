@@ -6,9 +6,11 @@ import (
 	"github.com/metacubex/mihomo/adapter/outbound"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
 )
 
-var singMuxProtocolList = []string{"smux", "yamux"} // don't test "h2mux" because it has some confused bugs
+var singMuxProtocolList = []string{"h2mux", "smux", "yamux"}
+var singMuxProtocolListLong = []string{"yamux"} // don't test "smux", "h2mux" because it has some confused bugs
 
 // notCloseProxyAdapter is a proxy adapter that does not close the underlying outbound.ProxyAdapter.
 // The outbound.SingMux will close the underlying outbound.ProxyAdapter when it is closed, but we don't want to close it.
@@ -26,7 +28,6 @@ func testSingMux(t *testing.T, tunnel *TestTunnel, out outbound.ProxyAdapter) {
 		for _, protocol := range singMuxProtocolList {
 			protocol := protocol
 			t.Run(protocol, func(t *testing.T) {
-				t.Parallel()
 				singMuxOption := outbound.SingMuxOption{
 					Enabled:  true,
 					Protocol: protocol,
@@ -37,7 +38,10 @@ func testSingMux(t *testing.T, tunnel *TestTunnel, out outbound.ProxyAdapter) {
 				}
 				defer out.Close()
 
-				tunnel.DoTest(t, out)
+				tunnel.DoSequentialTest(t, out)
+				if slices.Contains(singMuxProtocolListLong, protocol) {
+					tunnel.DoConcurrentTest(t, out)
+				}
 			})
 		}
 	})

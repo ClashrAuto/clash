@@ -13,9 +13,11 @@ import (
 	"github.com/metacubex/mihomo/common/buf"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/ech"
-	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
+	"github.com/metacubex/mihomo/listener/jls"
+	"github.com/metacubex/mihomo/listener/restls"
+	"github.com/metacubex/mihomo/listener/shadowtls"
 	"github.com/metacubex/mihomo/listener/sing"
 	"github.com/metacubex/mihomo/ntp"
 	"github.com/metacubex/mihomo/transport/anytls/padding"
@@ -24,18 +26,19 @@ import (
 	"github.com/metacubex/sing/common/auth"
 	"github.com/metacubex/sing/common/bufio"
 	M "github.com/metacubex/sing/common/metadata"
+	"github.com/metacubex/tls"
 )
 
 type Listener struct {
 	closed    bool
 	config    LC.AnyTLSServer
 	listeners []net.Listener
-	tlsConfig *tlsC.Config
+	tlsConfig *tls.Config
 	userMap   map[[32]byte]string
 	padding   atomic.Pointer[padding.PaddingFactory]
 }
 
-func New(config LC.AnyTLSServer, tunnel C.Tunnel, additions ...inbound.Addition) (sl *Listener, err error) {
+func New(config LC.AnyTLSServer, lc C.InboundListenConfig, tunnel C.Tunnel, additions ...inbound.Addition) (sl *Listener, err error) {
 	if len(additions) == 0 {
 		additions = []inbound.Addition{
 			inbound.WithInName("DEFAULT-ANYTLS"),
@@ -43,33 +46,72 @@ func New(config LC.AnyTLSServer, tunnel C.Tunnel, additions ...inbound.Addition)
 		}
 	}
 
-	tlsConfig := &tlsC.Config{Time: ntp.Now}
+	var shadowTLSBuilder *shadowtls.Builder
+	var restlsBuilder *restls.Builder
+	var jlsBuilder *jls.Builder
+	tlsConfig := &tls.Config{Time: ntp.Now}
 	if config.Certificate != "" && config.PrivateKey != "" {
-		cert, err := ca.LoadTLSKeyPair(config.Certificate, config.PrivateKey, C.Path)
+		certLoader, err := ca.NewTLSKeyPairLoader(config.Certificate, config.PrivateKey)
 		if err != nil {
 			return nil, err
 		}
-		tlsConfig.Certificates = []tlsC.Certificate{tlsC.UCertificate(cert)}
+		tlsConfig.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			return certLoader()
+		}
 
 		if config.EchKey != "" {
-			err = ech.LoadECHKey(config.EchKey, tlsConfig, C.Path)
+			err = ech.LoadECHKey(config.EchKey, tlsConfig)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
-	tlsConfig.ClientAuth = tlsC.ClientAuthTypeFromString(config.ClientAuthType)
+	tlsConfig.ClientAuth = ca.ClientAuthTypeFromString(config.ClientAuthType)
 	if len(config.ClientAuthCert) > 0 {
-		if tlsConfig.ClientAuth == tlsC.NoClientCert {
-			tlsConfig.ClientAuth = tlsC.RequireAndVerifyClientCert
+		if tlsConfig.ClientAuth == tls.NoClientCert {
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
 	}
-	if tlsConfig.ClientAuth == tlsC.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tlsC.RequireAndVerifyClientCert {
-		pool, err := ca.LoadCertificates(config.ClientAuthCert, C.Path)
+	if tlsConfig.ClientAuth == tls.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tls.RequireAndVerifyClientCert {
+		pool, err := ca.LoadCertificates(config.ClientAuthCert)
 		if err != nil {
 			return nil, err
 		}
 		tlsConfig.ClientCAs = pool
+	}
+	if tlsConfig.ClientAuth != tls.NoClientCert && tlsConfig.GetCertificate == nil {
+		return nil, errors.New("client-auth requires certificate")
+	}
+	securityModes := make([]string, 0, 4)
+	if tlsConfig.GetCertificate != nil {
+		securityModes = append(securityModes, "certificate")
+	}
+	if config.ShadowTLS.Enable {
+		securityModes = append(securityModes, "shadow-tls")
+	}
+	if config.ResTLS.Enable {
+		securityModes = append(securityModes, "res-tls")
+	}
+	if config.JLSConfig.Enable {
+		securityModes = append(securityModes, "jls")
+	}
+	if len(securityModes) > 1 {
+		return nil, errors.New("security modes are mutually exclusive: " + strings.Join(securityModes, ", "))
+	}
+	if config.ShadowTLS.Enable {
+		shadowTLSBuilder, err = shadowtls.New(config.ShadowTLS, tunnel)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if config.ResTLS.Enable {
+		restlsBuilder = restls.New(config.ResTLS, tunnel)
+	}
+	if config.JLSConfig.Enable {
+		jlsBuilder, err = jls.New(config.JLSConfig, tunnel)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sl = &Listener{
@@ -104,14 +146,20 @@ func New(config LC.AnyTLSServer, tunnel C.Tunnel, additions ...inbound.Addition)
 		addr := addr
 
 		//TCP
-		l, err := inbound.Listen("tcp", addr)
+		l, err := lc.Listen(context.Background(), "tcp", addr)
 		if err != nil {
 			return nil, err
 		}
-		if len(tlsConfig.Certificates) > 0 {
-			l = tlsC.NewListener(l, tlsConfig)
-		} else {
-			return nil, errors.New("disallow using AnyTLS without certificates config")
+		if shadowTLSBuilder != nil {
+			l = shadowTLSBuilder.NewListener(l)
+		} else if restlsBuilder != nil {
+			l = restlsBuilder.NewListener(l)
+		} else if jlsBuilder != nil {
+			l = jlsBuilder.NewListener(l)
+		} else if tlsConfig.GetCertificate != nil {
+			l = tls.NewListener(l, tlsConfig)
+		} else if !config.AllowInsecure {
+			return nil, errors.New("disallow using AnyTLS without certificates/shadow-tls/res-tls/jls/allow-insecure config")
 		}
 		sl.listeners = append(sl.listeners, l)
 
@@ -199,7 +247,7 @@ func (l *Listener) HandleConn(conn net.Conn, h *sing.ListenerHandler) {
 			return
 		}
 
-		// It seems that clashauto does not implement a connection error reporting mechanism, so we report success directly.
+		// It seems that mihomo does not implement a connection error reporting mechanism, so we report success directly.
 		err = stream.HandshakeSuccess()
 		if err != nil {
 			return

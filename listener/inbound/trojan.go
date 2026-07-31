@@ -19,6 +19,10 @@ type TrojanOption struct {
 	ClientAuthType  string         `inbound:"client-auth-type,omitempty"`
 	ClientAuthCert  string         `inbound:"client-auth-cert,omitempty"`
 	EchKey          string         `inbound:"ech-key,omitempty"`
+	AllowInsecure   bool           `inbound:"allow-insecure,omitempty"`
+	ShadowTLS       ShadowTLS      `inbound:"shadow-tls,omitempty"`
+	ResTLS          ResTLS         `inbound:"res-tls,omitempty"`
+	JLSConfig       JLSConfig      `inbound:"jls-config,omitempty"`
 	RealityConfig   RealityConfig  `inbound:"reality-config,omitempty"`
 	MuxOption       MuxOption      `inbound:"mux-option,omitempty"`
 	SSOption        TrojanSSOption `inbound:"ss-option,omitempty"`
@@ -73,6 +77,10 @@ func NewTrojan(options *TrojanOption) (*Trojan, error) {
 			ClientAuthType:  options.ClientAuthType,
 			ClientAuthCert:  options.ClientAuthCert,
 			EchKey:          options.EchKey,
+			AllowInsecure:   options.AllowInsecure,
+			ShadowTLS:       options.ShadowTLS.Build(),
+			ResTLS:          options.ResTLS.Build(),
+			JLSConfig:       options.JLSConfig.Build(),
 			RealityConfig:   options.RealityConfig.Build(),
 			MuxOption:       options.MuxOption.Build(),
 			TrojanSSOption: LC.TrojanSSOption{
@@ -103,7 +111,7 @@ func (v *Trojan) Address() string {
 // Listen implements constant.InboundListener
 func (v *Trojan) Listen(tunnel C.Tunnel) error {
 	var err error
-	v.l, err = trojan.New(v.vs, tunnel, v.Additions()...)
+	v.l, err = trojan.New(v.vs, v.ListenConfig(), tunnel, v.Additions()...)
 	if err != nil {
 		return err
 	}

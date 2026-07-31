@@ -1,12 +1,13 @@
 package common
 
 import (
-	C "github.com/metacubex/mihomo/constant"
 	"net/netip"
+
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type IPSuffix struct {
-	*Base
+	Base
 	ipBytes     []byte
 	bits        int
 	payload     string
@@ -46,7 +47,7 @@ func (is *IPSuffix) Match(metadata *C.Metadata, helper C.RuleMatchHelper) (bool,
 		}
 	}
 
-	if (is.ipBytes[size-bits/8-1] << (8 - bits%8)) != (mIPBytes[size-bits/8-1] << (8 - bits%8)) {
+	if bits%8 != 0 && (is.ipBytes[size-bits/8-1] << (8 - bits%8)) != (mIPBytes[size-bits/8-1] << (8 - bits%8)) {
 		return false, ""
 	}
 
@@ -68,7 +69,7 @@ func NewIPSuffix(payload, adapter string, isSrc, noResolveIP bool) (*IPSuffix, e
 	}
 
 	return &IPSuffix{
-		Base:        &Base{},
+		Base:        Base{},
 		payload:     payload,
 		ipBytes:     ipnet.Addr().AsSlice(),
 		bits:        ipnet.Bits(),
@@ -77,3 +78,5 @@ func NewIPSuffix(payload, adapter string, isSrc, noResolveIP bool) (*IPSuffix, e
 		noResolveIP: noResolveIP,
 	}, nil
 }
+
+var _ C.Rule = (*IPSuffix)(nil)

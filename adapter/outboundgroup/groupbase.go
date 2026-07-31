@@ -14,7 +14,6 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	P "github.com/metacubex/mihomo/constant/provider"
 	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/tunnel"
 
 	"github.com/dlclark/regexp2"
 	"golang.org/x/exp/slices"
@@ -22,6 +21,8 @@ import (
 
 type GroupBase struct {
 	*outbound.Base
+	hidden            bool
+	icon              string
 	filterRegs        []*regexp2.Regexp
 	excludeFilterRegs []*regexp2.Regexp
 	excludeTypeArray  []string
@@ -30,8 +31,9 @@ type GroupBase struct {
 	failedTimes       int
 	failedTime        time.Time
 	failedTesting     atomic.Bool
-	TestTimeout       int
+	testTimeout       int
 	maxFailedTimes    int
+	emptyFallback     C.Proxy
 
 	// for GetProxies
 	getProxiesMutex  sync.Mutex
@@ -42,11 +44,14 @@ type GroupBase struct {
 type GroupBaseOption struct {
 	Name           string
 	Type           C.AdapterType
+	Hidden         bool
+	Icon           string
 	Filter         string
 	ExcludeFilter  string
 	ExcludeType    string
 	TestTimeout    int
 	MaxFailedTimes int
+	EmptyFallback  C.Proxy
 	Providers      []P.ProxyProvider
 }
 
@@ -74,23 +79,38 @@ func NewGroupBase(opt GroupBaseOption) *GroupBase {
 
 	gb := &GroupBase{
 		Base:              outbound.NewBase(outbound.BaseOption{Name: opt.Name, Type: opt.Type}),
+		hidden:            opt.Hidden,
+		icon:              opt.Icon,
 		filterRegs:        filterRegs,
 		excludeFilterRegs: excludeFilterRegs,
 		excludeTypeArray:  excludeTypeArray,
 		providers:         opt.Providers,
 		failedTesting:     atomic.NewBool(false),
-		TestTimeout:       opt.TestTimeout,
+		testTimeout:       opt.TestTimeout,
 		maxFailedTimes:    opt.MaxFailedTimes,
+		emptyFallback:     opt.EmptyFallback,
 	}
 
-	if gb.TestTimeout == 0 {
-		gb.TestTimeout = 5000
+	if gb.testTimeout == 0 {
+		gb.testTimeout = 5000
 	}
 	if gb.maxFailedTimes == 0 {
 		gb.maxFailedTimes = 5
 	}
 
 	return gb
+}
+
+func (gb *GroupBase) Hidden() bool {
+	return gb.hidden
+}
+
+func (gb *GroupBase) Icon() string {
+	return gb.icon
+}
+
+func (gb *GroupBase) EmptyFallback() C.Proxy {
+	return gb.emptyFallback
 }
 
 func (gb *GroupBase) Touch() {
@@ -204,7 +224,7 @@ func (gb *GroupBase) GetProxies(touch bool) []C.Proxy {
 	}
 
 	if len(proxies) == 0 {
-		return []C.Proxy{tunnel.Proxies()["COMPATIBLE"]}
+		return []C.Proxy{gb.EmptyFallback()}
 	}
 
 	// only cache when proxies not empty
@@ -265,14 +285,14 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
 			log.Debugln("ProxyGroup: %s first failed", gb.Name())
 			gb.failedTime = time.Now()
 		} else {
-			if time.Since(gb.failedTime) > time.Duration(gb.TestTimeout)*time.Millisecond {
+			if time.Since(gb.failedTime) > time.Duration(gb.testTimeout)*time.Millisecond {
 				gb.failedTimes = 0
 				return
 			}
 
 			log.Debugln("ProxyGroup: %s failed count: %d", gb.Name(), gb.failedTimes)
 			if gb.failedTimes >= gb.maxFailedTimes {
-				log.Warnln("because %s failed multiple times, active health check", gb.Name())
+				log.Warnln("because %s failed multiple times, activate health check", gb.Name())
 				fn()
 			}
 		}

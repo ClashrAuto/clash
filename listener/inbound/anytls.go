@@ -12,11 +12,15 @@ import (
 type AnyTLSOption struct {
 	BaseOption
 	Users          map[string]string `inbound:"users,omitempty"`
-	Certificate    string            `inbound:"certificate"`
-	PrivateKey     string            `inbound:"private-key"`
+	Certificate    string            `inbound:"certificate,omitempty"`
+	PrivateKey     string            `inbound:"private-key,omitempty"`
 	ClientAuthType string            `inbound:"client-auth-type,omitempty"`
 	ClientAuthCert string            `inbound:"client-auth-cert,omitempty"`
 	EchKey         string            `inbound:"ech-key,omitempty"`
+	ShadowTLS      ShadowTLS         `inbound:"shadow-tls,omitempty"`
+	ResTLS         ResTLS            `inbound:"res-tls,omitempty"`
+	JLSConfig      JLSConfig         `inbound:"jls-config,omitempty"`
+	AllowInsecure  bool              `inbound:"allow-insecure,omitempty"`
 	PaddingScheme  string            `inbound:"padding-scheme,omitempty"`
 }
 
@@ -48,6 +52,10 @@ func NewAnyTLS(options *AnyTLSOption) (*AnyTLS, error) {
 			ClientAuthType: options.ClientAuthType,
 			ClientAuthCert: options.ClientAuthCert,
 			EchKey:         options.EchKey,
+			ShadowTLS:      options.ShadowTLS.Build(),
+			ResTLS:         options.ResTLS.Build(),
+			JLSConfig:      options.JLSConfig.Build(),
+			AllowInsecure:  options.AllowInsecure,
 			PaddingScheme:  options.PaddingScheme,
 		},
 	}, nil
@@ -72,7 +80,7 @@ func (v *AnyTLS) Address() string {
 // Listen implements constant.InboundListener
 func (v *AnyTLS) Listen(tunnel C.Tunnel) error {
 	var err error
-	v.l, err = anytls.New(v.vs, tunnel, v.Additions()...)
+	v.l, err = anytls.New(v.vs, v.ListenConfig(), tunnel, v.Additions()...)
 	if err != nil {
 		return err
 	}

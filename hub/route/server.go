@@ -2,10 +2,10 @@ package route
 
 import (
 	"bytes"
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -17,18 +17,17 @@ import (
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/ech"
-	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/ntp"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
-	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
-	"github.com/sagernet/cors"
+	"github.com/metacubex/chi"
+	"github.com/metacubex/chi/cors"
+	"github.com/metacubex/chi/middleware"
+	"github.com/metacubex/chi/render"
+	"github.com/metacubex/http"
+	"github.com/metacubex/tls"
 )
 
 var (
@@ -47,8 +46,10 @@ func SetEmbedMode(embed bool) {
 }
 
 type Traffic struct {
-	Up   int64 `json:"up"`
-	Down int64 `json:"down"`
+	Up        int64 `json:"up"`
+	Down      int64 `json:"down"`
+	UpTotal   int64 `json:"upTotal"`
+	DownTotal int64 `json:"downTotal"`
 }
 
 type Memory struct {
@@ -61,6 +62,7 @@ type Config struct {
 	TLSAddr        string
 	UnixAddr       string
 	PipeAddr       string
+	RoutingMark    int
 	Secret         string
 	Certificate    string
 	PrivateKey     string
@@ -132,6 +134,7 @@ func router(isDebug bool, secret string, dohServer string, cors Cors) *chi.Mux {
 		r.Mount("/providers/rules", ruleProviderRouter())
 		r.Mount("/cache", cacheRouter())
 		r.Mount("/dns", dnsRouter())
+		r.Mount("/storage", storageRouter())
 		if !embedMode { // disallow restart in embed mode
 			r.Mount("/restart", restartRouter())
 		}
@@ -165,7 +168,9 @@ func start(cfg *Config) {
 
 	// handle addr
 	if len(cfg.Addr) > 0 {
-		l, err := inbound.Listen("tcp", cfg.Addr)
+		lc := inbound.NewListenConfig()
+		lc.SetRouteMark(cfg.RoutingMark)
+		l, err := lc.Listen(context.Background(), "tcp", cfg.Addr)
 		if err != nil {
 			log.Errorln("External controller listen error: %s", err)
 			return
@@ -191,30 +196,34 @@ func startTLS(cfg *Config) {
 
 	// handle tlsAddr
 	if len(cfg.TLSAddr) > 0 {
-		cert, err := ca.LoadTLSKeyPair(cfg.Certificate, cfg.PrivateKey, C.Path)
+		certLoader, err := ca.NewTLSKeyPairLoader(cfg.Certificate, cfg.PrivateKey)
 		if err != nil {
 			log.Errorln("External controller tls listen error: %s", err)
 			return
 		}
 
-		l, err := inbound.Listen("tcp", cfg.TLSAddr)
+		lc := inbound.NewListenConfig()
+		lc.SetRouteMark(cfg.RoutingMark)
+		l, err := lc.Listen(context.Background(), "tcp", cfg.TLSAddr)
 		if err != nil {
 			log.Errorln("External controller tls listen error: %s", err)
 			return
 		}
 
 		log.Infoln("RESTful API tls listening at: %s", l.Addr().String())
-		tlsConfig := &tlsC.Config{Time: ntp.Now}
+		tlsConfig := &tls.Config{Time: ntp.Now}
 		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
-		tlsConfig.Certificates = []tlsC.Certificate{tlsC.UCertificate(cert)}
-		tlsConfig.ClientAuth = tlsC.ClientAuthTypeFromString(cfg.ClientAuthType)
+		tlsConfig.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			return certLoader()
+		}
+		tlsConfig.ClientAuth = ca.ClientAuthTypeFromString(cfg.ClientAuthType)
 		if len(cfg.ClientAuthCert) > 0 {
-			if tlsConfig.ClientAuth == tlsC.NoClientCert {
-				tlsConfig.ClientAuth = tlsC.RequireAndVerifyClientCert
+			if tlsConfig.ClientAuth == tls.NoClientCert {
+				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 			}
 		}
-		if tlsConfig.ClientAuth == tlsC.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tlsC.RequireAndVerifyClientCert {
-			pool, err := ca.LoadCertificates(cfg.ClientAuthCert, C.Path)
+		if tlsConfig.ClientAuth == tls.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tls.RequireAndVerifyClientCert {
+			pool, err := ca.LoadCertificates(cfg.ClientAuthCert)
 			if err != nil {
 				log.Errorln("External controller tls listen error: %s", err)
 				return
@@ -223,7 +232,7 @@ func startTLS(cfg *Config) {
 		}
 
 		if cfg.EchKey != "" {
-			err = ech.LoadECHKey(cfg.EchKey, tlsConfig, C.Path)
+			err = ech.LoadECHKey(cfg.EchKey, tlsConfig)
 			if err != nil {
 				log.Errorln("External controller tls serve error: %s", err)
 				return
@@ -233,7 +242,7 @@ func startTLS(cfg *Config) {
 			Handler: router(cfg.IsDebug, cfg.Secret, cfg.DohServer, cfg.Cors),
 		}
 		tlsServer = server
-		if err = server.Serve(tlsC.NewListenerForHttps(l, server, tlsConfig)); err != nil {
+		if err = server.Serve(tls.NewListener(l, tlsConfig)); err != nil {
 			log.Errorln("External controller tls serve error: %s", err)
 		}
 	}
@@ -267,7 +276,9 @@ func startUnix(cfg *Config) {
 		// should be used to delete the socket file prior to calling bind with the same path.
 		_ = syscall.Unlink(addr)
 
-		l, err := inbound.Listen("unix", addr)
+		lc := inbound.NewListenConfig()
+		lc.SetRouteMark(0) // don't set route mark for unix socket
+		l, err := lc.Listen(context.Background(), "unix", addr)
 		if err != nil {
 			log.Errorln("External controller unix listen error: %s", err)
 			return
@@ -354,14 +365,14 @@ func authentication(secret string) func(http.Handler) http.Handler {
 }
 
 func hello(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, render.M{"hello": "clashauto"})
+	render.JSON(w, r, render.M{"hello": "mihomo"})
 }
 
 func traffic(w http.ResponseWriter, r *http.Request) {
 	var wsConn net.Conn
 	if r.Header.Get("Upgrade") == "websocket" {
 		var err error
-		wsConn, _, _, err = ws.UpgradeHTTP(r, w)
+		wsConn, _, err = wsUpgrade(r, w)
 		if err != nil {
 			return
 		}
@@ -380,9 +391,12 @@ func traffic(w http.ResponseWriter, r *http.Request) {
 	for range tick.C {
 		buf.Reset()
 		up, down := t.Now()
+		upTotal, downTotal := t.Total()
 		if err := json.NewEncoder(buf).Encode(Traffic{
-			Up:   up,
-			Down: down,
+			Up:        up,
+			Down:      down,
+			UpTotal:   upTotal,
+			DownTotal: downTotal,
 		}); err != nil {
 			break
 		}
@@ -391,7 +405,7 @@ func traffic(w http.ResponseWriter, r *http.Request) {
 			_, err = w.Write(buf.Bytes())
 			w.(http.Flusher).Flush()
 		} else {
-			err = wsutil.WriteMessage(wsConn, ws.StateServerSide, ws.OpText, buf.Bytes())
+			err = wsWriteServerText(wsConn, buf.Bytes())
 		}
 
 		if err != nil {
@@ -404,7 +418,7 @@ func memory(w http.ResponseWriter, r *http.Request) {
 	var wsConn net.Conn
 	if r.Header.Get("Upgrade") == "websocket" {
 		var err error
-		wsConn, _, _, err = ws.UpgradeHTTP(r, w)
+		wsConn, _, err = wsUpgrade(r, w)
 		if err != nil {
 			return
 		}
@@ -441,7 +455,7 @@ func memory(w http.ResponseWriter, r *http.Request) {
 			_, err = w.Write(buf.Bytes())
 			w.(http.Flusher).Flush()
 		} else {
-			err = wsutil.WriteMessage(wsConn, ws.StateServerSide, ws.OpText, buf.Bytes())
+			err = wsWriteServerText(wsConn, buf.Bytes())
 		}
 
 		if err != nil {
@@ -487,7 +501,7 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 	var wsConn net.Conn
 	if r.Header.Get("Upgrade") == "websocket" {
 		var err error
-		wsConn, _, _, err = ws.UpgradeHTTP(r, w)
+		wsConn, _, err = wsUpgrade(r, w)
 		if err != nil {
 			return
 		}
@@ -546,7 +560,7 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 			_, err = w.Write(buf.Bytes())
 			w.(http.Flusher).Flush()
 		} else {
-			err = wsutil.WriteMessage(wsConn, ws.StateServerSide, ws.OpText, buf.Bytes())
+			err = wsWriteServerText(wsConn, buf.Bytes())
 		}
 
 		if err != nil {

@@ -2,11 +2,9 @@ package outbound
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,18 +12,24 @@ import (
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/ech"
 	"github.com/metacubex/mihomo/component/proxydialer"
 	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/ntp"
 	"github.com/metacubex/mihomo/transport/gun"
-	clashautoVMess "github.com/metacubex/mihomo/transport/vmess"
+	"github.com/metacubex/mihomo/transport/jls"
+	"github.com/metacubex/mihomo/transport/mekya"
+	"github.com/metacubex/mihomo/transport/mkcp"
+	"github.com/metacubex/mihomo/transport/restls"
+	"github.com/metacubex/mihomo/transport/shadowtls"
+	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
 
+	"github.com/metacubex/http"
 	vmess "github.com/metacubex/sing-vmess"
 	"github.com/metacubex/sing-vmess/packetaddr"
 	M "github.com/metacubex/sing/common/metadata"
+	"github.com/metacubex/tls"
 )
 
 var ErrUDPRemoteAddrMismatch = errors.New("udp packet dropped due to mismatched remote address")
@@ -36,43 +40,106 @@ type Vmess struct {
 	option *VmessOption
 
 	// for gun mux
-	gunTLSConfig *tls.Config
-	gunConfig    *gun.Config
-	transport    *gun.TransportWrap
+	gunClient   *gun.Client
+	mekyaClient *mekya.Client
 
-	realityConfig *tlsC.RealityConfig
-	echConfig     *ech.Config
+	echConfig       *ech.Config
+	shadowTLSConfig *shadowtls.Config
+	restlsConfig    *restls.Config
+	jlsConfig       *jls.Config
+	realityConfig   *tlsC.RealityConfig
 }
 
 type VmessOption struct {
 	BasicOption
-	Name                string         `proxy:"name"`
-	Server              string         `proxy:"server"`
-	Port                int            `proxy:"port"`
-	UUID                string         `proxy:"uuid"`
-	AlterID             int            `proxy:"alterId"`
-	Cipher              string         `proxy:"cipher"`
-	UDP                 bool           `proxy:"udp,omitempty"`
-	Network             string         `proxy:"network,omitempty"`
-	TLS                 bool           `proxy:"tls,omitempty"`
-	ALPN                []string       `proxy:"alpn,omitempty"`
-	SkipCertVerify      bool           `proxy:"skip-cert-verify,omitempty"`
-	Fingerprint         string         `proxy:"fingerprint,omitempty"`
-	Certificate         string         `proxy:"certificate,omitempty"`
-	PrivateKey          string         `proxy:"private-key,omitempty"`
-	ServerName          string         `proxy:"servername,omitempty"`
-	ECHOpts             ECHOptions     `proxy:"ech-opts,omitempty"`
-	RealityOpts         RealityOptions `proxy:"reality-opts,omitempty"`
-	HTTPOpts            HTTPOptions    `proxy:"http-opts,omitempty"`
-	HTTP2Opts           HTTP2Options   `proxy:"h2-opts,omitempty"`
-	GrpcOpts            GrpcOptions    `proxy:"grpc-opts,omitempty"`
-	WSOpts              WSOptions      `proxy:"ws-opts,omitempty"`
-	PacketAddr          bool           `proxy:"packet-addr,omitempty"`
-	XUDP                bool           `proxy:"xudp,omitempty"`
-	PacketEncoding      string         `proxy:"packet-encoding,omitempty"`
-	GlobalPadding       bool           `proxy:"global-padding,omitempty"`
-	AuthenticatedLength bool           `proxy:"authenticated-length,omitempty"`
-	ClientFingerprint   string         `proxy:"client-fingerprint,omitempty"`
+	Name                string           `proxy:"name"`
+	Server              string           `proxy:"server"`
+	Port                int              `proxy:"port"`
+	UUID                string           `proxy:"uuid"`
+	AlterID             int              `proxy:"alterId"`
+	Cipher              string           `proxy:"cipher"`
+	UDP                 bool             `proxy:"udp,omitempty"`
+	Network             string           `proxy:"network,omitempty"`
+	TLS                 bool             `proxy:"tls,omitempty"`
+	ALPN                []string         `proxy:"alpn,omitempty"`
+	SkipCertVerify      bool             `proxy:"skip-cert-verify,omitempty"`
+	NameCertVerify      string           `proxy:"name-cert-verify,omitempty"`
+	Fingerprint         string           `proxy:"fingerprint,omitempty"`
+	Certificate         string           `proxy:"certificate,omitempty"`
+	PrivateKey          string           `proxy:"private-key,omitempty"`
+	ServerName          string           `proxy:"servername,omitempty"`
+	ECHOpts             ECHOptions       `proxy:"ech-opts,omitempty"`
+	ShadowTLSOpts       ShadowTLSOptions `proxy:"shadow-tls-opts,omitempty"`
+	RestlsOpts          RestlsOptions    `proxy:"restls-opts,omitempty"`
+	JLSOpts             JLSOptions       `proxy:"jls-opts,omitempty"`
+	RealityOpts         RealityOptions   `proxy:"reality-opts,omitempty"`
+	TLSMirrorOpts       TLSMirrorOptions `proxy:"tlsmirror-opts,omitempty"`
+	MekyaOpts           MekyaOptions     `proxy:"mekya-opts,omitempty"`
+	MKCPOpts            MKCPOptions      `proxy:"mkcp-opts,omitempty"`
+	HTTPOpts            HTTPOptions      `proxy:"http-opts,omitempty"`
+	HTTP2Opts           HTTP2Options     `proxy:"h2-opts,omitempty"`
+	GrpcOpts            GrpcOptions      `proxy:"grpc-opts,omitempty"`
+	WSOpts              WSOptions        `proxy:"ws-opts,omitempty"`
+	PacketAddr          bool             `proxy:"packet-addr,omitempty"`
+	XUDP                bool             `proxy:"xudp,omitempty"`
+	PacketEncoding      string           `proxy:"packet-encoding,omitempty"`
+	GlobalPadding       bool             `proxy:"global-padding,omitempty"`
+	AuthenticatedLength bool             `proxy:"authenticated-length,omitempty"`
+	ClientFingerprint   string           `proxy:"client-fingerprint,omitempty"`
+}
+
+type MKCPOptions struct {
+	MTU              uint32 `proxy:"mtu,omitempty"`
+	TTI              uint32 `proxy:"tti,omitempty"`
+	UplinkCapacity   uint32 `proxy:"uplink-capacity,omitempty"`
+	DownlinkCapacity uint32 `proxy:"downlink-capacity,omitempty"`
+	Congestion       bool   `proxy:"congestion,omitempty"`
+	WriteBuffer      uint32 `proxy:"write-buffer,omitempty"`
+	ReadBuffer       uint32 `proxy:"read-buffer,omitempty"`
+	Seed             string `proxy:"seed,omitempty"`
+	Header           string `proxy:"header,omitempty"`
+}
+
+func (o MKCPOptions) Build() mkcp.Config {
+	return mkcp.Config{
+		MTU:              o.MTU,
+		TTI:              o.TTI,
+		UplinkCapacity:   o.UplinkCapacity,
+		DownlinkCapacity: o.DownlinkCapacity,
+		Congestion:       o.Congestion,
+		WriteBuffer:      o.WriteBuffer,
+		ReadBuffer:       o.ReadBuffer,
+		Seed:             o.Seed,
+		Header:           o.Header,
+	}
+}
+
+type MekyaOptions struct {
+	URL                            string      `proxy:"url,omitempty"`
+	H2PoolSize                     int         `proxy:"h2-pool-size,omitempty"`
+	MaxWriteDelay                  int         `proxy:"max-write-delay,omitempty"`
+	MaxRequestSize                 int         `proxy:"max-request-size,omitempty"`
+	PollingIntervalInitial         int         `proxy:"polling-interval-initial,omitempty"`
+	MaxWriteSize                   int         `proxy:"max-write-size,omitempty"`
+	MaxWriteDurationMs             int         `proxy:"max-write-duration-ms,omitempty"`
+	MaxSimultaneousWriteConnection int         `proxy:"max-simultaneous-write-connection,omitempty"`
+	PacketWritingBuffer            int         `proxy:"packet-writing-buffer,omitempty"`
+	KCP                            MKCPOptions `proxy:"kcp,omitempty"`
+}
+
+func (o MekyaOptions) Build() mekya.Config {
+	return mekya.Config{
+		KCP:                            o.KCP.Build(),
+		URL:                            o.URL,
+		H2PoolSize:                     o.H2PoolSize,
+		MaxWriteDelay:                  o.MaxWriteDelay,
+		MaxRequestSize:                 o.MaxRequestSize,
+		PollingIntervalInitial:         o.PollingIntervalInitial,
+		MaxWriteSize:                   o.MaxWriteSize,
+		MaxWriteDurationMs:             o.MaxWriteDurationMs,
+		MaxSimultaneousWriteConnection: o.MaxSimultaneousWriteConnection,
+		PacketWritingBuffer:            o.PacketWritingBuffer,
+	}
 }
 
 type HTTPOptions struct {
@@ -88,6 +155,11 @@ type HTTP2Options struct {
 
 type GrpcOptions struct {
 	GrpcServiceName string `proxy:"grpc-service-name,omitempty"`
+	GrpcUserAgent   string `proxy:"grpc-user-agent,omitempty"`
+	PingInterval    int    `proxy:"ping-interval,omitempty"`
+	MaxConnections  int    `proxy:"max-connections,omitempty"`
+	MinStreams      int    `proxy:"min-streams,omitempty"`
+	MaxStreams      int    `proxy:"max-streams,omitempty"`
 }
 
 type WSOptions struct {
@@ -99,12 +171,11 @@ type WSOptions struct {
 	V2rayHttpUpgradeFastOpen bool              `proxy:"v2ray-http-upgrade-fast-open,omitempty"`
 }
 
-// StreamConnContext implements C.ProxyAdapter
 func (v *Vmess) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.Metadata) (_ net.Conn, err error) {
 	switch v.option.Network {
 	case "ws":
 		host, port, _ := net.SplitHostPort(v.addr)
-		wsOpts := &clashautoVMess.WebsocketConfig{
+		wsOpts := &mihomoVMess.WebsocketConfig{
 			Host:                     host,
 			Port:                     port,
 			Path:                     v.option.WSOpts.Path,
@@ -124,111 +195,90 @@ func (v *Vmess) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.M
 		}
 
 		if v.option.TLS {
-			wsOpts.TLS = true
-			wsOpts.TLSConfig, err = ca.GetTLSConfig(ca.Option{
-				TLSConfig: &tls.Config{
-					ServerName:         host,
-					InsecureSkipVerify: v.option.SkipCertVerify,
-					NextProtos:         []string{"http/1.1"},
-				},
-				Fingerprint: v.option.Fingerprint,
-				Certificate: v.option.Certificate,
-				PrivateKey:  v.option.PrivateKey,
-			})
-			if err != nil {
-				return nil, err
+			serverName := host
+			if v.option.ServerName != "" {
+				serverName = v.option.ServerName
+			} else if host := wsOpts.Headers.Get("Host"); host != "" {
+				serverName = host
 			}
 
-			if v.option.ServerName != "" {
-				wsOpts.TLSConfig.ServerName = v.option.ServerName
-			} else if host := wsOpts.Headers.Get("Host"); host != "" {
-				wsOpts.TLSConfig.ServerName = host
+			if v.shadowTLSConfig != nil || v.restlsConfig != nil || v.jlsConfig != nil {
+				c, err = mihomoVMess.StreamTLSConn(ctx, c, &mihomoVMess.TLSConfig{
+					Host:              serverName,
+					SkipCertVerify:    v.option.SkipCertVerify,
+					NameCertVerify:    v.option.NameCertVerify,
+					FingerPrint:       v.option.Fingerprint,
+					Certificate:       v.option.Certificate,
+					PrivateKey:        v.option.PrivateKey,
+					ClientFingerprint: v.option.ClientFingerprint,
+					NextProtos:        []string{"http/1.1"},
+					ShadowTLS:         v.shadowTLSConfig,
+					Restls:            v.restlsConfig,
+					JLS:               v.jlsConfig,
+				})
+				if err != nil {
+					return nil, err
+				}
+			} else if v.option.TLSMirrorOpts.PrimaryKey != "" {
+				c, err = v.streamTLSConn(ctx, c, false)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				wsOpts.TLS = true
+				wsOpts.TLSConfig, err = ca.GetTLSConfig(ca.Option{
+					TLSConfig: &tls.Config{
+						ServerName:         serverName,
+						InsecureSkipVerify: v.option.SkipCertVerify,
+						NextProtos:         []string{"http/1.1"},
+					},
+					Fingerprint:    v.option.Fingerprint,
+					NameCertVerify: v.option.NameCertVerify,
+					Certificate:    v.option.Certificate,
+					PrivateKey:     v.option.PrivateKey,
+				})
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
-		c, err = clashautoVMess.StreamWebsocketConn(ctx, c, wsOpts)
+		c, err = mihomoVMess.StreamWebsocketConn(ctx, c, wsOpts)
 	case "http":
 		// readability first, so just copy default TLS logic
-		if v.option.TLS {
-			host, _, _ := net.SplitHostPort(v.addr)
-			tlsOpts := &clashautoVMess.TLSConfig{
-				Host:              host,
-				SkipCertVerify:    v.option.SkipCertVerify,
-				ClientFingerprint: v.option.ClientFingerprint,
-				ECH:               v.echConfig,
-				Reality:           v.realityConfig,
-				NextProtos:        v.option.ALPN,
-			}
-
-			if v.option.ServerName != "" {
-				tlsOpts.Host = v.option.ServerName
-			}
-			c, err = clashautoVMess.StreamTLSConn(ctx, c, tlsOpts)
-			if err != nil {
-				return nil, err
-			}
+		c, err = v.streamTLSConn(ctx, c, false)
+		if err != nil {
+			return nil, err
 		}
 
 		host, _, _ := net.SplitHostPort(v.addr)
-		httpOpts := &clashautoVMess.HTTPConfig{
+		httpOpts := &mihomoVMess.HTTPConfig{
 			Host:    host,
 			Method:  v.option.HTTPOpts.Method,
 			Path:    v.option.HTTPOpts.Path,
 			Headers: v.option.HTTPOpts.Headers,
 		}
 
-		c = clashautoVMess.StreamHTTPConn(c, httpOpts)
+		c = mihomoVMess.StreamHTTPConn(c, httpOpts)
 	case "h2":
-		host, _, _ := net.SplitHostPort(v.addr)
-		tlsOpts := clashautoVMess.TLSConfig{
-			Host:              host,
-			SkipCertVerify:    v.option.SkipCertVerify,
-			FingerPrint:       v.option.Fingerprint,
-			Certificate:       v.option.Certificate,
-			PrivateKey:        v.option.PrivateKey,
-			NextProtos:        []string{"h2"},
-			ClientFingerprint: v.option.ClientFingerprint,
-			Reality:           v.realityConfig,
-		}
-
-		if v.option.ServerName != "" {
-			tlsOpts.Host = v.option.ServerName
-		}
-
-		c, err = clashautoVMess.StreamTLSConn(ctx, c, &tlsOpts)
+		c, err = v.streamTLSConn(ctx, c, true)
 		if err != nil {
 			return nil, err
 		}
 
-		h2Opts := &clashautoVMess.H2Config{
+		h2Opts := &mihomoVMess.H2Config{
 			Hosts: v.option.HTTP2Opts.Host,
 			Path:  v.option.HTTP2Opts.Path,
 		}
 
-		c, err = clashautoVMess.StreamH2Conn(ctx, c, h2Opts)
+		c, err = mihomoVMess.StreamH2Conn(ctx, c, h2Opts)
 	case "grpc":
-		c, err = gun.StreamGunWithConn(c, v.gunTLSConfig, v.gunConfig, v.echConfig, v.realityConfig)
+		break // already handle in dialContext
+	case "mekya":
+		break // already handle in dialContext
 	default:
+		// default tcp network
 		// handle TLS
-		if v.option.TLS {
-			host, _, _ := net.SplitHostPort(v.addr)
-			tlsOpts := &clashautoVMess.TLSConfig{
-				Host:              host,
-				SkipCertVerify:    v.option.SkipCertVerify,
-				FingerPrint:       v.option.Fingerprint,
-				Certificate:       v.option.Certificate,
-				PrivateKey:        v.option.PrivateKey,
-				ClientFingerprint: v.option.ClientFingerprint,
-				ECH:               v.echConfig,
-				Reality:           v.realityConfig,
-				NextProtos:        v.option.ALPN,
-			}
-
-			if v.option.ServerName != "" {
-				tlsOpts.Host = v.option.ServerName
-			}
-
-			c, err = clashautoVMess.StreamTLSConn(ctx, c, tlsOpts)
-		}
+		c, err = v.streamTLSConn(ctx, c, false)
 	}
 
 	if err != nil {
@@ -293,38 +343,62 @@ func (v *Vmess) streamConnContext(ctx context.Context, c net.Conn, metadata *C.M
 	return
 }
 
-// DialContext implements C.ProxyAdapter
-func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
-	var c net.Conn
-	// gun transport
-	if v.transport != nil {
-		c, err = gun.StreamGunWithTransport(v.transport, v.gunConfig)
-		if err != nil {
-			return nil, err
-		}
-		defer func(c net.Conn) {
-			safeConnClose(c, err)
-		}(c)
+func (v *Vmess) streamTLSConn(ctx context.Context, conn net.Conn, isH2 bool) (net.Conn, error) {
+	if v.option.TLS {
+		host, _, _ := net.SplitHostPort(v.addr)
 
-		c, err = v.streamConnContext(ctx, c, metadata)
-		if err != nil {
-			return nil, err
+		tlsOpts := mihomoVMess.TLSConfig{
+			Host:              host,
+			SkipCertVerify:    v.option.SkipCertVerify,
+			NameCertVerify:    v.option.NameCertVerify,
+			FingerPrint:       v.option.Fingerprint,
+			Certificate:       v.option.Certificate,
+			PrivateKey:        v.option.PrivateKey,
+			ClientFingerprint: v.option.ClientFingerprint,
+			ECH:               v.echConfig,
+			ShadowTLS:         v.shadowTLSConfig,
+			Restls:            v.restlsConfig,
+			JLS:               v.jlsConfig,
+			Reality:           v.realityConfig,
+			NextProtos:        v.option.ALPN,
+			TLSMirror:         v.option.TLSMirrorOpts.Build(),
+			TLSMirrorDialer:   proxydialer.New(v, false).DialContext,
 		}
 
-		return NewConn(c, v), nil
+		if isH2 {
+			tlsOpts.NextProtos = []string{"h2"}
+		}
+
+		if v.option.ServerName != "" {
+			tlsOpts.Host = v.option.ServerName
+		}
+
+		return mihomoVMess.StreamTLSConn(ctx, conn, &tlsOpts)
 	}
-	return v.DialContextWithDialer(ctx, dialer.NewDialer(v.DialOptions()...), metadata)
+
+	return conn, nil
 }
 
-// DialContextWithDialer implements C.ProxyAdapter
-func (v *Vmess) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.Conn, err error) {
-	if len(v.option.DialerProxy) > 0 {
-		dialer, err = proxydialer.NewByName(v.option.DialerProxy, dialer)
+func (v *Vmess) dialContext(ctx context.Context) (c net.Conn, err error) {
+	switch v.option.Network {
+	case "grpc": // gun transport
+		return v.gunClient.Dial()
+	case "mekya":
+		return v.mekyaClient.Dial(ctx)
+	case "mkcp", "kcp":
+		rawConn, err := v.dialer.DialContext(ctx, "udp", v.addr)
 		if err != nil {
 			return nil, err
 		}
+		return mkcp.Dial(ctx, rawConn, v.option.MKCPOpts.Build())
+	default:
 	}
-	c, err := dialer.DialContext(ctx, "tcp", v.addr)
+	return v.dialer.DialContext(ctx, "tcp", v.addr)
+}
+
+// DialContext implements C.ProxyAdapter
+func (v *Vmess) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
+	c, err := v.dialContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 	}
@@ -333,6 +407,9 @@ func (v *Vmess) DialContextWithDialer(ctx context.Context, dialer C.Dialer, meta
 	}(c)
 
 	c, err = v.StreamConnContext(ctx, c, metadata)
+	if err != nil {
+		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
+	}
 	return NewConn(c, v), err
 }
 
@@ -341,40 +418,8 @@ func (v *Vmess) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (
 	if err = v.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
-	var c net.Conn
-	// gun transport
-	if v.transport != nil {
-		c, err = gun.StreamGunWithTransport(v.transport, v.gunConfig)
-		if err != nil {
-			return nil, err
-		}
-		defer func(c net.Conn) {
-			safeConnClose(c, err)
-		}(c)
 
-		c, err = v.streamConnContext(ctx, c, metadata)
-		if err != nil {
-			return nil, fmt.Errorf("new vmess client error: %v", err)
-		}
-		return v.ListenPacketOnStreamConn(ctx, c, metadata)
-	}
-	return v.ListenPacketWithDialer(ctx, dialer.NewDialer(v.DialOptions()...), metadata)
-}
-
-// ListenPacketWithDialer implements C.ProxyAdapter
-func (v *Vmess) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.PacketConn, err error) {
-	if len(v.option.DialerProxy) > 0 {
-		dialer, err = proxydialer.NewByName(v.option.DialerProxy, dialer)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if err = v.ResolveUDP(ctx, metadata); err != nil {
-		return nil, err
-	}
-
-	c, err := dialer.DialContext(ctx, "tcp", v.addr)
+	c, err := v.dialContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 	}
@@ -384,14 +429,13 @@ func (v *Vmess) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, met
 
 	c, err = v.StreamConnContext(ctx, c, metadata)
 	if err != nil {
-		return nil, fmt.Errorf("new vmess client error: %v", err)
+		return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 	}
-	return v.ListenPacketOnStreamConn(ctx, c, metadata)
-}
 
-// SupportWithDialer implements C.ProxyAdapter
-func (v *Vmess) SupportWithDialer() C.NetWork {
-	return C.ALLNet
+	if pc, ok := c.(net.PacketConn); ok {
+		return NewPacketConn(N.NewThreadSafePacketConn(pc), v), nil
+	}
+	return NewPacketConn(&vmessPacketConn{Conn: c, rAddr: metadata.UDPAddr()}, v), nil
 }
 
 // ProxyInfo implements C.ProxyAdapter
@@ -403,22 +447,18 @@ func (v *Vmess) ProxyInfo() C.ProxyInfo {
 
 // Close implements C.ProxyAdapter
 func (v *Vmess) Close() error {
-	if v.transport != nil {
-		return v.transport.Close()
+	var errs []error
+	if v.gunClient != nil {
+		if err := v.gunClient.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
-}
-
-// ListenPacketOnStreamConn implements C.ProxyAdapter
-func (v *Vmess) ListenPacketOnStreamConn(ctx context.Context, c net.Conn, metadata *C.Metadata) (_ C.PacketConn, err error) {
-	if err = v.ResolveUDP(ctx, metadata); err != nil {
-		return nil, err
+	if v.mekyaClient != nil {
+		if err := v.mekyaClient.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-
-	if pc, ok := c.(net.PacketConn); ok {
-		return newPacketConn(N.NewThreadSafePacketConn(pc), v), nil
-	}
-	return newPacketConn(&vmessPacketConn{Conn: c, rAddr: metadata.UDPAddr()}, v), nil
+	return errors.Join(errs...)
 }
 
 // SupportUOT implements C.ProxyAdapter
@@ -452,30 +492,75 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 	}
 
 	v := &Vmess{
-		Base: &Base{
-			name:   option.Name,
-			addr:   net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
-			tp:     C.Vmess,
-			udp:    option.UDP,
-			xudp:   option.XUDP,
-			tfo:    option.TFO,
-			mpTcp:  option.MPTCP,
-			iface:  option.Interface,
-			rmark:  option.RoutingMark,
-			prefer: C.NewDNSPrefer(option.IPVersion),
-		},
+		Base: NewBase(BaseOption{
+			Name:         option.Name,
+			Addr:         net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
+			Type:         C.Vmess,
+			ProviderName: option.ProviderName,
+			UDP:          option.UDP,
+			XUDP:         option.XUDP,
+			TFO:          option.TFO,
+			MPTCP:        option.MPTCP,
+			Interface:    option.Interface,
+			RoutingMark:  option.RoutingMark,
+			Prefer:       option.IPVersion,
+		}),
 		client: client,
 		option: &option,
 	}
-
-	v.realityConfig, err = v.option.RealityOpts.Parse()
-	if err != nil {
-		return nil, err
-	}
+	v.dialer = option.NewDialer(v.DialOptions())
 
 	v.echConfig, err = v.option.ECHOpts.Parse()
 	if err != nil {
 		return nil, err
+	}
+	v.shadowTLSConfig, err = option.ShadowTLSOpts.Parse()
+	if err != nil {
+		return nil, err
+	}
+	v.restlsConfig, err = option.RestlsOpts.Parse(option.ServerName, option.ClientFingerprint)
+	if err != nil {
+		return nil, err
+	}
+	v.jlsConfig, err = option.JLSOpts.Parse()
+	if err != nil {
+		return nil, err
+	}
+	v.realityConfig, err = v.option.RealityOpts.Parse()
+	if err != nil {
+		return nil, err
+	}
+	securityModes := make([]string, 0, 5)
+	if v.shadowTLSConfig != nil {
+		securityModes = append(securityModes, "ShadowTLS")
+	}
+	if v.restlsConfig != nil {
+		securityModes = append(securityModes, "Restls")
+	}
+	if v.jlsConfig != nil {
+		securityModes = append(securityModes, "JLS")
+	}
+	if v.realityConfig != nil {
+		securityModes = append(securityModes, "REALITY")
+	}
+	if option.TLSMirrorOpts.PrimaryKey != "" {
+		securityModes = append(securityModes, "TLSMirror")
+	}
+	if len(securityModes) > 1 {
+		return nil, errors.New("security modes are mutually exclusive: " + strings.Join(securityModes, ", "))
+	}
+	securityMode := ""
+	if len(securityModes) == 1 {
+		securityMode = securityModes[0]
+	}
+	if securityMode != "" && !option.TLS {
+		return nil, fmt.Errorf("%s requires TLS", securityMode)
+	}
+	if option.Network == "mkcp" || option.Network == "kcp" {
+		switch securityMode {
+		case "ShadowTLS", "Restls", "JLS":
+			return nil, fmt.Errorf("%s only supports TCP transports", securityMode)
+		}
 	}
 
 	switch option.Network {
@@ -483,17 +568,32 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 		if len(option.HTTP2Opts.Host) == 0 {
 			option.HTTP2Opts.Host = append(option.HTTP2Opts.Host, "www.example.com")
 		}
+	case "mekya":
+		if len(v.option.ALPN) == 0 {
+			v.option.ALPN = []string{"h2", "http/1.1"}
+		}
+		cfg := option.MekyaOpts.Build()
+		if cfg.URL == "" {
+			cfg.URL = "https://" + v.addr
+		}
+		v.mekyaClient, err = mekya.NewClient(context.Background(), func(ctx context.Context) (net.Conn, error) {
+			rawConn, err := v.dialer.DialContext(ctx, "tcp", v.addr)
+			if err != nil {
+				return nil, err
+			}
+			conn, err := v.streamTLSConn(ctx, rawConn, false)
+			if err != nil {
+				_ = rawConn.Close()
+				return nil, err
+			}
+			return conn, nil
+		}, cfg)
+		if err != nil {
+			return nil, err
+		}
 	case "grpc":
 		dialFn := func(ctx context.Context, network, addr string) (net.Conn, error) {
-			var err error
-			var cDialer C.Dialer = dialer.NewDialer(v.DialOptions()...)
-			if len(v.option.DialerProxy) > 0 {
-				cDialer, err = proxydialer.NewByName(v.option.DialerProxy, cDialer)
-				if err != nil {
-					return nil, err
-				}
-			}
-			c, err := cDialer.DialContext(ctx, "tcp", v.addr)
+			c, err := v.dialer.DialContext(ctx, "tcp", v.addr)
 			if err != nil {
 				return nil, fmt.Errorf("%s connect error: %s", v.addr, err.Error())
 			}
@@ -501,37 +601,47 @@ func NewVmess(option VmessOption) (*Vmess, error) {
 		}
 
 		gunConfig := &gun.Config{
-			ServiceName:       v.option.GrpcOpts.GrpcServiceName,
-			Host:              v.option.ServerName,
-			ClientFingerprint: v.option.ClientFingerprint,
+			ServiceName:  option.GrpcOpts.GrpcServiceName,
+			UserAgent:    option.GrpcOpts.GrpcUserAgent,
+			Host:         option.ServerName,
+			PingInterval: option.GrpcOpts.PingInterval,
 		}
 		if option.ServerName == "" {
 			gunConfig.Host = v.addr
 		}
-		var tlsConfig *tls.Config
+		var tlsConfig *mihomoVMess.TLSConfig
 		if option.TLS {
-			tlsConfig, err = ca.GetTLSConfig(ca.Option{
-				TLSConfig: &tls.Config{
-					InsecureSkipVerify: v.option.SkipCertVerify,
-					ServerName:         v.option.ServerName,
-				},
-				Fingerprint: v.option.Fingerprint,
-				Certificate: v.option.Certificate,
-				PrivateKey:  v.option.PrivateKey,
-			})
-			if err != nil {
-				return nil, err
+			tlsConfig = &mihomoVMess.TLSConfig{
+				Host:              option.ServerName,
+				SkipCertVerify:    option.SkipCertVerify,
+				NameCertVerify:    option.NameCertVerify,
+				FingerPrint:       option.Fingerprint,
+				Certificate:       option.Certificate,
+				PrivateKey:        option.PrivateKey,
+				ClientFingerprint: option.ClientFingerprint,
+				NextProtos:        []string{"h2"},
+				ECH:               v.echConfig,
+				ShadowTLS:         v.shadowTLSConfig,
+				Restls:            v.restlsConfig,
+				JLS:               v.jlsConfig,
+				Reality:           v.realityConfig,
+				TLSMirror:         option.TLSMirrorOpts.Build(),
+				TLSMirrorDialer:   proxydialer.New(v, false).DialContext,
 			}
 			if option.ServerName == "" {
 				host, _, _ := net.SplitHostPort(v.addr)
-				tlsConfig.ServerName = host
+				tlsConfig.Host = host
 			}
 		}
 
-		v.gunTLSConfig = tlsConfig
-		v.gunConfig = gunConfig
-
-		v.transport = gun.NewHTTP2Client(dialFn, tlsConfig, v.option.ClientFingerprint, v.echConfig, v.realityConfig)
+		v.gunClient = gun.NewClient(
+			func() *gun.Transport {
+				return gun.NewTransport(dialFn, tlsConfig, gunConfig)
+			},
+			option.GrpcOpts.MaxConnections,
+			option.GrpcOpts.MinStreams,
+			option.GrpcOpts.MaxStreams,
+		)
 	}
 
 	return v, nil

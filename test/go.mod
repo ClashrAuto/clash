@@ -1,4 +1,4 @@
-module clashauto-test
+module mihomo-test
 
 go 1.20
 

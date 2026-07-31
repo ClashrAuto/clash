@@ -1,6 +1,6 @@
 // Package ntp provide time.Now
 //
-// DON'T import other package in clashauto to keep minimal internal dependencies
+// DON'T import other package in mihomo to keep minimal internal dependencies
 package ntp
 
 import (

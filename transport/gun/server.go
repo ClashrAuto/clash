@@ -1,22 +1,18 @@
 package gun
 
 import (
+	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/metacubex/mihomo/common/buf"
+	"github.com/metacubex/mihomo/common/httputils"
 	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"github.com/metacubex/http"
 )
-
-const idleTimeout = 30 * time.Second
 
 type ServerOption struct {
 	ServiceName string
@@ -25,15 +21,13 @@ type ServerOption struct {
 }
 
 func NewServerHandler(options ServerOption) http.Handler {
-	path := "/" + options.ServiceName + "/Tun"
+	path := ServiceNameToPath(options.ServiceName)
 	connHandler := options.ConnHandler
 	httpHandler := options.HttpHandler
 	if httpHandler == nil {
 		httpHandler = http.NewServeMux()
 	}
-	// using h2c.NewHandler to ensure we can work in plain http2
-	// and some tls conn is not *tls.Conn (like *reality.Conn)
-	return h2c.NewHandler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path == path &&
 			request.Method == http.MethodPost &&
 			strings.HasPrefix(request.Header.Get("Content-Type"), "application/grpc") {
@@ -43,18 +37,9 @@ func NewServerHandler(options ServerOption) http.Handler {
 			writer.WriteHeader(http.StatusOK)
 
 			conn := &Conn{
-				initFn: func() (io.ReadCloser, netAddr, error) {
-					nAddr := netAddr{}
-					if request.RemoteAddr != "" {
-						metadata := C.Metadata{}
-						if err := metadata.SetRemoteAddress(request.RemoteAddr); err == nil {
-							nAddr.remoteAddr = net.TCPAddrFromAddrPort(metadata.AddrPort())
-						}
-					}
-					if addr, ok := request.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
-						nAddr.localAddr = addr
-					}
-					return request.Body, nAddr, nil
+				initFn: func(addr *httputils.NetAddr) (io.ReadCloser, error) {
+					httputils.SetAddrFromRequest(addr, request)
+					return h2RequestBodyWrapper{request.Body}, nil
 				},
 				writer: writer,
 			}
@@ -72,9 +57,20 @@ func NewServerHandler(options ServerOption) http.Handler {
 		}
 
 		httpHandler.ServeHTTP(writer, request)
-	}), &http2.Server{
-		IdleTimeout: idleTimeout,
 	})
+}
+
+// h2RequestBodyWrapper used to conceal the h2-special typed error before return to caller
+type h2RequestBodyWrapper struct {
+	io.ReadCloser
+}
+
+func (r h2RequestBodyWrapper) Read(p []byte) (n int, err error) {
+	n, err = r.ReadCloser.Read(p)
+	if err != nil && err != io.EOF {
+		err = fmt.Errorf("h2: %s", err.Error())
+	}
+	return
 }
 
 // h2ConnWrapper used to avoid "panic: Write called after Handler finished" for gun.Conn
@@ -106,11 +102,6 @@ func (w *h2ConnWrapper) CloseWrapper() {
 	w.access.Lock()
 	defer w.access.Unlock()
 	w.closed = true
-}
-
-func (w *h2ConnWrapper) Close() error {
-	w.CloseWrapper()
-	return w.ExtendedConn.Close()
 }
 
 func (w *h2ConnWrapper) Upstream() any {

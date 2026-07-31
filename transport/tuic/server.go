@@ -9,22 +9,23 @@ import (
 	"github.com/metacubex/mihomo/adapter/inbound"
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/common/utils"
-	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/socks5"
 	"github.com/metacubex/mihomo/transport/tuic/common"
+	"github.com/metacubex/mihomo/transport/tuic/types"
 	v4 "github.com/metacubex/mihomo/transport/tuic/v4"
 	v5 "github.com/metacubex/mihomo/transport/tuic/v5"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/quic-go"
+	"github.com/metacubex/tls"
 )
 
 type ServerOption struct {
 	HandleTcpFn func(conn net.Conn, addr socks5.Addr, additions ...inbound.Addition) error
 	HandleUdpFn func(addr socks5.Addr, packet C.UDPPacket, additions ...inbound.Addition) error
 
-	TlsConfig             *tlsC.Config
+	TlsConfig             *tls.Config
 	QuicConfig            *quic.Config
 	Tokens                [][32]byte          // V4 special
 	Users                 map[[16]byte]string // V5 special
@@ -32,6 +33,7 @@ type ServerOption struct {
 	AuthenticationTimeout time.Duration
 	MaxUdpRelayPacketSize int
 	CWND                  int
+	BBRProfile            string
 }
 
 type Server struct {
@@ -47,7 +49,7 @@ func (s *Server) Serve() error {
 		if err != nil {
 			return err
 		}
-		common.SetCongestionController(conn, s.CongestionController, s.CWND)
+		common.SetCongestionController(conn, s.CongestionController, s.CWND, s.BBRProfile)
 		h := &serverHandler{
 			Server:   s,
 			quicConn: conn,
@@ -72,8 +74,8 @@ type serverHandler struct {
 	quicConn *quic.Conn
 	uuid     uuid.UUID
 
-	v4Handler common.ServerHandler
-	v5Handler common.ServerHandler
+	v4Handler types.ServerHandler
+	v5Handler types.ServerHandler
 }
 
 func (s *serverHandler) handle() {
@@ -148,7 +150,7 @@ func (s *serverHandler) handleStream() (err error) {
 			return err
 		}
 		go func() (err error) {
-			stream := common.NewQuicStreamConn(
+			stream := types.NewQuicStreamConn(
 				quicStream,
 				s.quicConn.LocalAddr(),
 				s.quicConn.RemoteAddr(),
@@ -235,7 +237,7 @@ func NewServer(option *ServerOption, pc net.PacketConn) (*Server, error) {
 			HandleTcpFn:           option.HandleTcpFn,
 			HandleUdpFn:           option.HandleUdpFn,
 			Users:                 option.Users,
-			MaxUdpRelayPacketSize: option.MaxUdpRelayPacketSize,
+			MaxUdpRelayPacketSize: maxUdpRelayPacketSize,
 		}
 	}
 	return server, nil

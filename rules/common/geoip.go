@@ -9,7 +9,6 @@ import (
 	"github.com/metacubex/mihomo/component/geodata"
 	"github.com/metacubex/mihomo/component/geodata/router"
 	"github.com/metacubex/mihomo/component/mmdb"
-	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 
@@ -17,7 +16,7 @@ import (
 )
 
 type GEOIP struct {
-	*Base
+	Base
 	country     string
 	adapter     string
 	noResolveIP bool
@@ -128,6 +127,10 @@ func (g dnsFallbackFilter) MatchIp(ip netip.Addr) bool {
 		return false
 	}
 
+	if g.country == "lan" {
+		return !g.isLan(ip)
+	}
+
 	if geodata.GeodataMode() {
 		matcher, err := g.getIPMatcher()
 		if err != nil {
@@ -153,8 +156,7 @@ func (g *GEOIP) isLan(ip netip.Addr) bool {
 		ip.IsUnspecified() ||
 		ip.IsLoopback() ||
 		ip.IsMulticast() ||
-		ip.IsLinkLocalUnicast() ||
-		resolver.IsFakeBroadcastIP(ip)
+		ip.IsLinkLocalUnicast()
 }
 
 func (g *GEOIP) Adapter() string {
@@ -186,6 +188,11 @@ func (g *GEOIP) getIPMatcher() (router.IPMatcher, error) {
 }
 
 func (g *GEOIP) GetRecodeSize() int {
+	// skip pseudorule lan
+	if g.country == "lan" {
+		return 0
+	}
+
 	if matcher, err := g.GetIPMatcher(); err == nil {
 		return matcher.Count()
 	}
@@ -196,7 +203,7 @@ func NewGEOIP(country string, adapter string, isSrc, noResolveIP bool) (*GEOIP, 
 	country = strings.ToLower(country)
 
 	geoip := &GEOIP{
-		Base:        &Base{},
+		Base:        Base{},
 		country:     country,
 		adapter:     adapter,
 		noResolveIP: noResolveIP,
@@ -222,3 +229,5 @@ func NewGEOIP(country string, adapter string, isSrc, noResolveIP bool) (*GEOIP, 
 
 	return geoip, nil
 }
+
+var _ C.Rule = (*GEOIP)(nil)

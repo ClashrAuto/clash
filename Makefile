@@ -1,4 +1,4 @@
-NAME=clashauto
+NAME=mihomo
 BINDIR=bin
 BRANCH=$(shell git branch --show-current)
 ifeq ($(BRANCH),Alpha)

@@ -12,7 +12,7 @@ import (
 	"github.com/metacubex/mihomo/log"
 )
 
-// ConvertsV2Ray convert V2Ray subscribe proxies data to clashauto proxies config
+// ConvertsV2Ray convert V2Ray subscribe proxies data to mihomo proxies config
 func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 	data := DecodeBase64(buf)
 
@@ -69,8 +69,10 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 
 			proxies = append(proxies, hysteria)
 
-		case "hysteria2", "hy2":
-			urlHysteria2, err := url.Parse(line)
+		case "hysteria2", "hy2", "hysteria2+realm", "hy2+realm":
+			realmMode := strings.HasSuffix(scheme, "+realm")
+			hopLine, ports := splitHysteria2Ports(line)
+			urlHysteria2, err := url.Parse(hopLine)
 			if err != nil {
 				continue
 			}
@@ -87,6 +89,9 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 			} else {
 				hysteria2["port"] = "443"
 			}
+			if ports != "" {
+				hysteria2["ports"] = ports
+			}
 			hysteria2["obfs"] = query.Get("obfs")
 			hysteria2["obfs-password"] = query.Get("obfs-password")
 			hysteria2["sni"] = query.Get("sni")
@@ -94,12 +99,19 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 			if alpn := query.Get("alpn"); alpn != "" {
 				hysteria2["alpn"] = strings.Split(alpn, ",")
 			}
-			if auth := urlHysteria2.User.String(); auth != "" {
-				hysteria2["password"] = auth
-			}
 			hysteria2["fingerprint"] = query.Get("pinSHA256")
 			hysteria2["down"] = query.Get("down")
 			hysteria2["up"] = query.Get("up")
+			if realmMode {
+				token, _ := url.PathUnescape(urlHysteria2.User.String())
+				realmID, _ := url.PathUnescape(strings.TrimPrefix(urlHysteria2.EscapedPath(), "/"))
+				hysteria2["realm-opts"] = buildRealmOpts("https://"+urlHysteria2.Host, token, realmID, query["stun"])
+				if auth := query.Get("auth"); auth != "" {
+					hysteria2["password"] = auth
+				}
+			} else if auth := urlHysteria2.User.String(); auth != "" {
+				hysteria2["password"] = auth
+			}
 
 			proxies = append(proxies, hysteria2)
 
@@ -199,6 +211,10 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 				trojan["client-fingerprint"] = "chrome"
 			} else {
 				trojan["client-fingerprint"] = fingerprint
+			}
+
+			if pcs := query.Get("pcs"); pcs != "" {
+				trojan["fingerprint"] = pcs
 			}
 
 			proxies = append(proxies, trojan)
@@ -327,15 +343,14 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 				vmess["http-opts"] = httpOpts
 
 			case "h2":
-				headers := make(map[string]any)
 				h2Opts := make(map[string]any)
-				if host, ok := values["host"].(string); ok && host != "" {
-					headers["Host"] = []string{host}
+				h2Opts["path"] = "/"
+				if path, ok := values["path"].(string); ok && path != "" {
+					h2Opts["path"] = path
 				}
-
-				h2Opts["path"] = values["path"]
-				h2Opts["headers"] = headers
-
+				if host, ok := values["host"].(string); ok && host != "" {
+					h2Opts["host"] = []string{host}
+				}
 				vmess["h2-opts"] = h2Opts
 
 			case "ws", "httpupgrade":
@@ -449,10 +464,18 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 						"host": pluginInfo.Get("obfs-host"),
 					}
 				} else if strings.Contains(pluginName, "v2ray-plugin") {
+					mode := pluginInfo.Get("mode")
+					if mode == "" {
+						mode = pluginInfo.Get("obfs")
+					}
+					host := pluginInfo.Get("host")
+					if host == "" {
+						host = pluginInfo.Get("obfs-host")
+					}
 					ss["plugin"] = "v2ray-plugin"
 					ss["plugin-opts"] = map[string]any{
-						"mode": pluginInfo.Get("mode"),
-						"host": pluginInfo.Get("host"),
+						"mode": mode,
+						"host": host,
 						"path": pluginInfo.Get("path"),
 						"tls":  strings.Contains(plugin, "tls"),
 					}
@@ -614,6 +637,75 @@ func ConvertsV2Ray(buf []byte) ([]map[string]any, error) {
 			anytls["udp"] = true
 
 			proxies = append(proxies, anytls)
+
+		case "mierus":
+			urlMieru, err := url.Parse(line)
+			if err != nil {
+				continue
+			}
+
+			query := urlMieru.Query()
+
+			server := urlMieru.Hostname()
+			if server == "" {
+				continue
+			}
+			username := urlMieru.User.Username()
+			password, _ := urlMieru.User.Password()
+
+			baseName := urlMieru.Fragment
+			if baseName == "" {
+				baseName = query.Get("profile")
+			}
+			if baseName == "" {
+				baseName = server
+			}
+
+			multiplexing := query.Get("multiplexing")
+			handshakeMode := query.Get("handshake-mode")
+			trafficPattern := query.Get("traffic-pattern")
+
+			portList := query["port"]
+			protocolList := query["protocol"]
+			if len(portList) == 0 || len(portList) != len(protocolList) {
+				continue
+			}
+
+			for i, port := range portList {
+				protocol := protocolList[i]
+				name := uniqueName(names, fmt.Sprintf("%s:%s/%s", baseName, port, protocol))
+
+				mieru := make(map[string]any, 15)
+				mieru["name"] = name
+				mieru["type"] = "mieru"
+				mieru["server"] = server
+				mieru["transport"] = protocol
+				mieru["udp"] = true
+				mieru["username"] = username
+				mieru["password"] = password
+
+				if strings.Contains(port, "-") {
+					mieru["port-range"] = port
+				} else {
+					portNum, err := strconv.Atoi(port)
+					if err != nil {
+						continue
+					}
+					mieru["port"] = portNum
+				}
+
+				if multiplexing != "" {
+					mieru["multiplexing"] = multiplexing
+				}
+				if handshakeMode != "" {
+					mieru["handshake-mode"] = handshakeMode
+				}
+				if trafficPattern != "" {
+					mieru["traffic-pattern"] = trafficPattern
+				}
+
+				proxies = append(proxies, mieru)
+			}
 		}
 	}
 

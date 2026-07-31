@@ -2,7 +2,6 @@ package outbound
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -10,11 +9,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/ech"
-	"github.com/metacubex/mihomo/component/proxydialer"
-	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	hyCongestion "github.com/metacubex/mihomo/transport/hysteria/congestion"
@@ -22,7 +20,9 @@ import (
 	"github.com/metacubex/mihomo/transport/hysteria/obfs"
 	"github.com/metacubex/mihomo/transport/hysteria/pmtud_fix"
 	"github.com/metacubex/mihomo/transport/hysteria/transport"
-	"github.com/metacubex/mihomo/transport/hysteria/utils"
+	hyUtils "github.com/metacubex/mihomo/transport/hysteria/utils"
+
+	"github.com/metacubex/tls"
 
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/quic-go/congestion"
@@ -46,7 +46,7 @@ type Hysteria struct {
 	option *HysteriaOption
 	client *core.Client
 
-	tlsConfig *tlsC.Config
+	tlsConfig *tls.Config
 	echConfig *ech.Config
 }
 
@@ -67,23 +67,15 @@ func (h *Hysteria) ListenPacketContext(ctx context.Context, metadata *C.Metadata
 	if err != nil {
 		return nil, err
 	}
-	return newPacketConn(&hyPacketConn{udpConn}, h), nil
+	return NewPacketConn(&hyPacketConn{udpConn}, h), nil
 }
 
-func (h *Hysteria) genHdc(ctx context.Context) utils.PacketDialer {
+func (h *Hysteria) genHdc(ctx context.Context) hyUtils.PacketDialer {
 	return &hyDialerWithContext{
 		ctx: context.Background(),
 		hyDialer: func(network string, rAddr net.Addr) (net.PacketConn, error) {
-			var err error
-			var cDialer C.Dialer = dialer.NewDialer(h.DialOptions()...)
-			if len(h.option.DialerProxy) > 0 {
-				cDialer, err = proxydialer.NewByName(h.option.DialerProxy, cDialer)
-				if err != nil {
-					return nil, err
-				}
-			}
 			rAddrPort, _ := netip.ParseAddrPort(rAddr.String())
-			return cDialer.ListenPacket(ctx, network, "", rAddrPort)
+			return h.dialer.ListenPacket(ctx, network, "", rAddrPort)
 		},
 		remoteAddr: func(addr string) (net.Addr, error) {
 			udpAddr, err := resolveUDPAddr(ctx, "udp", addr, h.prefer)
@@ -124,6 +116,7 @@ type HysteriaOption struct {
 	SNI                 string     `proxy:"sni,omitempty"`
 	ECHOpts             ECHOptions `proxy:"ech-opts,omitempty"`
 	SkipCertVerify      bool       `proxy:"skip-cert-verify,omitempty"`
+	NameCertVerify      string     `proxy:"name-cert-verify,omitempty"`
 	Fingerprint         string     `proxy:"fingerprint,omitempty"`
 	Certificate         string     `proxy:"certificate,omitempty"`
 	PrivateKey          string     `proxy:"private-key,omitempty"`
@@ -137,12 +130,12 @@ type HysteriaOption struct {
 
 func (c *HysteriaOption) Speed() (uint64, uint64, error) {
 	var up, down uint64
-	up = StringToBps(c.Up)
+	up = utils.StringToBps(c.Up)
 	if up == 0 {
 		return 0, 0, fmt.Errorf("invaild upload speed: %s", c.Up)
 	}
 
-	down = StringToBps(c.Down)
+	down = utils.StringToBps(c.Down)
 	if down == 0 {
 		return 0, 0, fmt.Errorf("invaild download speed: %s", c.Down)
 	}
@@ -166,9 +159,10 @@ func NewHysteria(option HysteriaOption) (*Hysteria, error) {
 			InsecureSkipVerify: option.SkipCertVerify,
 			MinVersion:         tls.VersionTLS13,
 		},
-		Fingerprint: option.Fingerprint,
-		Certificate: option.Certificate,
-		PrivateKey:  option.PrivateKey,
+		Fingerprint:    option.Fingerprint,
+		NameCertVerify: option.NameCertVerify,
+		Certificate:    option.Certificate,
+		PrivateKey:     option.PrivateKey,
 	})
 	if err != nil {
 		return nil, err
@@ -184,7 +178,7 @@ func NewHysteria(option HysteriaOption) (*Hysteria, error) {
 	if err != nil {
 		return nil, err
 	}
-	tlsClientConfig := tlsC.UConfig(tlsConfig)
+	tlsClientConfig := tlsConfig
 
 	quicConfig := &quic.Config{
 		InitialStreamReceiveWindow:     uint64(option.ReceiveWindowConn),
@@ -248,21 +242,23 @@ func NewHysteria(option HysteriaOption) (*Hysteria, error) {
 		return nil, fmt.Errorf("hysteria %s create error: %w", addr, err)
 	}
 	outbound := &Hysteria{
-		Base: &Base{
-			name:   option.Name,
-			addr:   addr,
-			tp:     C.Hysteria,
-			udp:    true,
-			tfo:    option.FastOpen,
-			iface:  option.Interface,
-			rmark:  option.RoutingMark,
-			prefer: C.NewDNSPrefer(option.IPVersion),
-		},
+		Base: NewBase(BaseOption{
+			Name:         option.Name,
+			Addr:         addr,
+			Type:         C.Hysteria,
+			ProviderName: option.ProviderName,
+			UDP:          true,
+			TFO:          option.FastOpen,
+			Interface:    option.Interface,
+			RoutingMark:  option.RoutingMark,
+			Prefer:       option.IPVersion,
+		}),
 		option:    &option,
 		client:    client,
 		tlsConfig: tlsClientConfig,
 		echConfig: echConfig,
 	}
+	outbound.dialer = option.NewDialer(outbound.DialOptions())
 
 	return outbound, nil
 }

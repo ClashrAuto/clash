@@ -1,18 +1,18 @@
 -s dir
---name clashauto
+--name mihomo
 --category net
 --license GPL-3.0-or-later
 --description "The universal proxy platform."
 --url "https://wiki.metacubex.one/"
 --maintainer "MetaCubeX <none@example.com>"
---deb-field "Bug: https://github.com/metacubex/mihomo/issues"
+--deb-field "Bug: https://github.com/MetaCubeX/mihomo/issues"
 --no-deb-generate-changes
---config-files /etc/clashauto/config.yaml
+--config-files /etc/mihomo/config.yaml
 
-.github/release/config.yaml=/etc/clashauto/config.yaml
+.github/release/config.yaml=/etc/mihomo/config.yaml
 
-.github/release/clashauto.service=/usr/lib/systemd/system/clashauto.service
-.github/release/clashauto@.service=/usr/lib/systemd/system/clashauto@.service
+.github/release/mihomo.service=/usr/lib/systemd/system/mihomo.service
+.github/release/mihomo@.service=/usr/lib/systemd/system/mihomo@.service
 
 
-LICENSE=/usr/share/licenses/clashauto/LICENSE
+LICENSE=/usr/share/licenses/mihomo/LICENSE

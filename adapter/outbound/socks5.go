@@ -2,7 +2,6 @@ package outbound
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -12,10 +11,10 @@ import (
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/socks5"
+
+	"github.com/metacubex/tls"
 )
 
 type Socks5 struct {
@@ -38,6 +37,7 @@ type Socks5Option struct {
 	TLS            bool   `proxy:"tls,omitempty"`
 	UDP            bool   `proxy:"udp,omitempty"`
 	SkipCertVerify bool   `proxy:"skip-cert-verify,omitempty"`
+	NameCertVerify string `proxy:"name-cert-verify,omitempty"`
 	Fingerprint    string `proxy:"fingerprint,omitempty"`
 	Certificate    string `proxy:"certificate,omitempty"`
 	PrivateKey     string `proxy:"private-key,omitempty"`
@@ -69,18 +69,7 @@ func (ss *Socks5) StreamConnContext(ctx context.Context, c net.Conn, metadata *C
 
 // DialContext implements C.ProxyAdapter
 func (ss *Socks5) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
-	return ss.DialContextWithDialer(ctx, dialer.NewDialer(ss.DialOptions()...), metadata)
-}
-
-// DialContextWithDialer implements C.ProxyAdapter
-func (ss *Socks5) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.Conn, err error) {
-	if len(ss.option.DialerProxy) > 0 {
-		dialer, err = proxydialer.NewByName(ss.option.DialerProxy, dialer)
-		if err != nil {
-			return nil, err
-		}
-	}
-	c, err := dialer.DialContext(ctx, "tcp", ss.addr)
+	c, err := ss.dialer.DialContext(ctx, "tcp", ss.addr)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", ss.addr, err)
 	}
@@ -97,40 +86,29 @@ func (ss *Socks5) DialContextWithDialer(ctx context.Context, dialer C.Dialer, me
 	return NewConn(c, ss), nil
 }
 
-// SupportWithDialer implements C.ProxyAdapter
-func (ss *Socks5) SupportWithDialer() C.NetWork {
-	return C.TCP
-}
-
 // ListenPacketContext implements C.ProxyAdapter
 func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (_ C.PacketConn, err error) {
-	var cDialer C.Dialer = dialer.NewDialer(ss.DialOptions()...)
-	if len(ss.option.DialerProxy) > 0 {
-		cDialer, err = proxydialer.NewByName(ss.option.DialerProxy, cDialer)
-		if err != nil {
-			return nil, err
-		}
-	}
 	if err = ss.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
-	c, err := cDialer.DialContext(ctx, "tcp", ss.addr)
+	c, err := ss.dialer.DialContext(ctx, "tcp", ss.addr)
 	if err != nil {
 		err = fmt.Errorf("%s connect error: %w", ss.addr, err)
 		return
 	}
 
-	if ss.tls {
-		cc := tls.Client(c, ss.tlsConfig)
-		ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTLSTimeout)
-		defer cancel()
-		err = cc.HandshakeContext(ctx)
-		c = cc
-	}
-
 	defer func(c net.Conn) {
 		safeConnClose(c, err)
 	}(c)
+
+	if ss.tls {
+		cc := tls.Client(c, ss.tlsConfig)
+		err = cc.HandshakeContext(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("%s connect error: %w", ss.addr, err)
+		}
+		c = cc
+	}
 
 	var user *socks5.User
 	if ss.user != "" {
@@ -161,7 +139,7 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata)
 		bindUDPAddr.IP = serverAddr.IP
 	}
 
-	pc, err := cDialer.ListenPacket(ctx, "udp", "", bindUDPAddr.AddrPort())
+	pc, err := ss.dialer.ListenPacket(ctx, "udp", "", bindUDPAddr.AddrPort())
 	if err != nil {
 		return
 	}
@@ -174,7 +152,7 @@ func (ss *Socks5) ListenPacketContext(ctx context.Context, metadata *C.Metadata)
 		pc.Close()
 	}()
 
-	return newPacketConn(&socksPacketConn{PacketConn: pc, rAddr: bindUDPAddr, tcpConn: c}, ss), nil
+	return NewPacketConn(&socksPacketConn{PacketConn: pc, rAddr: bindUDPAddr, tcpConn: c}, ss), nil
 }
 
 // ProxyInfo implements C.ProxyAdapter
@@ -201,34 +179,38 @@ func NewSocks5(option Socks5Option) (*Socks5, error) {
 				InsecureSkipVerify: option.SkipCertVerify,
 				ServerName:         option.Server,
 			},
-			Fingerprint: option.Fingerprint,
-			Certificate: option.Certificate,
-			PrivateKey:  option.PrivateKey,
+			Fingerprint:    option.Fingerprint,
+			NameCertVerify: option.NameCertVerify,
+			Certificate:    option.Certificate,
+			PrivateKey:     option.PrivateKey,
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &Socks5{
-		Base: &Base{
-			name:   option.Name,
-			addr:   net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
-			tp:     C.Socks5,
-			udp:    option.UDP,
-			tfo:    option.TFO,
-			mpTcp:  option.MPTCP,
-			iface:  option.Interface,
-			rmark:  option.RoutingMark,
-			prefer: C.NewDNSPrefer(option.IPVersion),
-		},
+	outbound := &Socks5{
+		Base: NewBase(BaseOption{
+			Name:         option.Name,
+			Addr:         net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
+			Type:         C.Socks5,
+			ProviderName: option.ProviderName,
+			UDP:          option.UDP,
+			TFO:          option.TFO,
+			MPTCP:        option.MPTCP,
+			Interface:    option.Interface,
+			RoutingMark:  option.RoutingMark,
+			Prefer:       option.IPVersion,
+		}),
 		option:         &option,
 		user:           option.UserName,
 		pass:           option.Password,
 		tls:            option.TLS,
 		skipCertVerify: option.SkipCertVerify,
 		tlsConfig:      tlsConfig,
-	}, nil
+	}
+	outbound.dialer = option.NewDialer(outbound.DialOptions())
+	return outbound, nil
 }
 
 type socksPacketConn struct {
@@ -242,7 +224,11 @@ func (uc *socksPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
 	if err != nil {
 		return
 	}
-	return uc.PacketConn.WriteTo(packet, uc.rAddr)
+	_, err = uc.PacketConn.WriteTo(packet, uc.rAddr)
+	if err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }
 
 func (uc *socksPacketConn) ReadFrom(b []byte) (int, net.Addr, error) {

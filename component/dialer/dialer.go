@@ -12,24 +12,30 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/metacubex/mihomo/common/atomic"
 	"github.com/metacubex/mihomo/component/keepalive"
+	"github.com/metacubex/mihomo/component/mptcp"
 	"github.com/metacubex/mihomo/component/resolver"
 )
 
 const (
 	DefaultTCPTimeout = 5 * time.Second
 	DefaultUDPTimeout = DefaultTCPTimeout
-)
 
-type dialFunc func(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error)
+	dualStackFallbackTimeout = 300 * time.Millisecond
+)
 
 var (
-	dialMux                      sync.Mutex
-	actualSingleStackDialContext = serialSingleStackDialContext
-	actualDualStackDialContext   = serialDualStackDialContext
-	tcpConcurrent                = false
-	fallbackTimeout              = 300 * time.Millisecond
+	tcpConcurrent = atomic.NewBool(false)
 )
+
+func SetTcpConcurrent(concurrent bool) {
+	tcpConcurrent.Store(concurrent)
+}
+
+func GetTcpConcurrent() bool {
+	return tcpConcurrent.Load()
+}
 
 func DialContext(ctx context.Context, network, address string, options ...Option) (net.Conn, error) {
 	opt := applyOptions(options...)
@@ -49,11 +55,22 @@ func DialContext(ctx context.Context, network, address string, options ...Option
 		return nil, err
 	}
 
+	tcpConcurrent := GetTcpConcurrent()
+
 	switch network {
 	case "tcp4", "tcp6", "udp4", "udp6":
-		return actualSingleStackDialContext(ctx, network, ips, port, opt)
+		if tcpConcurrent {
+			return parallelDialContext(ctx, network, ips, port, opt)
+		}
+		return serialDialContext(ctx, network, ips, port, opt)
 	case "tcp", "udp":
-		return actualDualStackDialContext(ctx, network, ips, port, opt)
+		if tcpConcurrent {
+			if opt.prefer != 4 && opt.prefer != 6 {
+				return parallelDialContext(ctx, network, ips, port, opt)
+			}
+			return dualStackDialContext(ctx, parallelDialContext, network, ips, port, opt)
+		}
+		return dualStackDialContext(ctx, serialDialContext, network, ips, port, opt)
 	default:
 		return nil, ErrorInvalidedNetworkStack
 	}
@@ -103,25 +120,6 @@ func ListenPacket(ctx context.Context, network, address string, rAddrPort netip.
 	return lc.ListenPacket(ctx, network, address)
 }
 
-func SetTcpConcurrent(concurrent bool) {
-	dialMux.Lock()
-	defer dialMux.Unlock()
-	tcpConcurrent = concurrent
-	if concurrent {
-		actualSingleStackDialContext = concurrentSingleStackDialContext
-		actualDualStackDialContext = concurrentDualStackDialContext
-	} else {
-		actualSingleStackDialContext = serialSingleStackDialContext
-		actualDualStackDialContext = serialDualStackDialContext
-	}
-}
-
-func GetTcpConcurrent() bool {
-	dialMux.Lock()
-	defer dialMux.Unlock()
-	return tcpConcurrent
-}
-
 func dialContext(ctx context.Context, network string, destination netip.Addr, port string, opt option) (net.Conn, error) {
 	var address string
 	destination, port = resolver.LookupIP4P(destination, port)
@@ -140,9 +138,7 @@ func dialContext(ctx context.Context, network string, destination netip.Addr, po
 
 	dialer := netDialer.(*net.Dialer)
 	keepalive.SetNetDialer(dialer)
-	if opt.mpTcp {
-		setMultiPathTCP(dialer)
-	}
+	mptcp.SetNetDialer(dialer, opt.mpTcp)
 
 	if DefaultSocketHook != nil { // ignore interfaceName, routingMark and tfo when DefaultSocketHook not null (in CMFA)
 		socketHookToToDialer(dialer)
@@ -206,33 +202,22 @@ func ICMPControl(destination netip.Addr) func(network, address string, conn sysc
 	}
 }
 
-func serialSingleStackDialContext(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error) {
-	return serialDialContext(ctx, network, ips, port, opt)
-}
-
-func serialDualStackDialContext(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error) {
-	return dualStackDialContext(ctx, serialDialContext, network, ips, port, opt)
-}
-
-func concurrentSingleStackDialContext(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error) {
-	return parallelDialContext(ctx, network, ips, port, opt)
-}
-
-func concurrentDualStackDialContext(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error) {
-	if opt.prefer != 4 && opt.prefer != 6 {
-		return parallelDialContext(ctx, network, ips, port, opt)
-	}
-	return dualStackDialContext(ctx, parallelDialContext, network, ips, port, opt)
-}
+type dialFunc func(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error)
 
 func dualStackDialContext(ctx context.Context, dialFn dialFunc, network string, ips []netip.Addr, port string, opt option) (net.Conn, error) {
 	ipv4s, ipv6s := resolver.SortationAddr(ips)
 	if len(ipv4s) == 0 && len(ipv6s) == 0 {
 		return nil, ErrorNoIpAddress
 	}
+	if len(ipv4s) == 0 && len(ipv6s) != 0 {
+		return dialFn(ctx, network, ipv6s, port, opt)
+	}
+	if len(ipv4s) != 0 && len(ipv6s) == 0 {
+		return dialFn(ctx, network, ipv4s, port, opt)
+	}
 
 	preferIPVersion := opt.prefer
-	fallbackTicker := time.NewTicker(fallbackTimeout)
+	fallbackTicker := time.NewTicker(dualStackFallbackTimeout)
 	defer fallbackTicker.Stop()
 
 	results := make(chan dialResult)
@@ -287,6 +272,11 @@ loop:
 			}
 			if res.error == nil {
 				if res.isPrimary {
+					if fallback.error == nil && fallback.Conn != nil {
+						go func() { // close fallback connection in new goroutine to avoid blocking
+							_ = fallback.Conn.Close()
+						}()
+					}
 					return res.Conn, nil
 				}
 				fallback = res
@@ -309,6 +299,9 @@ loop:
 func parallelDialContext(ctx context.Context, network string, ips []netip.Addr, port string, opt option) (net.Conn, error) {
 	if len(ips) == 0 {
 		return nil, ErrorNoIpAddress
+	}
+	if len(ips) == 1 {
+		return dialContext(ctx, network, ips[0], port, opt)
 	}
 	results := make(chan dialResult)
 	returned := make(chan struct{})

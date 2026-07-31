@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -13,8 +12,9 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/tunnel"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
+	"github.com/metacubex/chi"
+	"github.com/metacubex/chi/render"
+	"github.com/metacubex/http"
 )
 
 var (
@@ -47,7 +47,7 @@ func parseProxyName(next http.Handler) http.Handler {
 func findProxyByName(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := r.Context().Value(CtxKeyProxyName).(string)
-		proxies := tunnel.ProxiesWithProviders()
+		proxies := tunnel.Proxies()
 		proxy, exist := proxies[name]
 		if !exist {
 			render.Status(r, http.StatusNotFound)
@@ -61,7 +61,7 @@ func findProxyByName(next http.Handler) http.Handler {
 }
 
 func getProxies(w http.ResponseWriter, r *http.Request) {
-	proxies := tunnel.ProxiesWithProviders()
+	proxies := tunnel.Proxies()
 	render.JSON(w, r, render.M{
 		"proxies": proxies,
 	})

@@ -19,7 +19,9 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-type strategyFn = func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy
+type LoadBalanceOption struct {
+	Strategy string `group:"strategy,omitempty"`
+}
 
 type LoadBalance struct {
 	*GroupBase
@@ -27,18 +29,11 @@ type LoadBalance struct {
 	strategyFn     strategyFn
 	testUrl        string
 	expectedStatus string
-	Hidden         bool
-	Icon           string
 }
+
+type strategyFn = func(proxies []C.Proxy, metadata *C.Metadata, touch bool) C.Proxy
 
 var errStrategy = errors.New("unsupported strategy")
-
-func parseStrategy(config map[string]any) string {
-	if strategy, ok := config["strategy"].(string); ok {
-		return strategy
-	}
-	return "consistent-hashing"
-}
 
 func getKey(metadata *C.Metadata) string {
 	if metadata == nil {
@@ -234,39 +229,53 @@ func (lb *LoadBalance) MarshalJSON() ([]byte, error) {
 		"all":            all,
 		"testUrl":        lb.testUrl,
 		"expectedStatus": lb.expectedStatus,
-		"hidden":         lb.Hidden,
-		"icon":           lb.Icon,
+		"hidden":         lb.Hidden(),
+		"icon":           lb.Icon(),
+		"emptyFallback":  lb.EmptyFallback().Name(),
 	})
 }
 
-func NewLoadBalance(option *GroupCommonOption, providers []P.ProxyProvider, strategy string) (lb *LoadBalance, err error) {
+func (lb *LoadBalance) Providers() []P.ProxyProvider {
+	return lb.providers
+}
+
+func (lb *LoadBalance) Proxies() []C.Proxy {
+	return lb.GetProxies(false)
+}
+
+func (lb *LoadBalance) Now() string {
+	return ""
+}
+
+func NewLoadBalance(option GroupCommonOption, loadBalanceOption LoadBalanceOption, emptyFallback C.Proxy, providers []P.ProxyProvider) (lb *LoadBalance, err error) {
 	var strategyFn strategyFn
-	switch strategy {
-	case "consistent-hashing":
+	switch loadBalanceOption.Strategy {
+	case "", "consistent-hashing":
 		strategyFn = strategyConsistentHashing(option.URL)
 	case "round-robin":
 		strategyFn = strategyRoundRobin(option.URL)
 	case "sticky-sessions":
 		strategyFn = strategyStickySessions(option.URL)
 	default:
-		return nil, fmt.Errorf("%w: %s", errStrategy, strategy)
+		return nil, fmt.Errorf("%w: %s", errStrategy, loadBalanceOption.Strategy)
 	}
 	return &LoadBalance{
 		GroupBase: NewGroupBase(GroupBaseOption{
 			Name:           option.Name,
 			Type:           C.LoadBalance,
+			Hidden:         option.Hidden,
+			Icon:           option.Icon,
 			Filter:         option.Filter,
 			ExcludeFilter:  option.ExcludeFilter,
 			ExcludeType:    option.ExcludeType,
 			TestTimeout:    option.TestTimeout,
 			MaxFailedTimes: option.MaxFailedTimes,
+			EmptyFallback:  emptyFallback,
 			Providers:      providers,
 		}),
 		strategyFn:     strategyFn,
 		disableUDP:     option.DisableUDP,
 		testUrl:        option.URL,
 		expectedStatus: option.ExpectedStatus,
-		Hidden:         option.Hidden,
-		Icon:           option.Icon,
 	}, nil
 }

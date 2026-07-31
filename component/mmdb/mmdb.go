@@ -3,7 +3,7 @@ package mmdb
 import (
 	"sync"
 
-	clashautoOnce "github.com/metacubex/mihomo/common/once"
+	mihomoOnce "github.com/metacubex/mihomo/common/once"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 
@@ -88,9 +88,9 @@ func ASNInstance() ASNReader {
 }
 
 func ReloadIP() {
-	clashautoOnce.Reset(&ipOnce)
+	mihomoOnce.Reset(&ipOnce)
 }
 
 func ReloadASN() {
-	clashautoOnce.Reset(&asnOnce)
+	mihomoOnce.Reset(&asnOnce)
 }

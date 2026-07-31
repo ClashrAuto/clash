@@ -15,7 +15,7 @@
           };
         in
         rec {
-          packages.default = pkgs.clashauto-meta;
+          packages.default = pkgs.mihomo-meta;
         }
       ) //
     (
@@ -23,8 +23,8 @@
       {
         overlay = final: prev: {
 
-          clashauto-meta = final.buildGo119Module {
-            pname = "clashauto-meta";
+          mihomo-meta = final.buildGo119Module {
+            pname = "mihomo-meta";
             inherit version;
             src = ./.;
 
@@ -50,7 +50,7 @@
             doCheck = false;
 
             postInstall = ''
-              mv $out/bin/clashauto $out/bin/clashauto-meta
+              mv $out/bin/mihomo $out/bin/mihomo-meta
             '';
 
           };

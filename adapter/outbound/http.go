@@ -3,19 +3,18 @@ package outbound
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"strconv"
 
 	N "github.com/metacubex/mihomo/common/net"
 	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
+
+	"github.com/metacubex/http"
+	"github.com/metacubex/tls"
 )
 
 type Http struct {
@@ -36,6 +35,7 @@ type HttpOption struct {
 	TLS            bool              `proxy:"tls,omitempty"`
 	SNI            string            `proxy:"sni,omitempty"`
 	SkipCertVerify bool              `proxy:"skip-cert-verify,omitempty"`
+	NameCertVerify string            `proxy:"name-cert-verify,omitempty"`
 	Fingerprint    string            `proxy:"fingerprint,omitempty"`
 	Certificate    string            `proxy:"certificate,omitempty"`
 	PrivateKey     string            `proxy:"private-key,omitempty"`
@@ -61,18 +61,7 @@ func (h *Http) StreamConnContext(ctx context.Context, c net.Conn, metadata *C.Me
 
 // DialContext implements C.ProxyAdapter
 func (h *Http) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
-	return h.DialContextWithDialer(ctx, dialer.NewDialer(h.DialOptions()...), metadata)
-}
-
-// DialContextWithDialer implements C.ProxyAdapter
-func (h *Http) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.Conn, err error) {
-	if len(h.option.DialerProxy) > 0 {
-		dialer, err = proxydialer.NewByName(h.option.DialerProxy, dialer)
-		if err != nil {
-			return nil, err
-		}
-	}
-	c, err := dialer.DialContext(ctx, "tcp", h.addr)
+	c, err := h.dialer.DialContext(ctx, "tcp", h.addr)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", h.addr, err)
 	}
@@ -87,11 +76,6 @@ func (h *Http) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metad
 	}
 
 	return NewConn(c, h), nil
-}
-
-// SupportWithDialer implements C.ProxyAdapter
-func (h *Http) SupportWithDialer() C.NetWork {
-	return C.TCP
 }
 
 // ProxyInfo implements C.ProxyAdapter
@@ -174,29 +158,33 @@ func NewHttp(option HttpOption) (*Http, error) {
 				InsecureSkipVerify: option.SkipCertVerify,
 				ServerName:         sni,
 			},
-			Fingerprint: option.Fingerprint,
-			Certificate: option.Certificate,
-			PrivateKey:  option.PrivateKey,
+			Fingerprint:    option.Fingerprint,
+			NameCertVerify: option.NameCertVerify,
+			Certificate:    option.Certificate,
+			PrivateKey:     option.PrivateKey,
 		})
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &Http{
-		Base: &Base{
-			name:   option.Name,
-			addr:   net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
-			tp:     C.Http,
-			tfo:    option.TFO,
-			mpTcp:  option.MPTCP,
-			iface:  option.Interface,
-			rmark:  option.RoutingMark,
-			prefer: C.NewDNSPrefer(option.IPVersion),
-		},
+	outbound := &Http{
+		Base: NewBase(BaseOption{
+			Name:         option.Name,
+			Addr:         net.JoinHostPort(option.Server, strconv.Itoa(option.Port)),
+			Type:         C.Http,
+			ProviderName: option.ProviderName,
+			TFO:          option.TFO,
+			MPTCP:        option.MPTCP,
+			Interface:    option.Interface,
+			RoutingMark:  option.RoutingMark,
+			Prefer:       option.IPVersion,
+		}),
 		user:      option.UserName,
 		pass:      option.Password,
 		tlsConfig: tlsConfig,
 		option:    &option,
-	}, nil
+	}
+	outbound.dialer = option.NewDialer(outbound.DialOptions())
+	return outbound, nil
 }

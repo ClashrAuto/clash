@@ -10,8 +10,10 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/outbound"
 	"github.com/metacubex/mihomo/listener/inbound"
+	"github.com/metacubex/mihomo/transport/jls"
 	"github.com/metacubex/mihomo/transport/kcptun"
-	shadowtls "github.com/metacubex/mihomo/transport/sing-shadowtls"
+	"github.com/metacubex/mihomo/transport/restls"
+	"github.com/metacubex/mihomo/transport/shadowtls"
 
 	shadowsocks "github.com/metacubex/sing-shadowsocks"
 	"github.com/metacubex/sing-shadowsocks/shadowaead"
@@ -84,6 +86,8 @@ func testInboundShadowSocks0(t *testing.T, inboundOptions inbound.ShadowSocksOpt
 	outboundOptions.Server = addrPort.Addr().String()
 	outboundOptions.Port = int(addrPort.Port())
 	outboundOptions.Password = password
+	outboundOptions.DialerForAPI = tunnel.NewDialer()
+	outboundOptions.TunnelForAPI = tunnel
 
 	out, err := outbound.NewShadowSocks(outboundOptions)
 	if !assert.NoError(t, err) {
@@ -104,16 +108,16 @@ func TestInboundShadowSocks_Basic(t *testing.T) {
 	testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherLists, true)
 }
 
-func testInboundShadowSocksShadowTls(t *testing.T, inboundOptions inbound.ShadowSocksOption, outboundOptions outbound.ShadowSocksOption) {
+func testInboundShadowSocksUTLS(t *testing.T, inboundOptions inbound.ShadowSocksOption, outboundOptions outbound.ShadowSocksOption, enableSingMux bool) {
 	t.Parallel()
 	t.Run("Conn", func(t *testing.T) {
 		inboundOptions, outboundOptions := inboundOptions, outboundOptions // don't modify outside options value
-		testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, true)
+		testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, enableSingMux)
 	})
 	t.Run("UConn", func(t *testing.T) {
 		inboundOptions, outboundOptions := inboundOptions, outboundOptions // don't modify outside options value
 		outboundOptions.ClientFingerprint = "chrome"
-		testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, true)
+		testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, enableSingMux)
 	})
 }
 
@@ -129,7 +133,7 @@ func TestInboundShadowSocks_ShadowTlsv1(t *testing.T) {
 		Plugin:     shadowtls.Mode,
 		PluginOpts: map[string]any{"host": realityDest, "fingerprint": tlsFingerprint, "version": 1},
 	}
-	testInboundShadowSocksShadowTls(t, inboundOptions, outboundOptions)
+	testInboundShadowSocksUTLS(t, inboundOptions, outboundOptions, true)
 }
 
 func TestInboundShadowSocks_ShadowTlsv2(t *testing.T) {
@@ -146,7 +150,7 @@ func TestInboundShadowSocks_ShadowTlsv2(t *testing.T) {
 		PluginOpts: map[string]any{"host": realityDest, "password": shadowsocksPassword16, "fingerprint": tlsFingerprint, "version": 2},
 	}
 	outboundOptions.PluginOpts["alpn"] = []string{"http/1.1"} // shadowtls v2 work confuse with http/2 server, so we set alpn to http/1.1 to pass the test
-	testInboundShadowSocksShadowTls(t, inboundOptions, outboundOptions)
+	testInboundShadowSocksUTLS(t, inboundOptions, outboundOptions, true)
 }
 
 func TestInboundShadowSocks_ShadowTlsv3(t *testing.T) {
@@ -162,10 +166,93 @@ func TestInboundShadowSocks_ShadowTlsv3(t *testing.T) {
 		Plugin:     shadowtls.Mode,
 		PluginOpts: map[string]any{"host": realityDest, "password": shadowsocksPassword16, "fingerprint": tlsFingerprint, "version": 3},
 	}
-	testInboundShadowSocksShadowTls(t, inboundOptions, outboundOptions)
+	testInboundShadowSocksUTLS(t, inboundOptions, outboundOptions, true)
+}
+
+func TestInboundShadowSocks_Restls_tls12(t *testing.T) {
+	inboundOptions := inbound.ShadowSocksOption{
+		ResTLS: inbound.ResTLS{
+			Enable:   true,
+			Dest:     net.JoinHostPort(realityDest, "443"),
+			Password: shadowsocksPassword16,
+		},
+	}
+	outboundOptions := outbound.ShadowSocksOption{
+		Plugin:     restls.Mode,
+		PluginOpts: map[string]any{"host": realityDest, "password": shadowsocksPassword16, "fingerprint": tlsFingerprint, "version-hint": "tls12", "force-tls12": true},
+	}
+	testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, false)
+}
+
+func TestInboundShadowSocks_Restls_tls13(t *testing.T) {
+	inboundOptions := inbound.ShadowSocksOption{
+		ResTLS: inbound.ResTLS{
+			Enable:   true,
+			Dest:     net.JoinHostPort(realityDest, "443"),
+			Password: shadowsocksPassword16,
+		},
+	}
+	outboundOptions := outbound.ShadowSocksOption{
+		Plugin:     restls.Mode,
+		PluginOpts: map[string]any{"host": realityDest, "password": shadowsocksPassword16, "fingerprint": tlsFingerprint, "version-hint": "tls13"},
+	}
+	testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, false)
+}
+
+func TestInboundShadowSocks_JLS(t *testing.T) {
+	username := "jls-user"
+	password := "jls-password"
+	inboundOptions := inbound.ShadowSocksOption{
+		JLSConfig: inbound.JLSConfig{
+			Enable: true,
+			Users:  []inbound.JLSUser{{Username: username, Password: password}},
+			SNI:    realityDest,
+			Dest:   net.JoinHostPort(realityDest, "443"),
+		},
+	}
+	outboundOptions := outbound.ShadowSocksOption{
+		Plugin: jls.Mode,
+		PluginOpts: map[string]any{
+			"host":     realityDest,
+			"username": username,
+			"password": password,
+		},
+	}
+	testInboundShadowSocksUTLS(t, inboundOptions, outboundOptions, false)
+}
+
+func TestInboundShadowSocks_SimpleObfs_Http(t *testing.T) {
+	inboundOptions := inbound.ShadowSocksOption{
+		SimpleObfs: inbound.SimpleObfs{
+			Enable: true,
+			Mode:   "http",
+		},
+	}
+	outboundOptions := outbound.ShadowSocksOption{
+		Plugin:     "obfs",
+		PluginOpts: map[string]any{"mode": "http", "host": realityDest},
+	}
+	testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, false)
+}
+
+func TestInboundShadowSocks_SimpleObfs_Tls(t *testing.T) {
+	inboundOptions := inbound.ShadowSocksOption{
+		SimpleObfs: inbound.SimpleObfs{
+			Enable: true,
+			Mode:   "tls",
+		},
+	}
+	outboundOptions := outbound.ShadowSocksOption{
+		Plugin:     "obfs",
+		PluginOpts: map[string]any{"mode": "tls", "host": realityDest},
+	}
+	testInboundShadowSocks(t, inboundOptions, outboundOptions, shadowsocksCipherShortLists, false)
 }
 
 func TestInboundShadowSocks_KcpTun(t *testing.T) {
+	if winGo120 {
+		t.Skip("skip kcptun test on windows go1.20")
+	}
 	inboundOptions := inbound.ShadowSocksOption{
 		KcpTun: inbound.KcpTun{
 			Enable: true,

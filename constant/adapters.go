@@ -21,6 +21,8 @@ const (
 	RejectDrop
 	Compatible
 	Pass
+	PassRule
+	Rematch
 	Dns
 
 	Relay
@@ -44,6 +46,13 @@ const (
 	Ssh
 	Mieru
 	AnyTLS
+	Sudoku
+	Masque
+	TrustTunnel
+	ShadowQuic
+	OpenVPN
+	Tailscale
+	GostRelay
 )
 
 const (
@@ -58,6 +67,7 @@ var ErrNotSupport = errors.New("no support")
 
 type Connection interface {
 	Chains() Chain
+	ProviderChains() Chain
 	AppendToChains(adapter ProxyAdapter)
 	RemoteDestination() string
 }
@@ -101,13 +111,14 @@ type Dialer interface {
 }
 
 type ProxyInfo struct {
-	XUDP        bool
-	TFO         bool
-	MPTCP       bool
-	SMUX        bool
-	Interface   string
-	RoutingMark int
-	DialerProxy string
+	XUDP         bool
+	TFO          bool
+	MPTCP        bool
+	SMUX         bool
+	Interface    string
+	RoutingMark  int
+	ProviderName string
+	DialerProxy  string
 }
 
 type ProxyAdapter interface {
@@ -120,17 +131,6 @@ type ProxyAdapter interface {
 	ProxyInfo() ProxyInfo
 	MarshalJSON() ([]byte, error)
 
-	// Deprecated: use DialContextWithDialer and ListenPacketWithDialer instead.
-	// StreamConn wraps a protocol around net.Conn with Metadata.
-	//
-	// Examples:
-	//	conn, _ := net.DialContext(context.Background(), "tcp", "host:port")
-	//	conn, _ = adapter.StreamConnContext(context.Background(), conn, metadata)
-	//
-	// It returns a C.Conn with protocol which start with
-	// a new session (if any)
-	StreamConnContext(ctx context.Context, c net.Conn, metadata *Metadata) (net.Conn, error)
-
 	// DialContext return a C.Conn with protocol which
 	// contains multiplexing-related reuse logic (if any)
 	DialContext(ctx context.Context, metadata *Metadata) (Conn, error)
@@ -138,13 +138,6 @@ type ProxyAdapter interface {
 
 	// SupportUOT return UDP over TCP support
 	SupportUOT() bool
-
-	// SupportWithDialer only for deprecated relay group, the new protocol does not need to be implemented.
-	SupportWithDialer() NetWork
-	// DialContextWithDialer only for deprecated relay group, the new protocol does not need to be implemented.
-	DialContextWithDialer(ctx context.Context, dialer Dialer, metadata *Metadata) (Conn, error)
-	// ListenPacketWithDialer only for deprecated relay group, the new protocol does not need to be implemented.
-	ListenPacketWithDialer(ctx context.Context, dialer Dialer, metadata *Metadata) (PacketConn, error)
 
 	// IsL3Protocol return ProxyAdapter working in L3 (tell dns module not pass the domain to avoid loopback)
 	IsL3Protocol(metadata *Metadata) bool
@@ -154,11 +147,6 @@ type ProxyAdapter interface {
 
 	// Close releasing associated resources
 	Close() error
-}
-
-type Group interface {
-	URLTest(ctx context.Context, url string, expectedStatus utils.IntRanges[uint16]) (mp map[string]uint16, err error)
-	Touch()
 }
 
 type DelayHistory struct {
@@ -201,6 +189,10 @@ func (at AdapterType) String() string {
 		return "Compatible"
 	case Pass:
 		return "Pass"
+	case PassRule:
+		return "PassRule"
+	case Rematch:
+		return "Rematch"
 	case Dns:
 		return "Dns"
 	case Shadowsocks:
@@ -233,6 +225,20 @@ func (at AdapterType) String() string {
 		return "Mieru"
 	case AnyTLS:
 		return "AnyTLS"
+	case Sudoku:
+		return "Sudoku"
+	case Masque:
+		return "Masque"
+	case TrustTunnel:
+		return "TrustTunnel"
+	case ShadowQuic:
+		return "ShadowQuic"
+	case OpenVPN:
+		return "OpenVPN"
+	case Tailscale:
+		return "Tailscale"
+	case GostRelay:
+		return "GostRelay"
 	case Relay:
 		return "Relay"
 	case Selector:

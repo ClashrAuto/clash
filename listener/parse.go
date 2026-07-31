@@ -79,6 +79,13 @@ func ParseListener(mapping map[string]any) (C.InboundListener, error) {
 			return nil, err
 		}
 		listener, err = IN.NewShadowSocks(shadowsocksOption)
+	case "snell":
+		snellOption := &IN.SnellOption{UDP: true}
+		err = decoder.Decode(mapping, snellOption)
+		if err != nil {
+			return nil, err
+		}
+		listener, err = IN.NewSnell(snellOption)
 	case "vmess":
 		vmessOption := &IN.VmessOption{}
 		err = decoder.Decode(mapping, vmessOption)
@@ -107,6 +114,13 @@ func ParseListener(mapping map[string]any) (C.InboundListener, error) {
 			return nil, err
 		}
 		listener, err = IN.NewHysteria2(hysteria2Option)
+	case "hysteria2-realm":
+		hysteria2RealmOption := IN.DefaultHysteria2RealmServerOption()
+		err = decoder.Decode(mapping, hysteria2RealmOption)
+		if err != nil {
+			return nil, err
+		}
+		listener, err = IN.NewHysteria2RealmServer(hysteria2RealmOption)
 	case "tuic":
 		tuicOption := &IN.TuicOption{
 			MaxIdleTime:           15000,
@@ -120,6 +134,19 @@ func ParseListener(mapping map[string]any) (C.InboundListener, error) {
 			return nil, err
 		}
 		listener, err = IN.NewTuic(tuicOption)
+	case "shadowquic":
+		shadowQuicOption := &IN.ShadowQuicOption{
+			MaxIdleTime:          30000,
+			ALPN:                 []string{"h3"},
+			MaxDatagramFrameSize: 1400,
+			CongestionController: "bbr",
+			ZeroRTT:              true,
+		}
+		err = decoder.Decode(mapping, shadowQuicOption)
+		if err != nil {
+			return nil, err
+		}
+		listener, err = IN.NewShadowQuic(shadowQuicOption)
 	case "anytls":
 		anytlsOption := &IN.AnyTLSOption{}
 		err = decoder.Decode(mapping, anytlsOption)
@@ -134,6 +161,20 @@ func ParseListener(mapping map[string]any) (C.InboundListener, error) {
 			return nil, err
 		}
 		listener, err = IN.NewMieru(mieruOption)
+	case "sudoku":
+		sudokuOption := &IN.SudokuOption{}
+		err = decoder.Decode(mapping, sudokuOption)
+		if err != nil {
+			return nil, err
+		}
+		listener, err = IN.NewSudoku(sudokuOption)
+	case "trusttunnel":
+		trusttunnelOption := &IN.TrustTunnelOption{}
+		err = decoder.Decode(mapping, trusttunnelOption)
+		if err != nil {
+			return nil, err
+		}
+		listener, err = IN.NewTrustTunnel(trusttunnelOption)
 	default:
 		return nil, fmt.Errorf("unsupport proxy type: %s", proxyType)
 	}

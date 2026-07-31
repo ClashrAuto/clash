@@ -139,6 +139,49 @@ func TestStructure_Nest(t *testing.T) {
 	assert.Equal(t, s.BazOptional, goal)
 }
 
+func TestStructure_DoubleNest(t *testing.T) {
+	rawMap := map[string]any{
+		"bar": map[string]any{
+			"foo": 1,
+		},
+	}
+
+	goal := BazOptional{
+		Foo: 1,
+	}
+
+	s := &struct {
+		Bar struct {
+			BazOptional
+		} `test:"bar"`
+	}{}
+	err := decoder.Decode(rawMap, s)
+	assert.Nil(t, err)
+	assert.Equal(t, s.Bar.BazOptional, goal)
+}
+
+func TestStructure_Remain(t *testing.T) {
+	rawMap := map[string]any{
+		"foo":   1,
+		"bar":   "test",
+		"extra": false,
+	}
+
+	goal := &Baz{
+		Foo: 1,
+		Bar: "test",
+	}
+
+	s := &struct {
+		Baz
+		Remain map[string]any `test:",remain"`
+	}{}
+	err := decoder.Decode(rawMap, s)
+	assert.Nil(t, err)
+	assert.Equal(t, *goal, s.Baz)
+	assert.Equal(t, map[string]any{"extra": false}, s.Remain)
+}
+
 func TestStructure_SliceNilValue(t *testing.T) {
 	rawMap := map[string]any{
 		"foo": 1,
@@ -228,6 +271,23 @@ func TestStructure_Pointer(t *testing.T) {
 	assert.Nil(t, s.Bar)
 }
 
+func TestStructure_PointerStruct(t *testing.T) {
+	rawMap := map[string]any{
+		"foo": "foo",
+	}
+
+	s := &struct {
+		Foo *string `test:"foo,omitempty"`
+		Bar *Baz    `test:"bar,omitempty"`
+	}{}
+
+	err := decoder.Decode(rawMap, s)
+	assert.Nil(t, err)
+	assert.NotNil(t, s.Foo)
+	assert.Equal(t, "foo", *s.Foo)
+	assert.Nil(t, s.Bar)
+}
+
 type num struct {
 	a int
 }
@@ -297,6 +357,30 @@ func TestStructure_Ignore(t *testing.T) {
 	s := struct {
 		MustIgnore string `test:"-"`
 	}{MustIgnore: "oldData"}
+
+	err := decoder.Decode(rawMap, &s)
+	assert.Nil(t, err)
+	assert.Equal(t, s.MustIgnore, "oldData")
+
+	// test omitempty
+	delete(rawMap, "-")
+	err = decoder.Decode(rawMap, &s)
+	assert.Nil(t, err)
+	assert.Equal(t, s.MustIgnore, "oldData")
+}
+
+func TestStructure_IgnoreInNest(t *testing.T) {
+	rawMap := map[string]any{
+		"-": "newData",
+	}
+
+	type TP struct {
+		MustIgnore string `test:"-"`
+	}
+
+	s := struct {
+		TP
+	}{TP{MustIgnore: "oldData"}}
 
 	err := decoder.Decode(rawMap, &s)
 	assert.Nil(t, err)

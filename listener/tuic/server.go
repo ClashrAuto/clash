@@ -1,6 +1,7 @@
 package tuic
 
 import (
+	"context"
 	"net"
 	"strings"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/metacubex/mihomo/common/sockopt"
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/ech"
-	tlsC "github.com/metacubex/mihomo/component/tls"
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/listener/sing"
@@ -20,6 +20,7 @@ import (
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/quic-go"
+	"github.com/metacubex/tls"
 	"golang.org/x/exp/slices"
 )
 
@@ -32,7 +33,7 @@ type Listener struct {
 	servers      []*tuic.Server
 }
 
-func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
+func New(config LC.TuicServer, lc C.InboundListenConfig, tunnel C.Tunnel, additions ...inbound.Addition) (*Listener, error) {
 	if len(additions) == 0 {
 		additions = []inbound.Addition{
 			inbound.WithInName("DEFAULT-TUIC"),
@@ -49,23 +50,25 @@ func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (
 		return nil, err
 	}
 
-	cert, err := ca.LoadTLSKeyPair(config.Certificate, config.PrivateKey, C.Path)
+	tlsConfig := &tls.Config{
+		Time:       ntp.Now,
+		MinVersion: tls.VersionTLS13,
+	}
+	certLoader, err := ca.NewTLSKeyPairLoader(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig := &tlsC.Config{
-		Time:       ntp.Now,
-		MinVersion: tlsC.VersionTLS13,
+	tlsConfig.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return certLoader()
 	}
-	tlsConfig.Certificates = []tlsC.Certificate{tlsC.UCertificate(cert)}
-	tlsConfig.ClientAuth = tlsC.ClientAuthTypeFromString(config.ClientAuthType)
+	tlsConfig.ClientAuth = ca.ClientAuthTypeFromString(config.ClientAuthType)
 	if len(config.ClientAuthCert) > 0 {
-		if tlsConfig.ClientAuth == tlsC.NoClientCert {
-			tlsConfig.ClientAuth = tlsC.RequireAndVerifyClientCert
+		if tlsConfig.ClientAuth == tls.NoClientCert {
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
 	}
-	if tlsConfig.ClientAuth == tlsC.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tlsC.RequireAndVerifyClientCert {
-		pool, err := ca.LoadCertificates(config.ClientAuthCert, C.Path)
+	if tlsConfig.ClientAuth == tls.VerifyClientCertIfGiven || tlsConfig.ClientAuth == tls.RequireAndVerifyClientCert {
+		pool, err := ca.LoadCertificates(config.ClientAuthCert)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +76,7 @@ func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (
 	}
 
 	if config.EchKey != "" {
-		err = ech.LoadECHKey(config.EchKey, tlsConfig, C.Path)
+		err = ech.LoadECHKey(config.EchKey, tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +129,7 @@ func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (
 	handleTcpFn := func(conn net.Conn, addr socks5.Addr, _additions ...inbound.Addition) error {
 		//newAdditions := additions
 		//if len(_additions) > 0 {
-		//	newAdditions = slices.Clone(additions)
+		//	newAdditions = slices.Clip(additions) // force the subsequent `append()` to copy the slice
 		//	newAdditions = append(newAdditions, _additions...)
 		//}
 		//conn, metadata := inbound.NewSocket(addr, conn, C.TUIC, newAdditions...)
@@ -137,7 +140,7 @@ func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (
 	handleUdpFn := func(addr socks5.Addr, packet C.UDPPacket, _additions ...inbound.Addition) error {
 		newAdditions := additions
 		if len(_additions) > 0 {
-			newAdditions = slices.Clone(additions)
+			newAdditions = slices.Clip(additions) // force the subsequent `append()` to copy the slice
 			newAdditions = append(newAdditions, _additions...)
 		}
 		tunnel.HandleUDPPacket(inbound.NewPacket(addr, packet, C.TUIC, newAdditions...))
@@ -153,6 +156,7 @@ func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (
 		AuthenticationTimeout: time.Duration(config.AuthenticationTimeout) * time.Millisecond,
 		MaxUdpRelayPacketSize: config.MaxUdpRelayPacketSize,
 		CWND:                  config.CWND,
+		BBRProfile:            config.BBRProfile,
 	}
 	if len(config.Token) > 0 {
 		tokens := make([][32]byte, len(config.Token))
@@ -174,7 +178,7 @@ func New(config LC.TuicServer, tunnel C.Tunnel, additions ...inbound.Addition) (
 	for _, addr := range strings.Split(config.Listen, ",") {
 		addr := addr
 
-		ul, err := inbound.ListenPacket("udp", addr)
+		ul, err := lc.ListenPacket(context.Background(), "udp", addr)
 		if err != nil {
 			return nil, err
 		}

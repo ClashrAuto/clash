@@ -8,8 +8,6 @@ import (
 	"strconv"
 
 	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/transport/shadowsocks/core"
 	"github.com/metacubex/mihomo/transport/shadowsocks/shadowaead"
@@ -68,18 +66,7 @@ func (ssr *ShadowSocksR) StreamConnContext(ctx context.Context, c net.Conn, meta
 
 // DialContext implements C.ProxyAdapter
 func (ssr *ShadowSocksR) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
-	return ssr.DialContextWithDialer(ctx, dialer.NewDialer(ssr.DialOptions()...), metadata)
-}
-
-// DialContextWithDialer implements C.ProxyAdapter
-func (ssr *ShadowSocksR) DialContextWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.Conn, err error) {
-	if len(ssr.option.DialerProxy) > 0 {
-		dialer, err = proxydialer.NewByName(ssr.option.DialerProxy, dialer)
-		if err != nil {
-			return nil, err
-		}
-	}
-	c, err := dialer.DialContext(ctx, "tcp", ssr.addr)
+	c, err := ssr.dialer.DialContext(ctx, "tcp", ssr.addr)
 	if err != nil {
 		return nil, fmt.Errorf("%s connect error: %w", ssr.addr, err)
 	}
@@ -94,18 +81,7 @@ func (ssr *ShadowSocksR) DialContextWithDialer(ctx context.Context, dialer C.Dia
 
 // ListenPacketContext implements C.ProxyAdapter
 func (ssr *ShadowSocksR) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (C.PacketConn, error) {
-	return ssr.ListenPacketWithDialer(ctx, dialer.NewDialer(ssr.DialOptions()...), metadata)
-}
-
-// ListenPacketWithDialer implements C.ProxyAdapter
-func (ssr *ShadowSocksR) ListenPacketWithDialer(ctx context.Context, dialer C.Dialer, metadata *C.Metadata) (_ C.PacketConn, err error) {
-	if len(ssr.option.DialerProxy) > 0 {
-		dialer, err = proxydialer.NewByName(ssr.option.DialerProxy, dialer)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err = ssr.ResolveUDP(ctx, metadata); err != nil {
+	if err := ssr.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
 	addr, err := resolveUDPAddr(ctx, "udp", ssr.addr, ssr.prefer)
@@ -113,19 +89,14 @@ func (ssr *ShadowSocksR) ListenPacketWithDialer(ctx context.Context, dialer C.Di
 		return nil, err
 	}
 
-	pc, err := dialer.ListenPacket(ctx, "udp", "", addr.AddrPort())
+	pc, err := ssr.dialer.ListenPacket(ctx, "udp", "", addr.AddrPort())
 	if err != nil {
 		return nil, err
 	}
 
 	epc := ssr.cipher.PacketConn(N.NewEnhancePacketConn(pc))
 	epc = ssr.protocol.PacketConn(epc)
-	return newPacketConn(&ssrPacketConn{EnhancePacketConn: epc, rAddr: addr}, ssr), nil
-}
-
-// SupportWithDialer implements C.ProxyAdapter
-func (ssr *ShadowSocksR) SupportWithDialer() C.NetWork {
-	return C.ALLNet
+	return NewPacketConn(&ssrPacketConn{EnhancePacketConn: epc, rAddr: addr}, ssr), nil
 }
 
 // ProxyInfo implements C.ProxyAdapter
@@ -186,23 +157,26 @@ func NewShadowSocksR(option ShadowSocksROption) (*ShadowSocksR, error) {
 		return nil, fmt.Errorf("ssr %s initialize protocol error: %w", addr, err)
 	}
 
-	return &ShadowSocksR{
-		Base: &Base{
-			name:   option.Name,
-			addr:   addr,
-			tp:     C.ShadowsocksR,
-			udp:    option.UDP,
-			tfo:    option.TFO,
-			mpTcp:  option.MPTCP,
-			iface:  option.Interface,
-			rmark:  option.RoutingMark,
-			prefer: C.NewDNSPrefer(option.IPVersion),
-		},
+	outbound := &ShadowSocksR{
+		Base: NewBase(BaseOption{
+			Name:         option.Name,
+			Addr:         addr,
+			Type:         C.ShadowsocksR,
+			ProviderName: option.ProviderName,
+			UDP:          option.UDP,
+			TFO:          option.TFO,
+			MPTCP:        option.MPTCP,
+			Interface:    option.Interface,
+			RoutingMark:  option.RoutingMark,
+			Prefer:       option.IPVersion,
+		}),
 		option:   &option,
 		cipher:   coreCiph,
 		obfs:     obfs,
 		protocol: protocol,
-	}, nil
+	}
+	outbound.dialer = option.NewDialer(outbound.DialOptions())
+	return outbound, nil
 }
 
 type ssrPacketConn struct {
@@ -215,7 +189,12 @@ func (spc *ssrPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
 	if err != nil {
 		return
 	}
-	return spc.EnhancePacketConn.WriteTo(packet[3:], spc.rAddr)
+	packet = packet[3:]
+	_, err = spc.EnhancePacketConn.WriteTo(packet, spc.rAddr)
+	if err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }
 
 func (spc *ssrPacketConn) ReadFrom(b []byte) (int, net.Addr, error) {

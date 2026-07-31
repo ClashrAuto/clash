@@ -17,6 +17,7 @@ type Reject struct {
 }
 
 type RejectOption struct {
+	BasicOption
 	Name string `proxy:"name"`
 }
 
@@ -33,7 +34,7 @@ func (r *Reject) ListenPacketContext(ctx context.Context, metadata *C.Metadata) 
 	if err := r.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
-	return newPacketConn(&nopPacketConn{}, r), nil
+	return NewPacketConn(&nopPacketConn{}, r), nil
 }
 
 func (r *Reject) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {
@@ -45,33 +46,33 @@ func (r *Reject) ResolveUDP(ctx context.Context, metadata *C.Metadata) error {
 
 func NewRejectWithOption(option RejectOption) *Reject {
 	return &Reject{
-		Base: &Base{
-			name: option.Name,
-			tp:   C.Reject,
-			udp:  true,
-		},
+		Base: NewBase(BaseOption{
+			Name: option.Name,
+			Type: C.Reject,
+			UDP:  true,
+		}),
 	}
 }
 
 func NewReject() *Reject {
 	return &Reject{
-		Base: &Base{
-			name:   "REJECT",
-			tp:     C.Reject,
-			udp:    true,
-			prefer: C.DualStack,
-		},
+		Base: NewBase(BaseOption{
+			Name:   "REJECT",
+			Type:   C.Reject,
+			UDP:    true,
+			Prefer: C.DualStack,
+		}),
 	}
 }
 
 func NewRejectDrop() *Reject {
 	return &Reject{
-		Base: &Base{
-			name:   "REJECT-DROP",
-			tp:     C.RejectDrop,
-			udp:    true,
-			prefer: C.DualStack,
-		},
+		Base: NewBase(BaseOption{
+			Name:   "REJECT-DROP",
+			Type:   C.RejectDrop,
+			UDP:    true,
+			Prefer: C.DualStack,
+		}),
 		drop: true,
 	}
 }
@@ -81,6 +82,17 @@ func NewPass() *Reject {
 		Base: &Base{
 			name:   "PASS",
 			tp:     C.Pass,
+			udp:    true,
+			prefer: C.DualStack,
+		},
+	}
+}
+
+func NewPassRule() *Reject {
+	return &Reject{
+		Base: &Base{
+			name:   "PASS-RULE",
+			tp:     C.PassRule,
 			udp:    true,
 			prefer: C.DualStack,
 		},

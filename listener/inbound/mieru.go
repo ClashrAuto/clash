@@ -1,9 +1,7 @@
 package inbound
 
 import (
-	"context"
 	"fmt"
-	"net"
 	"sync"
 
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -14,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	mieruserver "github.com/enfein/mieru/v3/apis/server"
+	mierutp "github.com/enfein/mieru/v3/apis/trafficpattern"
 	mierupb "github.com/enfein/mieru/v3/pkg/appctl/appctlpb"
 )
 
@@ -26,18 +25,10 @@ type Mieru struct {
 
 type MieruOption struct {
 	BaseOption
-	Transport string            `inbound:"transport"`
-	Users     map[string]string `inbound:"users"`
-}
-
-type mieruListenerFactory struct{}
-
-func (mieruListenerFactory) Listen(ctx context.Context, network, address string) (net.Listener, error) {
-	return inbound.ListenContext(ctx, network, address)
-}
-
-func (mieruListenerFactory) ListenPacket(ctx context.Context, network, address string) (net.PacketConn, error) {
-	return inbound.ListenPacketContext(ctx, network, address)
+	Transport           string            `inbound:"transport"`
+	Users               map[string]string `inbound:"users"`
+	TrafficPattern      string            `inbound:"traffic-pattern,omitempty"`
+	UserHintIsMandatory bool              `inbound:"user-hint-is-mandatory,omitempty"`
 }
 
 func NewMieru(option *MieruOption) (*Mieru, error) {
@@ -154,13 +145,24 @@ func buildMieruServerConfig(option *MieruOption, ports utils.IntRanges[uint16]) 
 			Password: proto.String(password),
 		})
 	}
+	var trafficPattern *mierupb.TrafficPattern
+	trafficPattern, _ = mierutp.Decode(option.TrafficPattern)
+	var advancedSettings *mierupb.ServerAdvancedSettings
+	if option.UserHintIsMandatory {
+		advancedSettings = &mierupb.ServerAdvancedSettings{
+			UserHintIsMandatory: proto.Bool(true),
+		}
+	}
+	lc := option.ListenConfig()
 	return &mieruserver.ServerConfig{
 		Config: &mierupb.ServerConfig{
-			PortBindings: portBindings,
-			Users:        users,
+			PortBindings:     portBindings,
+			Users:            users,
+			TrafficPattern:   trafficPattern,
+			AdvancedSettings: advancedSettings,
 		},
-		StreamListenerFactory: mieruListenerFactory{},
-		PacketListenerFactory: mieruListenerFactory{},
+		StreamListenerFactory: lc,
+		PacketListenerFactory: lc,
 	}, nil
 }
 
@@ -177,6 +179,15 @@ func validateMieruOption(option *MieruOption) error {
 		}
 		if password == "" {
 			return fmt.Errorf("password is empty")
+		}
+	}
+	if option.TrafficPattern != "" {
+		trafficPattern, err := mierutp.Decode(option.TrafficPattern)
+		if err != nil {
+			return fmt.Errorf("failed to decode traffic pattern %q: %w", option.TrafficPattern, err)
+		}
+		if err := mierutp.Validate(trafficPattern); err != nil {
+			return fmt.Errorf("invalid traffic pattern %q: %w", option.TrafficPattern, err)
 		}
 	}
 	return nil

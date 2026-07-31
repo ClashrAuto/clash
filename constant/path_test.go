@@ -13,11 +13,11 @@ func TestPath(t *testing.T) {
 
 	assert.False(t, (&path{}).IsSafePath("../metacubexd/"))
 	assert.True(t, (&path{
-		homeDir:   "/usr/share/clashauto",
+		homeDir:   "/usr/share/mihomo",
 		safePaths: []string{"/usr/share/metacubexd"},
 	}).IsSafePath("../metacubexd/"))
 	assert.False(t, (&path{
-		homeDir:   "/usr/share/clashauto",
+		homeDir:   "/usr/share/mihomo",
 		safePaths: []string{"/usr/share/ycad"},
 	}).IsSafePath("../metacubexd/"))
 

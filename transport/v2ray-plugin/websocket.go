@@ -2,13 +2,14 @@ package obfs
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
-	"net/http"
 
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/ech"
 	"github.com/metacubex/mihomo/transport/vmess"
+
+	"github.com/metacubex/http"
+	"github.com/metacubex/tls"
 )
 
 // Option is options of websocket obfs
@@ -20,6 +21,7 @@ type Option struct {
 	TLS                      bool
 	ECHConfig                *ech.Config
 	SkipCertVerify           bool
+	NameCertVerify           string
 	Fingerprint              string
 	Certificate              string
 	PrivateKey               string
@@ -54,9 +56,10 @@ func NewV2rayObfs(ctx context.Context, conn net.Conn, option *Option) (net.Conn,
 				InsecureSkipVerify: option.SkipCertVerify,
 				NextProtos:         []string{"http/1.1"},
 			},
-			Fingerprint: option.Fingerprint,
-			Certificate: option.Certificate,
-			PrivateKey:  option.PrivateKey,
+			Fingerprint:    option.Fingerprint,
+			NameCertVerify: option.NameCertVerify,
+			Certificate:    option.Certificate,
+			PrivateKey:     option.PrivateKey,
 		})
 		if err != nil {
 			return nil, err
