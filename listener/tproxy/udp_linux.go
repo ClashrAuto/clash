@@ -31,7 +31,8 @@ func dialUDP(network string, lAddr, rAddr netip.AddrPort) (uc *net.UDPConn, err 
 		return nil, err
 	}
 
-	fd, err := syscall.Socket(udpAddrFamily(network, lAddr, rAddr), syscall.SOCK_DGRAM, 0)
+	family := udpAddrFamily(network, lAddr, rAddr)
+	fd, err := syscall.Socket(family, syscall.SOCK_DGRAM, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +49,15 @@ func dialUDP(network string, lAddr, rAddr netip.AddrPort) (uc *net.UDPConn, err 
 
 	if err = syscall.SetsockoptInt(fd, syscall.SOL_IP, syscall.IP_TRANSPARENT, 1); err != nil {
 		return nil, err
+	}
+
+	// AF_INET6 的 socket 光有 IP_TRANSPARENT 不够：往下 Bind 的是客户端的非本机
+	// 地址，内核要 SOL_IPV6/IPV6_TRANSPARENT 才允许，否则 bind 直接
+	// EADDRNOTAVAIL —— 表现是 IPv6 UDP 走 tproxy 时回程包全丢，只有单向流量。
+	if family == syscall.AF_INET6 {
+		if err = syscall.SetsockoptInt(fd, syscall.SOL_IPV6, IPV6_TRANSPARENT, 1); err != nil {
+			return nil, err
+		}
 	}
 
 	if err = syscall.Bind(fd, lSockAddr); err != nil {
