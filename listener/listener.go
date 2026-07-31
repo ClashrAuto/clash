@@ -711,7 +711,10 @@ func genAddr(host string, port int, allowLan bool) string {
 		if host == "*" {
 			return fmt.Sprintf(":%d", port)
 		}
-		return fmt.Sprintf("%s:%d", host, port)
+		// 必须用 JoinHostPort：IPv6 字面量要加方括号，
+		// 否则 bind-address: "::" 会拼成 ":::7890"，
+		// 后面 net.SplitHostPort 报 "too many colons"，监听直接起不来。
+		return net.JoinHostPort(host, strconv.Itoa(port))
 	}
 
 	return fmt.Sprintf("127.0.0.1:%d", port)
