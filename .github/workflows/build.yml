@@ -11,7 +11,7 @@ on:
       - "README.md"
       - ".github/ISSUE_TEMPLATE/**"
     branches:
-      - master
+      - "**"        # 所有分支都构建：master 出正式版，其余出 prerelease
     tags:
       - "v*"
   pull_request:
@@ -24,6 +24,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
+      is_release: ${{ steps.vars.outputs.is_release }}
     strategy:
       matrix:
         jobs:
@@ -89,6 +92,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        # 版本号最后一位是 git rev-list --count HEAD，浅克隆会恒等于 1
+        fetch-depth: 0
 
     - name: Set up Go
       if: ${{ matrix.jobs.goversion == '' }}
@@ -118,14 +124,34 @@ jobs:
       run: go env
 
     - name: Set variables
+      id: vars
       run: |
-        VERSION="${GITHUB_REF_NAME,,}-$(git rev-parse --short HEAD)"
-        VERSION="${VERSION//\//-}"
-        PackageVersion="$(curl -s "https://api.github.com/repos/ClashrAuto/coast/releases/latest" | jq -r '.tag_name' | sed 's/v//g' | awk -F '.' '{$NF = $NF + 1; print}' OFS='.').${VERSION/-/.}"
-        if [ -n "${{ github.event.inputs.version }}" ]; then
-          VERSION=${{ github.event.inputs.version }}
-          PackageVersion="${VERSION#v}"
+        # 版本号 = major.minor（取自 constant/version.go）+ 提交数，即每个 commit 自动进最后一位。
+        # 与 Coast 应用侧同一套规则，便于对照。
+        BASE=$(grep -oP 'Version\s*=\s*"\K[0-9]+\.[0-9]+' constant/version.go)
+        COUNT=$(git rev-list --count HEAD)
+        if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+          VERSION="${GITHUB_REF_NAME}"         # 手动打 tag：直接用 tag 名
+          IS_RELEASE=true
+        elif [ "${GITHUB_REF_NAME}" = "master" ]; then
+          VERSION="v${BASE}.${COUNT}"          # 主分支：正式版，最后一位随提交数递增
+          IS_RELEASE=true
+        else
+          # 非主分支：测试版。带上短 sha，避免两个分支落在同一提交数时撞车
+          VERSION="v${BASE}.${COUNT}-beta.$(git rev-parse --short HEAD)"
+          IS_RELEASE=false
         fi
+        VERSION="${VERSION//\//-}"
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          VERSION="${{ github.event.inputs.version }}"       # 手动发版：以输入为准
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_release=true" >> $GITHUB_OUTPUT
+        fi
+        # deb/rpm/pacman 的版本不接受 v 前缀和 - 号
+        PackageVersion="${VERSION#v}"
+        PackageVersion="${PackageVersion//-/.}"
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
         echo "PackageVersion=${PackageVersion}" >> $GITHUB_ENV
       
@@ -258,9 +284,10 @@ jobs:
           version.txt
           checksums.txt
 
+  # 非主分支：滚动 prerelease，tag 为 Prerelease-<分支名>，每次推送覆盖同一个 tag 的资产
   Upload-Prerelease:
     permissions: write-all
-    if: ${{ github.event_name != 'workflow_dispatch' && github.ref_type == 'branch' && !startsWith(github.event_name, 'pull_request') }}
+    if: ${{ needs.build.outputs.is_release == 'false' && github.ref_type == 'branch' && !startsWith(github.event_name, 'pull_request') }}
     needs: [build]
     runs-on: ubuntu-latest
     steps:
@@ -316,53 +343,62 @@ jobs:
         generate_release_notes: true
         body_path: release.txt
 
+  # 主分支推送（或手动 workflow_dispatch / 打 v* tag）：发正式版，tag 为 v<major>.<minor>.<提交数>
   Upload-Release:
     permissions: write-all
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
+    if: ${{ needs.build.outputs.is_release == 'true' && !startsWith(github.event_name, 'pull_request') }}
     needs: [build]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: master
           fetch-depth: '0'
           fetch-tags: 'true'
 
-      - name: Get tags
+      - name: Tag the commit
         run: |
-          echo "CURRENTVERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
           git fetch --tags
-          echo "PREVERSION=$(git describe --tags --abbrev=0 HEAD)" >> $GITHUB_ENV
-
-      - name: Tag the commit on master
-        run: |
-          git checkout master
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          echo "PREVERSION=$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo '')" >> $GITHUB_ENV
+          # tag 触发时这个 tag 已经存在，跳过；分支推送则新建
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            echo "tag ${VERSION} 已存在，跳过打标"
+          else
+            git tag "${VERSION}"
+            git push origin "${VERSION}"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate release notes
         run: |
-            cp ./.github/genReleaseNote.sh ./
-            bash ./genReleaseNote.sh -v ${PREVERSION}...${CURRENTVERSION}
-            rm ./genReleaseNote.sh
-  
+          cp ./.github/genReleaseNote.sh ./
+          # 首个版本没有上一个 tag，生成不出来也不该让整个发版失败
+          bash ./genReleaseNote.sh -v ${PREVERSION}...${VERSION} || true
+          rm -f ./genReleaseNote.sh
+          [ -f release.md ] || echo "Coast core ${VERSION}" > release.md
+
       - uses: actions/download-artifact@v8
         with:
           path: bin/
           merge-multiple: true
-  
-      - name: Display structure of downloaded files
-        run: ls -R
-        working-directory: bin
-  
+
+      - name: Calculate checksums
+        run: |
+          cd bin/
+          find . -type f -not -name "checksums.*" -not -name "version.txt" | sort | xargs sha256sum > checksums.txt
+          cat checksums.txt
+        shell: bash
+
       - name: Upload Release
         uses: softprops/action-gh-release@v3
         if: ${{ success() }}
         with:
-          tag_name: ${{ github.event.inputs.version }}
+          tag_name: ${{ env.VERSION }}
           files: bin/*
           body_path: release.md
+          prerelease: false
+          make_latest: true
 
