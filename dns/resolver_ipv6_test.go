@@ -3,6 +3,7 @@ package dns
 import (
 	"context"
 	"errors"
+	"net"
 	"net/netip"
 	"strings"
 	"testing"
@@ -103,6 +104,57 @@ func TestLookupIPKeepsIPv4WhenIPv6Fails(t *testing.T) {
 	}
 	if len(ips) != 1 || ips[0].String() != "1.2.3.4" {
 		t.Fatalf("got %v, want [1.2.3.4]", ips)
+	}
+}
+
+// rawAnswerClient 原样吐回指定的 RR，用来伪造不合规的上游应答。
+type rawAnswerClient struct{ rrs []D.RR }
+
+func (rawAnswerClient) Address() string  { return "stub-raw" }
+func (rawAnswerClient) ResetConnection() {}
+func (c rawAnswerClient) ExchangeContext(_ context.Context, m *D.Msg) (*D.Msg, error) {
+	q := m.Question[0]
+	msg := &D.Msg{}
+	msg.SetQuestion(q.Name, q.Qtype)
+	msg.Response = true
+	msg.Answer = c.rrs
+	return msg, nil
+}
+
+// AAAA 应答里塞 ::ffff:a.b.c.d 时，msgToIP 会 Unmap 成纯 v4，
+// 于是 LookupIPv6 返回一个 IPv4 地址：违反 ip-version: ipv6-only，
+// 而且 dialer 会拿 tcp6 去连 v4，直接在 syscall 层失败。
+func TestLookupIPv6RejectsV4MappedAnswer(t *testing.T) {
+	hdr := D.RR_Header{Name: "example.com.", Rrtype: D.TypeAAAA, Class: D.ClassINET, Ttl: 60}
+	r := NewResolverFromClient(rawAnswerClient{rrs: []D.RR{
+		&D.AAAA{Hdr: hdr, AAAA: net.ParseIP("::ffff:1.2.3.4")},
+	}})
+
+	ips, err := r.LookupIPv6(context.Background(), "example.com")
+	if err == nil {
+		t.Fatalf("LookupIPv6 返回了 %v 且 err=nil；AAAA 查询不该吐出 IPv4 地址", ips)
+	}
+	if !errors.Is(err, resolver.ErrIPNotFound) {
+		t.Fatalf("want ErrIPNotFound, got %v", err)
+	}
+	if len(ips) != 0 {
+		t.Fatalf("want no addresses, got %v", ips)
+	}
+}
+
+// 对照组：正常的 AAAA 应答必须照常返回。
+func TestLookupIPv6KeepsRealV6Answer(t *testing.T) {
+	hdr := D.RR_Header{Name: "example.com.", Rrtype: D.TypeAAAA, Class: D.ClassINET, Ttl: 60}
+	r := NewResolverFromClient(rawAnswerClient{rrs: []D.RR{
+		&D.AAAA{Hdr: hdr, AAAA: net.ParseIP("2606:4700:4700::1111")},
+	}})
+
+	ips, err := r.LookupIPv6(context.Background(), "example.com")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(ips) != 1 || ips[0].String() != "2606:4700:4700::1111" {
+		t.Fatalf("got %v, want [2606:4700:4700::1111]", ips)
 	}
 }
 

@@ -382,6 +382,19 @@ func (r *Resolver) lookupIP(ctx context.Context, host string, dnsType uint16) (i
 	}
 
 	ips = msgToIP(msg)
+
+	// msgToIP 对 A 和 AAAA 一视同仁地收，而且会 Unmap。于是 AAAA 应答里混进
+	// ::ffff:a.b.c.d（或 CNAME 链尾带出来的 A 记录）时，lookupIP(TypeAAAA)
+	// 会返回 IPv4 地址 —— LookupIPv6 因此违反 ip-version: ipv6-only，
+	// dialer 也会拿着 tcp6 去连一个 v4 地址，直接在 syscall 层失败。
+	// 上面那段字面量快速路径本来就做了版本检查，查询结果这条路径漏了。
+	switch dnsType {
+	case D.TypeA:
+		ips = lo.Filter(ips, func(ip netip.Addr, _ int) bool { return ip.Is4() })
+	case D.TypeAAAA:
+		ips = lo.Filter(ips, func(ip netip.Addr, _ int) bool { return !ip.Is4() })
+	}
+
 	ipLength := len(ips)
 	if ipLength == 0 {
 		return []netip.Addr{}, resolver.ErrIPNotFound
