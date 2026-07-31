@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/resolver"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/http"
 	"github.com/metacubex/quic-go"

@@ -7,9 +7,9 @@ import (
 	"net/netip"
 	"strings"
 
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/tunnel/statistic"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/tunnel/statistic"
 )
 
 type proxyDialer struct {

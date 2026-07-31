@@ -4,8 +4,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/metacubex/mihomo/common/xsync"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/ClashrAuto/coast/common/xsync"
+	C "github.com/ClashrAuto/coast/constant"
 )
 
 type Table struct {

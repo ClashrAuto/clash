@@ -6,10 +6,10 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/socks5"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/socks5"
 
 	mierucommon "github.com/enfein/mieru/v3/apis/common"
 	mieruconstant "github.com/enfein/mieru/v3/apis/constant"

@@ -9,9 +9,9 @@ import (
 	"net"
 	"strconv"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/ca"
-	C "github.com/metacubex/mihomo/constant"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/component/ca"
+	C "github.com/ClashrAuto/coast/constant"
 
 	"github.com/metacubex/http"
 	"github.com/metacubex/tls"

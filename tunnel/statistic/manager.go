@@ -4,9 +4,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	"github.com/metacubex/mihomo/common/xsync"
-	"github.com/metacubex/mihomo/component/memory"
+	"github.com/ClashrAuto/coast/common/atomic"
+	"github.com/ClashrAuto/coast/common/xsync"
+	"github.com/ClashrAuto/coast/component/memory"
 )
 
 var DefaultManager *Manager

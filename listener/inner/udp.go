@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/common/net/deadline"
-	"github.com/metacubex/mihomo/common/pool"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/socks5"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/common/net/deadline"
+	"github.com/ClashrAuto/coast/common/pool"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/socks5"
 )
 
 const innerUDPQueueSize = 128
@@ -111,7 +111,7 @@ func (c *innerUDPPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 	udpPacket := &innerUDPPacket{conn: c, data: data}
 	packet, metadata := inbound.NewPacket(target, udpPacket, C.INNER)
 	metadata.DNSMode = C.DNSNormal
-	metadata.Process = C.MihomoName
+	metadata.Process = C.CoastName
 	metadata.SpecialProxy = c.proxy
 	c.tunnel.HandleUDPPacket(packet, metadata)
 	return len(p), nil

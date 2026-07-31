@@ -1,8 +1,8 @@
 package inbound
 
 import (
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/transport/kcptun"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/transport/kcptun"
 )
 
 type KcpTun struct {

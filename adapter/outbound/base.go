@@ -9,13 +9,13 @@ import (
 	"sync"
 	"syscall"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/proxydialer"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/proxydialer"
+	"github.com/ClashrAuto/coast/component/resolver"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/gofrs/uuid/v5"
 )

@@ -6,17 +6,17 @@ import (
 	"net"
 	"strings"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/jls"
-	"github.com/metacubex/mihomo/listener/restls"
-	"github.com/metacubex/mihomo/listener/shadowtls"
-	"github.com/metacubex/mihomo/listener/sing"
-	"github.com/metacubex/mihomo/transport/shadowsocks/core"
-	obfs "github.com/metacubex/mihomo/transport/simple-obfs"
-	"github.com/metacubex/mihomo/transport/socks5"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/jls"
+	"github.com/ClashrAuto/coast/listener/restls"
+	"github.com/ClashrAuto/coast/listener/shadowtls"
+	"github.com/ClashrAuto/coast/listener/sing"
+	"github.com/ClashrAuto/coast/transport/shadowsocks/core"
+	obfs "github.com/ClashrAuto/coast/transport/simple-obfs"
+	"github.com/ClashrAuto/coast/transport/socks5"
 )
 
 type Listener struct {

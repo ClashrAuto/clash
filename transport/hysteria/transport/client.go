@@ -5,11 +5,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/metacubex/mihomo/transport/hysteria/conns/faketcp"
-	"github.com/metacubex/mihomo/transport/hysteria/conns/udp"
-	"github.com/metacubex/mihomo/transport/hysteria/conns/wechat"
-	obfsPkg "github.com/metacubex/mihomo/transport/hysteria/obfs"
-	"github.com/metacubex/mihomo/transport/hysteria/utils"
+	"github.com/ClashrAuto/coast/transport/hysteria/conns/faketcp"
+	"github.com/ClashrAuto/coast/transport/hysteria/conns/udp"
+	"github.com/ClashrAuto/coast/transport/hysteria/conns/wechat"
+	obfsPkg "github.com/ClashrAuto/coast/transport/hysteria/obfs"
+	"github.com/ClashrAuto/coast/transport/hysteria/utils"
 
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/tls"

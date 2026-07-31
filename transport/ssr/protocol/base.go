@@ -9,10 +9,10 @@ import (
 	"encoding/binary"
 	"sync"
 
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/ntp"
-	"github.com/metacubex/mihomo/transport/shadowsocks/core"
+	"github.com/ClashrAuto/coast/common/pool"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/ntp"
+	"github.com/ClashrAuto/coast/transport/shadowsocks/core"
 
 	"github.com/metacubex/randv2"
 )

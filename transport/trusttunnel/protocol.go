@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/httputils"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/ClashrAuto/coast/common/httputils"
+	C "github.com/ClashrAuto/coast/constant"
 )
 
 const (

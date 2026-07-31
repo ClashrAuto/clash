@@ -16,12 +16,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/common/httputils"
-	"github.com/metacubex/mihomo/common/pool"
-	tlsC "github.com/metacubex/mihomo/component/tls"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/vmess"
+	"github.com/ClashrAuto/coast/common/buf"
+	"github.com/ClashrAuto/coast/common/httputils"
+	"github.com/ClashrAuto/coast/common/pool"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/vmess"
 
 	"github.com/metacubex/http"
 )

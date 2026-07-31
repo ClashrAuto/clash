@@ -13,15 +13,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/iface"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/sing"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/iface"
+	"github.com/ClashrAuto/coast/component/resolver"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/sing"
+	"github.com/ClashrAuto/coast/log"
 	"golang.org/x/exp/constraints"
 
 	tun "github.com/metacubex/sing-tun"
@@ -435,7 +435,7 @@ func New(options LC.Tun, tunnel C.Tunnel, additions ...inbound.Addition) (l *Lis
 			Logger:                 log.SingLogger,
 			NetworkMonitor:         l.networkUpdateMonitor,
 			InterfaceFinder:        interfaceFinder,
-			TableName:              "mihomo",
+			TableName:              "coast",
 			DisableNFTables:        dErr == nil && disableNFTables,
 			RouteAddressSet:        &l.routeAddressSet,
 			RouteExcludeAddressSet: &l.routeExcludeAddressSet,

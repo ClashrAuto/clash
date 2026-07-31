@@ -6,8 +6,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/metacubex/mihomo/component/ca"
-	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/ClashrAuto/coast/component/ca"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
 
 	"github.com/metacubex/tls"
 )

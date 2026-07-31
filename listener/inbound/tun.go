@@ -4,10 +4,10 @@ import (
 	"encoding"
 	"net/netip"
 
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/sing_tun"
-	"github.com/metacubex/mihomo/log"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/sing_tun"
+	"github.com/ClashrAuto/coast/log"
 )
 
 type TunOption struct {

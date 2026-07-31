@@ -9,7 +9,7 @@ import (
 	"net"
 	"time"
 
-	tlsC "github.com/metacubex/mihomo/component/tls"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
 
 	"github.com/metacubex/tls"
 )

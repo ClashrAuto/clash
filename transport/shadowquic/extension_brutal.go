@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	// Private mihomo extension opcode: ASCII "mihomo" + extension id 1.
-	extensionOpcodeMihomoBrutal uint64 = 0x6d69686f6d6f0001
+	// Private coast extension opcode: ASCII "coast" + extension id 1.
+	extensionOpcodeCoastBrutal uint64 = 0x6d69686f6d6f0001
 
 	brutalNegotiationVersion       byte = 1
 	brutalNegotiationHeaderLen          = 1 + 1 + 2 // version + flags + payload length
@@ -25,7 +25,7 @@ var (
 	errUnsupportedBrutalVersion = errors.New("shadowquic: unsupported brutal negotiation version")
 )
 
-// WriteBrutalNegotiationRequest writes a mihomo-only private extension request.
+// WriteBrutalNegotiationRequest writes a coast-only private extension request.
 // JLS already authenticates users; rx follows Hysteria2 semantics: the desired
 // receive bandwidth in bytes per second, with 0 meaning unknown/auto.
 //
@@ -39,7 +39,7 @@ var (
 func WriteBrutalNegotiationRequest(w io.Writer, rx uint64) error {
 	var buf [1 + 8 + brutalNegotiationHeaderLen + brutalNegotiationMinPayloadLen]byte
 	buf[0] = CommandExtension
-	binary.BigEndian.PutUint64(buf[1:9], extensionOpcodeMihomoBrutal)
+	binary.BigEndian.PutUint64(buf[1:9], extensionOpcodeCoastBrutal)
 	writeBrutalNegotiationFrame(buf[9:], 0, rx)
 	_, err := w.Write(buf[:])
 	return err

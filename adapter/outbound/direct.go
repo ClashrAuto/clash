@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/loopback"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/loopback"
+	"github.com/ClashrAuto/coast/component/resolver"
+	C "github.com/ClashrAuto/coast/constant"
 )
 
 type Direct struct {

@@ -21,7 +21,7 @@ lan-disallowed-ips: # 禁止连接的 IP 地址段，黑名单优先级高于白
 
 #  find-process-mode has 3 values:always, strict, off
 #  - always, 开启，强制匹配所有进程
-#  - strict, 默认，由 mihomo 判断是否开启
+#  - strict, 默认，由 coast 判断是否开启
 #  - off, 不匹配进程，推荐在路由器上使用此模式
 find-process-mode: strict
 
@@ -51,7 +51,7 @@ tls:
   # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
   # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
   # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-  # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+  # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
   # ech-key: |
   #   -----BEGIN ECH KEYS-----
   #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -76,12 +76,12 @@ external-controller-cors:
 
 # RESTful API Unix socket 监听地址（ windows版本大于17063也可以使用，即大于等于1803/RS4版本即可使用 ）
 # ！！！注意： 从Unix socket访问api接口不会验证secret， 如果开启请自行保证安全问题 ！！！
-# 测试方法： curl -v --unix-socket "mihomo.sock" http://localhost/
-external-controller-unix: mihomo.sock
+# 测试方法： curl -v --unix-socket "coast.sock" http://localhost/
+external-controller-unix: coast.sock
 
 # RESTful API Windows namedpipe 监听地址
 # ！！！注意： 从Windows namedpipe访问api接口不会验证secret， 如果开启请自行保证安全问题 ！！！
-external-controller-pipe: \\.\pipe\mihomo
+external-controller-pipe: \\.\pipe\coast
 
 # 为 external-controller 和 external-controller-tls 的监听socket设置routing-mark（仅支持linux）
 external-controller-routing-mark: 0
@@ -117,9 +117,9 @@ experimental:
 
 # 类似于 /etc/hosts, 仅支持配置单个 IP
 hosts:
-# '*.mihomo.dev': 127.0.0.1
+# '*.coast.dev': 127.0.0.1
 # '.dev': 127.0.0.1
-# 'alpha.mihomo.dev': '::1'
+# 'alpha.coast.dev': '::1'
 # test.com: [1.1.1.1, 2.2.2.2]
 # home.lan: lan # lan 为特别字段，将加入本地所有网卡的地址
 # baidu.com: google.com # 只允许配置一个别名
@@ -734,7 +734,7 @@ proxies: # socks5
     #   transport-layer-padding: # 启用传输层填充
     #     enabled: false
     #   connection-enrolment: # 启用 v2ray 兼容的连接登记确认
-    #     primary-egress-outbound: "" # mihomo VMess outbound 保持为空；v2ray 可填写专用的控制出站 tag
+    #     primary-egress-outbound: "" # coast VMess outbound 保持为空；v2ray 可填写专用的控制出站 tag
     #   sequence-watermarking-enabled: false # 启用序列水印
     #   embedded-traffic-generator: # 生成额外的 HTTP 载体流量，协议由 alpn 决定
     #     steps:
@@ -941,7 +941,7 @@ proxies: # socks5
     # -------------------------
     # vless encryption客户端配置：
     # （native/xorpub 的 XTLS Vision 可以 Splice。只使用 1-RTT 模式 / 若服务端发的 ticket 中秒数不为零则 0-RTT 复用）
-    # / 是只能选一个，后面 base64 至少一个，无限串联，使用  mihomo generate vless-x25519 和 mihomo generate vless-mlkem768 生成，替换值时需去掉括号
+    # / 是只能选一个，后面 base64 至少一个，无限串联，使用  coast generate vless-x25519 和 coast generate vless-mlkem768 生成，替换值时需去掉括号
     #
     # Padding 是可选的参数，仅作用于 1-RTT 以消除握手的长度特征，双端默认值均为 "100-111-1111.75-0-111.50-0-3333"：
     # 在 1-RTT client/server hello 后以 100% 的概率粘上随机 111 到 1111 字节的 padding
@@ -1334,7 +1334,7 @@ proxies: # socks5
   # tailscale
   - name: "tailscale"
     type: tailscale
-    # hostname: mihomo # Tailscale 设备名，默认由 tsnet 处理
+    # hostname: coast # Tailscale 设备名，默认由 tsnet 处理
     # auth-key: tskey-auth-xxxx # 可选；不填写时首次启动会输出交互式登录 URL
     # control-url: https://controlplane.tailscale.com # 可选；自定义 Headscale/Tailscale control server
     # state-dir: ./tailscale # tsnet 状态目录，默认 tailscale
@@ -1515,8 +1515,8 @@ proxies: # socks5
     # zero-rtt: false # 官方 server 的 0-RTT 路径可能在 JLS 认证完成前读取用户状态（已确认影响 v0.3.11）；使用官方 server 如果遇到不通或断联情况，请在服务端关闭 zero-rtt
     # keep-alive-interval: 10000
     # congestion-controller: bbr # Available: "cubic", "new_reno", "bbr". Default: "cubic"
-    # up: 100 Mbps # enables brutal negotiation via a mihomo private extension; client upload speed; falls back to congestion-controller when unsupported
-    # down: 100 Mbps # enables brutal negotiation via a mihomo private extension; requested client download speed, capped by listener up; falls back to congestion-controller when unsupported
+    # up: 100 Mbps # enables brutal negotiation via a coast private extension; client upload speed; falls back to congestion-controller when unsupported
+    # down: 100 Mbps # enables brutal negotiation via a coast private extension; requested client download speed, capped by listener up; falls back to congestion-controller when unsupported
     # cwnd: 10 # default: 32
     # bbr-profile: "" # Available: "standard", "conservative", "aggressive". Default: "standard"
     # max-datagram-frame-size: 1400
@@ -1716,13 +1716,13 @@ proxy-groups:
       - DIRECT
     # empty-fallback: COMPATIBLE # 设置当组为空时的回退proxy（这里不支持填写代理组，只支持填写proxy名称）
 
-# Mihomo 格式的节点或支持 *ray 的分享格式
+# Coast 格式的节点或支持 *ray 的分享格式
 proxy-providers:
   provider1:
     type: http # http 的 path 可空置，默认储存路径为 homedir 的 proxies 文件夹，文件名为 url 的 md5
     url: "url"
     interval: 3600
-    path: ./provider1.yaml # 默认只允许存储在 mihomo 的 Home Dir，如果想存储到其他位置，请通过设置 SAFE_PATHS 环境变量指定额外的安全路径。该环境变量的语法同本操作系统的PATH环境变量解析规则（即Windows下以分号分割，其他系统下以冒号分割）
+    path: ./provider1.yaml # 默认只允许存储在 coast 的 Home Dir，如果想存储到其他位置，请通过设置 SAFE_PATHS 环境变量指定额外的安全路径。该环境变量的语法同本操作系统的PATH环境变量解析规则（即Windows下以分号分割，其他系统下以冒号分割）
     proxy: DIRECT
     # size-limit: 10240 # 限制下载文件最大为10kb，默认为0即不限制文件大小
     # #
@@ -1732,11 +1732,11 @@ proxy-providers:
     # #   对于加密内容，目前仅支持 age-encryption.org/v1 的 official ASCII "armor" format
     # #   对于key格式，目前仅支持 age-encryption.org/v1 的 x25519 recipient type 和 The mlkem768-x25519 hybrid post-quantum recipient type
     # # 实用工具：
-    # #   您可以通过 "mihomo age keygen" 生成符合要求的 x25519 key
-    # #   您可以通过 "mihomo age keygen-pq" 生成符合要求的 mlkem768-x25519 key
-    # #   您可以通过 "mihomo age convert <secret_key>" 从 age-secret-key 导出 age-public-key
-    # #   您可以通过 "mihomo age decrypt <secret_key> <source_file> <target_file>" 将已加密文件解密，<source_file> 为 - 时会从标准输入读取，<target_file> 为 - 时会往标准输出写入
-    # #   您可以通过 "mihomo age encrypt <public_key> <source_file> <target_file>" 将未加密文件加密，<source_file> 为 - 时会从标准输入读取，<target_file> 为 - 时会往标准输出写入
+    # #   您可以通过 "coast age keygen" 生成符合要求的 x25519 key
+    # #   您可以通过 "coast age keygen-pq" 生成符合要求的 mlkem768-x25519 key
+    # #   您可以通过 "coast age convert <secret_key>" 从 age-secret-key 导出 age-public-key
+    # #   您可以通过 "coast age decrypt <secret_key> <source_file> <target_file>" 将已加密文件解密，<source_file> 为 - 时会从标准输入读取，<target_file> 为 - 时会往标准输出写入
+    # #   您可以通过 "coast age encrypt <public_key> <source_file> <target_file>" 将未加密文件加密，<source_file> 为 - 时会从标准输入读取，<target_file> 为 - 时会往标准输出写入
     # # 参考实现：
     # #   https://github.com/FiloSottile/awesome-age#implementations
     # #
@@ -1744,7 +1744,7 @@ proxy-providers:
     header:
       User-Agent:
       - "Clash/v1.18.0"
-      - "mihomo/1.18.3"
+      - "coast/1.18.3"
       # Accept:
       # - 'application/vnd.github.v3.raw'
       # Authorization:
@@ -1846,7 +1846,7 @@ rule-providers:
   rule1:
     behavior: classical # domain ipcidr
     interval: 259200
-    path: /path/to/save/file.yaml # 默认只允许存储在 mihomo 的 Home Dir，如果想存储到其他位置，请通过设置 SAFE_PATHS 环境变量指定额外的安全路径。该环境变量的语法同本操作系统的PATH环境变量解析规则（即Windows下以分号分割，其他系统下以冒号分割）
+    path: /path/to/save/file.yaml # 默认只允许存储在 coast 的 Home Dir，如果想存储到其他位置，请通过设置 SAFE_PATHS 环境变量指定额外的安全路径。该环境变量的语法同本操作系统的PATH环境变量解析规则（即Windows下以分号分割，其他系统下以冒号分割）
     type: http # http 的 path 可空置，默认储存路径为 homedir 的 rules 文件夹，文件名为 url 的 md5
     url: "url"
     proxy: DIRECT
@@ -1860,14 +1860,14 @@ rule-providers:
     # mrs类型ruleset，目前仅支持domain和ipcidr(即不支持classical），
     #
     # 对于behavior=domain:
-    #  - format=yaml 可以通过“mihomo convert-ruleset domain yaml XXX.yaml XXX.mrs”转换到mrs格式
-    #  - format=text 可以通过“mihomo convert-ruleset domain text XXX.text XXX.mrs”转换到mrs格式
-    #  - XXX.mrs 可以通过"mihomo convert-ruleset domain mrs XXX.mrs XXX.text"转换回text格式（暂不支持转换回yaml格式）
+    #  - format=yaml 可以通过“coast convert-ruleset domain yaml XXX.yaml XXX.mrs”转换到mrs格式
+    #  - format=text 可以通过“coast convert-ruleset domain text XXX.text XXX.mrs”转换到mrs格式
+    #  - XXX.mrs 可以通过"coast convert-ruleset domain mrs XXX.mrs XXX.text"转换回text格式（暂不支持转换回yaml格式）
     #
     # 对于behavior=ipcidr:
-    #  - format=yaml 可以通过“mihomo convert-ruleset ipcidr yaml XXX.yaml XXX.mrs”转换到mrs格式
-    #  - format=text 可以通过“mihomo convert-ruleset ipcidr text XXX.text XXX.mrs”转换到mrs格式
-    #  - XXX.mrs 可以通过"mihomo convert-ruleset ipcidr mrs XXX.mrs XXX.text"转换回text格式（暂不支持转换回yaml格式）
+    #  - format=yaml 可以通过“coast convert-ruleset ipcidr yaml XXX.yaml XXX.mrs”转换到mrs格式
+    #  - format=text 可以通过“coast convert-ruleset ipcidr text XXX.text XXX.mrs”转换到mrs格式
+    #  - XXX.mrs 可以通过"coast convert-ruleset ipcidr mrs XXX.mrs XXX.text"转换回text格式（暂不支持转换回yaml格式）
     #
     type: http
     url: "url"
@@ -1889,7 +1889,7 @@ rules:
   - DOMAIN-REGEX,^abc,DIRECT
   - DOMAIN-SUFFIX,baidu.com,DIRECT
   - DOMAIN-KEYWORD,google,ss1
-  - DOMAIN-WILDCARD,test.*.mihomo.com,ss1
+  - DOMAIN-WILDCARD,test.*.coast.com,ss1
   - IP-CIDR,1.1.1.1/32,ss1
   - IP-CIDR6,2409::/64,DIRECT
   # 当满足条件是 TCP 或 UDP 流量时，使用名为 sub-rule-name1 的规则集
@@ -1939,7 +1939,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -1963,7 +1963,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -1988,7 +1988,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2158,7 +2158,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2195,7 +2195,7 @@ listeners:
     # 如果填写reality-config则开启reality（注意不可与certificate和private-key同时填写）
     # reality-config:
     #   dest: test.com:443
-    #   private-key: jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 # 可由 mihomo generate reality-keypair 命令生成
+    #   private-key: jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 # 可由 coast generate reality-keypair 命令生成
     #   short-id:
     #     - 0123456789abcdef
     #   server-names:
@@ -2242,7 +2242,7 @@ listeners:
     #  下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     #  client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     #  client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    #  如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    #  如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     #  ech-key: |
     #    -----BEGIN ECH KEYS-----
     #    ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2278,8 +2278,8 @@ listeners:
     # quic-versions: [v1] # 本机手动配置及探测失败时的版本；支持 v1/v2
     # zero-rtt: true
     # congestion-controller: bbr # Available: "cubic", "new_reno", "bbr". Default: "cubic"
-    # up: 100 Mbps # enables brutal negotiation via a mihomo private extension; server upload/client download speed cap; falls back to congestion-controller when unsupported
-    # down: 100 Mbps # enables brutal negotiation via a mihomo private extension; requested server download/client upload speed; falls back to congestion-controller when unsupported
+    # up: 100 Mbps # enables brutal negotiation via a coast private extension; server upload/client download speed cap; falls back to congestion-controller when unsupported
+    # down: 100 Mbps # enables brutal negotiation via a coast private extension; requested server download/client upload speed; falls back to congestion-controller when unsupported
     # ignore-client-bandwidth: false # for brutal; ignore outbound down and use listener down/auto instead
     # cwnd: 10 # default: 32
     # bbr-profile: "" # Available: "standard", "conservative", "aggressive". Default: "standard"
@@ -2340,7 +2340,7 @@ listeners:
     # vless encryption服务端配置：
     # （原生外观 / 只 XOR 公钥 / 全随机数。1-RTT 每次下发随机 300 到 600 秒的 ticket 以便 0-RTT 复用 / 只允许 1-RTT）
     # 填写 "600s" 会每次随机取 50% 到 100%，即相当于填写 "300-600s"
-    # / 是只能选一个，后面 base64 至少一个，无限串联，使用 mihomo generate vless-x25519 和 mihomo generate vless-mlkem768 生成，替换值时需去掉括号
+    # / 是只能选一个，后面 base64 至少一个，无限串联，使用 coast generate vless-x25519 和 coast generate vless-mlkem768 生成，替换值时需去掉括号
     #
     # Padding 是可选的参数，仅作用于 1-RTT 以消除握手的长度特征，双端默认值均为 "100-111-1111.75-0-111.50-0-3333"：
     # 在 1-RTT client/server hello 后以 100% 的概率粘上随机 111 到 1111 字节的 padding
@@ -2355,7 +2355,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2375,7 +2375,7 @@ listeners:
     # 如果填写reality-config则开启reality（注意不可与certificate和private-key同时填写）
     reality-config:
       dest: test.com:443
-      private-key: jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 # 可由 mihomo generate reality-keypair 命令生成
+      private-key: jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 # 可由 coast generate reality-keypair 命令生成
       short-id:
         - 0123456789abcdef
       server-names:
@@ -2424,7 +2424,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2518,7 +2518,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2555,7 +2555,7 @@ listeners:
     # 如果填写reality-config则开启reality（注意不可与certificate和private-key同时填写）
     # reality-config:
     #   dest: test.com:443
-    #   private-key: jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 # 可由 mihomo generate reality-keypair 命令生成
+    #   private-key: jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 # 可由 coast generate reality-keypair 命令生成
     #   short-id:
     #     - 0123456789abcdef
     #   server-names:
@@ -2592,7 +2592,7 @@ listeners:
     #  下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     #  client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     #  client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    #  如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    #  如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     #  ech-key: |
     #    -----BEGIN ECH KEYS-----
     #    ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2647,7 +2647,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK
@@ -2674,7 +2674,7 @@ listeners:
     # 下面两项为mTLS配置项，如果client-auth-type设置为 "verify-if-given" 或 "require-and-verify" 则client-auth-cert必须不为空
     # client-auth-type: "" # 可选值：""、"request"、"require-any"、"verify-if-given"、"require-and-verify"
     # client-auth-cert: string # 证书 PEM 格式，或者 证书的路径
-    # 如果填写则开启ech（可由 mihomo generate ech-keypair <明文域名> 生成）
+    # 如果填写则开启ech（可由 coast generate ech-keypair <明文域名> 生成）
     # ech-key: |
     #   -----BEGIN ECH KEYS-----
     #   ACATwY30o/RKgD6hgeQxwrSiApLaCgU+HKh7B6SUrAHaDwBD/g0APwAAIAAgHjzK

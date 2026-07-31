@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/metacubex/mihomo/common/httputils"
-	"github.com/metacubex/mihomo/component/ca"
-	tlsC "github.com/metacubex/mihomo/component/tls"
-	"github.com/metacubex/mihomo/transport/mkcp"
+	"github.com/ClashrAuto/coast/common/httputils"
+	"github.com/ClashrAuto/coast/component/ca"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
+	"github.com/ClashrAuto/coast/transport/mkcp"
 
 	"github.com/metacubex/http"
 	"github.com/metacubex/tls"

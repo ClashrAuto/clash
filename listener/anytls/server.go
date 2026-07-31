@@ -9,19 +9,19 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/ech"
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/jls"
-	"github.com/metacubex/mihomo/listener/restls"
-	"github.com/metacubex/mihomo/listener/shadowtls"
-	"github.com/metacubex/mihomo/listener/sing"
-	"github.com/metacubex/mihomo/ntp"
-	"github.com/metacubex/mihomo/transport/anytls/padding"
-	"github.com/metacubex/mihomo/transport/anytls/session"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/common/buf"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/ech"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/jls"
+	"github.com/ClashrAuto/coast/listener/restls"
+	"github.com/ClashrAuto/coast/listener/shadowtls"
+	"github.com/ClashrAuto/coast/listener/sing"
+	"github.com/ClashrAuto/coast/ntp"
+	"github.com/ClashrAuto/coast/transport/anytls/padding"
+	"github.com/ClashrAuto/coast/transport/anytls/session"
 
 	"github.com/metacubex/sing/common/auth"
 	"github.com/metacubex/sing/common/bufio"
@@ -247,7 +247,7 @@ func (l *Listener) HandleConn(conn net.Conn, h *sing.ListenerHandler) {
 			return
 		}
 
-		// It seems that mihomo does not implement a connection error reporting mechanism, so we report success directly.
+		// It seems that coast does not implement a connection error reporting mechanism, so we report success directly.
 		err = stream.HandshakeSuccess()
 		if err != nil {
 			return

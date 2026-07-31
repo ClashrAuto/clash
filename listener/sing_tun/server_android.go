@@ -6,10 +6,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/metacubex/mihomo/component/process"
-	"github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/features"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/component/process"
+	"github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/features"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/sing-tun"
 )

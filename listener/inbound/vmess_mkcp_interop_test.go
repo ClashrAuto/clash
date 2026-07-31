@@ -6,8 +6,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/listener/inbound"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/listener/inbound"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,12 +17,12 @@ func TestInboundVMess_MKCP_V2RayInterop(t *testing.T) {
 
 	v2rayBin := vmessInteropV2RayBinary(t)
 	mkcpInteropTestCase(t, v2rayBin, "default", "", "")
-	mkcpInteropTestCase(t, v2rayBin, "seed", "mihomo-mkcp-interop", "")
+	mkcpInteropTestCase(t, v2rayBin, "seed", "coast-mkcp-interop", "")
 	mkcpInteropTestCase(t, v2rayBin, "header srtp", "", "srtp")
 }
 
 func mkcpInteropTestCase(t *testing.T, v2rayBin, name, seed, header string) {
-	t.Run(name+"/mihomo client to v2ray server", func(t *testing.T) {
+	t.Run(name+"/coast client to v2ray server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		v2rayPort := vmessInteropReserveUDPPort(t)
 		config := mkcpInteropServerConfig(t, v2rayPort.Port(), userUUID, seed, header)
@@ -46,7 +46,7 @@ func mkcpInteropTestCase(t *testing.T, v2rayBin, name, seed, header string) {
 		}, 128*1024)
 	})
 
-	t.Run(name+"/v2ray client to mihomo server", func(t *testing.T) {
+	t.Run(name+"/v2ray client to coast server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		v2rayPort := vmessInteropReserveTCPPort(t)
 

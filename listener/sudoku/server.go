@@ -9,16 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/inner"
-	"github.com/metacubex/mihomo/listener/sing"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/socks5"
-	"github.com/metacubex/mihomo/transport/sudoku"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/utils"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/inner"
+	"github.com/ClashrAuto/coast/listener/sing"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/transport/socks5"
+	"github.com/ClashrAuto/coast/transport/sudoku"
 )
 
 type Listener struct {
@@ -160,7 +160,7 @@ func (l *Listener) handleConn(conn net.Conn, tunnel C.Tunnel, additions ...inbou
 }
 
 func wrapSessionConn(conn net.Conn) net.Conn {
-	// Sudoku uses framed reads. Keep mihomo's asynchronous peek deadlines from
+	// Sudoku uses framed reads. Keep coast's asynchronous peek deadlines from
 	// interrupting a partially consumed frame and desynchronizing the session.
 	return N.NewDeadlineConn(conn)
 }

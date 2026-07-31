@@ -6,11 +6,11 @@ import (
 	"runtime/debug"
 	"strings"
 
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/listener/inner"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/tlsmirror"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/listener/inner"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/transport/tlsmirror"
 )
 
 type Config struct {

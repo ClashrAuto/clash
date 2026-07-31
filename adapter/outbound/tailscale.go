@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/iface/anet"
-	"github.com/metacubex/mihomo/component/resolver"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/dns"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/iface/anet"
+	"github.com/ClashrAuto/coast/component/resolver"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/dns"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/tailscale/envknob"
 	"github.com/metacubex/tailscale/hostinfo"
@@ -66,7 +66,7 @@ type TailscaleOption struct {
 
 func init() {
 	hostinfo.RegisterHostinfoNewHook(func(hi *tailcfg.Hostinfo) {
-		hi.IPNVersion = C.MihomoName + " " + C.Version
+		hi.IPNVersion = C.CoastName + " " + C.Version
 	})
 	envknob.SetNoLogsNoSupport()
 	if runtime.GOOS == "android" { // Android SDK 30 no longer permits Go's net.Interfaces to work (Issue 2293)

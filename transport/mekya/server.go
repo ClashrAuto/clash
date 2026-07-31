@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/transport/mkcp"
+	"github.com/ClashrAuto/coast/transport/mkcp"
 
 	"github.com/metacubex/http"
 )

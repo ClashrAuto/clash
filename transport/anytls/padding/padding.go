@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/metacubex/mihomo/transport/anytls/util"
+	"github.com/ClashrAuto/coast/transport/anytls/util"
 )
 
 const CheckMark = -1

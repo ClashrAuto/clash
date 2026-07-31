@@ -13,14 +13,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/ech"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/ntp"
-	"github.com/metacubex/mihomo/tunnel/statistic"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/ech"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/ntp"
+	"github.com/ClashrAuto/coast/tunnel/statistic"
 
 	"github.com/metacubex/chi"
 	"github.com/metacubex/chi/cors"
@@ -365,7 +365,7 @@ func authentication(secret string) func(http.Handler) http.Handler {
 }
 
 func hello(w http.ResponseWriter, r *http.Request) {
-	render.JSON(w, r, render.M{"hello": "mihomo"})
+	render.JSON(w, r, render.M{"hello": "coast"})
 }
 
 func traffic(w http.ResponseWriter, r *http.Request) {

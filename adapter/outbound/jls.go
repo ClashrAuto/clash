@@ -1,6 +1,6 @@
 package outbound
 
-import "github.com/metacubex/mihomo/transport/jls"
+import "github.com/ClashrAuto/coast/transport/jls"
 
 type JLSOptions struct {
 	Username string `proxy:"username"`

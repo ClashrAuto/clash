@@ -7,12 +7,12 @@ import (
 
 	"github.com/dlclark/regexp2"
 
-	"github.com/metacubex/mihomo/adapter/provider"
-	"github.com/metacubex/mihomo/common/structure"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/adapter/provider"
+	"github.com/ClashrAuto/coast/common/structure"
+	"github.com/ClashrAuto/coast/common/utils"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
+	"github.com/ClashrAuto/coast/log"
 )
 
 var (

@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/callback"
-	"github.com/metacubex/mihomo/common/lru"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
+	"github.com/ClashrAuto/coast/common/callback"
+	"github.com/ClashrAuto/coast/common/lru"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/utils"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
 
 	"golang.org/x/net/publicsuffix"
 )

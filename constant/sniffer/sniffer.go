@@ -1,6 +1,6 @@
 package sniffer
 
-import "github.com/metacubex/mihomo/constant"
+import "github.com/ClashrAuto/coast/constant"
 
 type Sniffer interface {
 	SupportNetwork() constant.NetWork

@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/constant/features"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/constant/features"
 )
 
-const Name = "mihomo"
+const Name = "coast"
 
 var (
 	GeositeName   = "GeoSite.dat"
@@ -23,8 +23,8 @@ var (
 
 // Path is used to get the configuration path
 //
-// on Unix systems, `$HOME/.config/mihomo`.
-// on Windows, `%USERPROFILE%/.config/mihomo`.
+// on Unix systems, `$HOME/.config/coast`.
+// on Windows, `%USERPROFILE%/.config/coast`.
 var Path = func() *path {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -235,7 +235,7 @@ func (p *path) GetAssetLocation(file string) string {
 func (p *path) GetExecutableFullPath() string {
 	exePath, err := os.Executable()
 	if err != nil {
-		return "mihomo"
+		return "coast"
 	}
 	res, _ := filepath.EvalSymlinks(exePath)
 	return res

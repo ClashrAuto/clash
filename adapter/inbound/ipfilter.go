@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/netip"
 
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/ClashrAuto/coast/constant"
 )
 
 var lanAllowedIPs []netip.Prefix

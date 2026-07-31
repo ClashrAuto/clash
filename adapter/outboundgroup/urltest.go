@@ -6,12 +6,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/metacubex/mihomo/common/callback"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/singledo"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
+	"github.com/ClashrAuto/coast/common/callback"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/singledo"
+	"github.com/ClashrAuto/coast/common/utils"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
 )
 
 type URLTestOption struct {

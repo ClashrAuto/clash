@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
 
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +45,7 @@ func vmessInteropV2RayBinary(t *testing.T) string {
 		t.Skip("go toolchain not found, skip real v2ray interop test")
 	}
 
-	root := filepath.Join(os.TempDir(), "mihomo-vmess-interop", vmessInteropV2RayRef)
+	root := filepath.Join(os.TempDir(), "coast-vmess-interop", vmessInteropV2RayRef)
 	binDir := filepath.Join(root, "bin")
 	exe := ""
 	if runtime.GOOS == "windows" {
@@ -64,7 +64,7 @@ func vmessInteropV2RayBinary(t *testing.T) string {
 	require.NoError(t, os.RemoveAll(root))
 	require.NoError(t, os.MkdirAll(binDir, 0o755))
 
-	vmessInteropGo(t, goBin, root, "mod", "init", "mihomo-vmess-interop")
+	vmessInteropGo(t, goBin, root, "mod", "init", "coast-vmess-interop")
 	vmessInteropGo(t, goBin, root, "get", "github.com/v2fly/v2ray-core/v5@"+vmessInteropV2RayRef)
 	if ok && (goMajor > 1 || goMajor == 1 && goMinor > 26) {
 		vmessInteropGo(t, goBin, root, "get", "golang.org/x/net@"+vmessInteropV2RayXNetRef)

@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	mihomoHttp "github.com/metacubex/mihomo/component/http"
+	coastHttp "github.com/ClashrAuto/coast/component/http"
 
 	"github.com/metacubex/http"
 )
@@ -16,7 +16,7 @@ const defaultHttpTimeout = time.Second * 90
 func downloadForBytes(url string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultHttpTimeout)
 	defer cancel()
-	resp, err := mihomoHttp.HttpRequest(ctx, url, http.MethodGet, nil, nil)
+	resp, err := coastHttp.HttpRequest(ctx, url, http.MethodGet, nil, nil)
 	if err != nil {
 		return nil, err
 	}

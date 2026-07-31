@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/ca"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/component/ca"
 	"github.com/metacubex/tls"
 )
 

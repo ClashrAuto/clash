@@ -5,14 +5,14 @@ import (
 	"errors"
 	"net"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/ech"
-	C "github.com/metacubex/mihomo/constant"
-	authStore "github.com/metacubex/mihomo/listener/auth"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/reality"
-	"github.com/metacubex/mihomo/ntp"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/ech"
+	C "github.com/ClashrAuto/coast/constant"
+	authStore "github.com/ClashrAuto/coast/listener/auth"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/reality"
+	"github.com/ClashrAuto/coast/ntp"
 
 	"github.com/metacubex/tls"
 )

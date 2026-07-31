@@ -11,35 +11,35 @@ import (
 	"time"
 	_ "unsafe"
 
-	"github.com/metacubex/mihomo/adapter"
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/adapter/outboundgroup"
-	"github.com/metacubex/mihomo/component/auth"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/geodata"
-	mihomoHttp "github.com/metacubex/mihomo/component/http"
-	"github.com/metacubex/mihomo/component/iface"
-	"github.com/metacubex/mihomo/component/keepalive"
-	"github.com/metacubex/mihomo/component/profile"
-	"github.com/metacubex/mihomo/component/profile/cachefile"
-	"github.com/metacubex/mihomo/component/resolver"
-	"github.com/metacubex/mihomo/component/resource"
-	"github.com/metacubex/mihomo/component/sniffer"
-	"github.com/metacubex/mihomo/component/trie"
-	"github.com/metacubex/mihomo/component/updater"
-	"github.com/metacubex/mihomo/config"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/dns"
-	"github.com/metacubex/mihomo/listener"
-	authStore "github.com/metacubex/mihomo/listener/auth"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/inner"
-	"github.com/metacubex/mihomo/listener/tproxy"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/ntp/ntp"
-	"github.com/metacubex/mihomo/tunnel"
+	"github.com/ClashrAuto/coast/adapter"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/adapter/outboundgroup"
+	"github.com/ClashrAuto/coast/component/auth"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/geodata"
+	coastHttp "github.com/ClashrAuto/coast/component/http"
+	"github.com/ClashrAuto/coast/component/iface"
+	"github.com/ClashrAuto/coast/component/keepalive"
+	"github.com/ClashrAuto/coast/component/profile"
+	"github.com/ClashrAuto/coast/component/profile/cachefile"
+	"github.com/ClashrAuto/coast/component/resolver"
+	"github.com/ClashrAuto/coast/component/resource"
+	"github.com/ClashrAuto/coast/component/sniffer"
+	"github.com/ClashrAuto/coast/component/trie"
+	"github.com/ClashrAuto/coast/component/updater"
+	"github.com/ClashrAuto/coast/config"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
+	"github.com/ClashrAuto/coast/dns"
+	"github.com/ClashrAuto/coast/listener"
+	authStore "github.com/ClashrAuto/coast/listener/auth"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/inner"
+	"github.com/ClashrAuto/coast/listener/tproxy"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/ntp/ntp"
+	"github.com/ClashrAuto/coast/tunnel"
 )
 
 var mux sync.Mutex
@@ -173,7 +173,7 @@ func GetGeneral() *config.General {
 		TCPConcurrent:     dialer.GetTcpConcurrent(),
 		FindProcessMode:   tunnel.FindProcessMode(),
 		Sniffing:          tunnel.IsSniffing(),
-		GlobalUA:          mihomoHttp.UA(),
+		GlobalUA:          coastHttp.UA(),
 		ETagSupport:       resource.ETag(),
 		KeepAliveInterval: int(keepalive.KeepAliveInterval() / time.Second),
 		KeepAliveIdle:     int(keepalive.KeepAliveIdle() / time.Second),
@@ -381,7 +381,7 @@ func updateUpdater(cfg *config.Config) {
 	updater.DefaultUiUpdater.AutoDownloadUI()
 }
 
-//go:linkname temporaryUpdateGeneral github.com/metacubex/mihomo/config.temporaryUpdateGeneral
+//go:linkname temporaryUpdateGeneral github.com/ClashrAuto/coast/config.temporaryUpdateGeneral
 func temporaryUpdateGeneral(general *config.General) func() {
 	oldGeneral := GetGeneral()
 	updateGeneral(general, false)
@@ -424,7 +424,7 @@ func updateGeneral(general *config.General, logging bool) {
 	geodata.SetGeoSiteUrl(general.GeoXUrl.GeoSite)
 	geodata.SetMmdbUrl(general.GeoXUrl.Mmdb)
 	geodata.SetASNUrl(general.GeoXUrl.ASN)
-	mihomoHttp.SetUA(general.GlobalUA)
+	coastHttp.SetUA(general.GlobalUA)
 	resource.SetETag(general.ETagSupport)
 }
 
@@ -534,5 +534,5 @@ func Shutdown() {
 	tproxy.CleanupTProxyIPTables()
 	resolver.StoreFakePoolState()
 
-	log.Warnln("Mihomo shutting down")
+	log.Warnln("Coast shutting down")
 }

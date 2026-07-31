@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/metacubex/mihomo/common/structure"
-	"github.com/metacubex/mihomo/component/resource"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/rules/common"
+	"github.com/ClashrAuto/coast/common/structure"
+	"github.com/ClashrAuto/coast/component/resource"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
+	"github.com/ClashrAuto/coast/rules/common"
 )
 
 type ruleProviderSchema struct {

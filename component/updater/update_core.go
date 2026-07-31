@@ -14,21 +14,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
-	mihomoHttp "github.com/metacubex/mihomo/component/http"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/features"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/component/ca"
+	coastHttp "github.com/ClashrAuto/coast/component/http"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/features"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/http"
 )
 
 const (
-	baseReleaseURL    = "https://github.com/MetaCubeX/mihomo/releases/latest/download/"
-	versionReleaseURL = "https://github.com/MetaCubeX/mihomo/releases/latest/download/version.txt"
+	baseReleaseURL    = "https://github.com/ClashrAuto/coast/releases/latest/download/"
+	versionReleaseURL = "https://github.com/ClashrAuto/coast/releases/latest/download/version.txt"
 
-	baseAlphaURL    = "https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha/"
-	versionAlphaURL = "https://github.com/MetaCubeX/mihomo/releases/download/Prerelease-Alpha/version.txt"
+	baseAlphaURL    = "https://github.com/ClashrAuto/coast/releases/download/Prerelease-master/"
+	versionAlphaURL = "https://github.com/ClashrAuto/coast/releases/download/Prerelease-master/version.txt"
 
 	// MaxPackageFileSize is a maximum package file length in bytes. The largest
 	// package whose size is limited by this constant currently has the size of
@@ -41,7 +41,7 @@ const (
 	AlphaChannel   = "alpha"
 )
 
-// CoreUpdater is the mihomo updater.
+// CoreUpdater is the coast updater.
 // modify from https://github.com/AdguardTeam/AdGuardHome/blob/595484e0b3fb4c457f9bb727a6b94faa78a66c5f/internal/updater/updater.go
 type CoreUpdater struct {
 	mu sync.Mutex
@@ -52,28 +52,28 @@ var DefaultCoreUpdater = CoreUpdater{}
 func (u *CoreUpdater) CoreBaseName() string {
 	switch runtime.GOARCH {
 	case "arm":
-		// mihomo-linux-armv5
-		return fmt.Sprintf("mihomo-%s-%sv%s", runtime.GOOS, runtime.GOARCH, features.GOARM)
+		// coast-linux-armv5
+		return fmt.Sprintf("coast-%s-%sv%s", runtime.GOOS, runtime.GOARCH, features.GOARM)
 	case "arm64":
 		if runtime.GOOS == "android" {
-			// mihomo-android-arm64-v8
-			return fmt.Sprintf("mihomo-%s-%s-v8", runtime.GOOS, runtime.GOARCH)
+			// coast-android-arm64-v8
+			return fmt.Sprintf("coast-%s-%s-v8", runtime.GOOS, runtime.GOARCH)
 		} else {
-			// mihomo-linux-arm64
-			return fmt.Sprintf("mihomo-%s-%s", runtime.GOOS, runtime.GOARCH)
+			// coast-linux-arm64
+			return fmt.Sprintf("coast-%s-%s", runtime.GOOS, runtime.GOARCH)
 		}
 	case "mips", "mipsle":
-		// mihomo-linux-mips-hardfloat
-		return fmt.Sprintf("mihomo-%s-%s-%s", runtime.GOOS, runtime.GOARCH, features.GOMIPS)
+		// coast-linux-mips-hardfloat
+		return fmt.Sprintf("coast-%s-%s-%s", runtime.GOOS, runtime.GOARCH, features.GOMIPS)
 	case "amd64":
-		// mihomo-linux-amd64-v1
-		return fmt.Sprintf("mihomo-%s-%s-%s", runtime.GOOS, runtime.GOARCH, features.GOAMD64)
+		// coast-linux-amd64-v1
+		return fmt.Sprintf("coast-%s-%s-%s", runtime.GOOS, runtime.GOARCH, features.GOAMD64)
 	default:
-		// mihomo-linux-386
-		// mihomo-linux-mips64
-		// mihomo-linux-riscv64
-		// mihomo-linux-s390x
-		return fmt.Sprintf("mihomo-%s-%s", runtime.GOOS, runtime.GOARCH)
+		// coast-linux-386
+		// coast-linux-mips64
+		// coast-linux-riscv64
+		// coast-linux-s390x
+		return fmt.Sprintf("coast-%s-%s", runtime.GOOS, runtime.GOARCH)
 	}
 }
 
@@ -121,8 +121,8 @@ func (u *CoreUpdater) Update(currentExePath string, channel string, force bool) 
 	}()
 
 	// ---- prepare ----
-	mihomoBaseName := u.CoreBaseName()
-	packageName := mihomoBaseName + "-" + latestVersion
+	coastBaseName := u.CoreBaseName()
+	packageName := coastBaseName + "-" + latestVersion
 	if runtime.GOOS == "windows" {
 		packageName = packageName + ".zip"
 	} else {
@@ -137,7 +137,7 @@ func (u *CoreUpdater) Update(currentExePath string, channel string, force bool) 
 	packagePath := filepath.Join(updateDir, packageName)
 	//log.Infoln(packagePath)
 
-	updateExeName := mihomoBaseName
+	updateExeName := coastBaseName
 	if runtime.GOOS == "windows" {
 		updateExeName = updateExeName + ".exe"
 	}
@@ -173,7 +173,7 @@ func (u *CoreUpdater) Update(currentExePath string, channel string, force bool) 
 func (u *CoreUpdater) getLatestVersion(versionURL string) (version string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	resp, err := mihomoHttp.HttpRequest(ctx, versionURL, http.MethodGet, nil, nil, mihomoHttp.WithCAOption(ca.Option{ZeroTrust: true}))
+	resp, err := coastHttp.HttpRequest(ctx, versionURL, http.MethodGet, nil, nil, coastHttp.WithCAOption(ca.Option{ZeroTrust: true}))
 	if err != nil {
 		return "", err
 	}
@@ -196,7 +196,7 @@ func (u *CoreUpdater) getLatestVersion(versionURL string) (version string, err e
 func (u *CoreUpdater) download(updateDir, packagePath, packageURL string) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*90)
 	defer cancel()
-	resp, err := mihomoHttp.HttpRequest(ctx, packageURL, http.MethodGet, nil, nil, mihomoHttp.WithCAOption(ca.Option{ZeroTrust: true}))
+	resp, err := coastHttp.HttpRequest(ctx, packageURL, http.MethodGet, nil, nil, coastHttp.WithCAOption(ca.Option{ZeroTrust: true}))
 	if err != nil {
 		return fmt.Errorf("http request failed: %w", err)
 	}

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/component/dhcp"
-	"github.com/metacubex/mihomo/component/iface"
+	"github.com/ClashrAuto/coast/component/dhcp"
+	"github.com/ClashrAuto/coast/component/iface"
 	D "github.com/miekg/dns"
 )
 

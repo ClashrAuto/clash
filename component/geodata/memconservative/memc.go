@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/metacubex/mihomo/component/geodata"
-	"github.com/metacubex/mihomo/component/geodata/router"
+	"github.com/ClashrAuto/coast/component/geodata"
+	"github.com/ClashrAuto/coast/component/geodata/router"
 )
 
 type memConservativeLoader struct {

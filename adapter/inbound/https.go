@@ -3,7 +3,7 @@ package inbound
 import (
 	"net"
 
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/ClashrAuto/coast/constant"
 
 	"github.com/metacubex/http"
 )

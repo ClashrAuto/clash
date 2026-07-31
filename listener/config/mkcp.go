@@ -1,6 +1,6 @@
 package config
 
-import "github.com/metacubex/mihomo/transport/mkcp"
+import "github.com/ClashrAuto/coast/transport/mkcp"
 
 type MKCPConfig struct {
 	Enable           bool   `yaml:"enable" json:"enable,omitempty"`

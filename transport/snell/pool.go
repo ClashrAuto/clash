@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/component/pool"
-	"github.com/metacubex/mihomo/transport/shadowsocks/shadowaead"
+	"github.com/ClashrAuto/coast/component/pool"
+	"github.com/ClashrAuto/coast/transport/shadowsocks/shadowaead"
 )
 
 type Pool struct {
@@ -111,7 +111,7 @@ func (pc *PoolConn) Close() error {
 			_ = pc.Snell.Close()
 			return
 		}
-		// mihomo use SetReadDeadline to break bidirectional copy between client and server.
+		// coast use SetReadDeadline to break bidirectional copy between client and server.
 		// reset it before reuse connection to avoid io timeout error.
 		_ = pc.Snell.Conn.SetReadDeadline(time.Time{})
 		pc.Snell.reply = false

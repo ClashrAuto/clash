@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/listener/inbound"
-	"github.com/metacubex/mihomo/transport/jls"
-	"github.com/metacubex/mihomo/transport/kcptun"
-	"github.com/metacubex/mihomo/transport/restls"
-	"github.com/metacubex/mihomo/transport/shadowtls"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/listener/inbound"
+	"github.com/ClashrAuto/coast/transport/jls"
+	"github.com/ClashrAuto/coast/transport/kcptun"
+	"github.com/ClashrAuto/coast/transport/restls"
+	"github.com/ClashrAuto/coast/transport/shadowtls"
 
 	shadowsocks "github.com/metacubex/sing-shadowsocks"
 	"github.com/metacubex/sing-shadowsocks/shadowaead"

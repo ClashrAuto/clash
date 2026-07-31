@@ -7,11 +7,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/metacubex/mihomo/common/callback"
-	"github.com/metacubex/mihomo/common/xsync"
-	"github.com/metacubex/mihomo/component/iface"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/features"
+	"github.com/ClashrAuto/coast/common/callback"
+	"github.com/ClashrAuto/coast/common/xsync"
+	"github.com/ClashrAuto/coast/component/iface"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/features"
 )
 
 var disableLoopBackDetector, _ = strconv.ParseBool(os.Getenv("DISABLE_LOOPBACK_DETECTOR"))

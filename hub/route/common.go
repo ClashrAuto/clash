@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	N "github.com/metacubex/mihomo/common/net"
+	N "github.com/ClashrAuto/coast/common/net"
 
 	"github.com/metacubex/chi"
 	"github.com/metacubex/http"

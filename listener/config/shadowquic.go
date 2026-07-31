@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 
-	"github.com/metacubex/mihomo/listener/sing"
+	"github.com/ClashrAuto/coast/listener/sing"
 )
 
 type ShadowQuicUser struct {

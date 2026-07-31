@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	tlsC "github.com/metacubex/mihomo/component/tls"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
 )
 
 type RealityOptions struct {

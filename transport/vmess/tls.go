@@ -5,13 +5,13 @@ import (
 	"errors"
 	"net"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/ech"
-	tlsC "github.com/metacubex/mihomo/component/tls"
-	"github.com/metacubex/mihomo/transport/jls"
-	"github.com/metacubex/mihomo/transport/restls"
-	"github.com/metacubex/mihomo/transport/shadowtls"
-	"github.com/metacubex/mihomo/transport/tlsmirror"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/ech"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
+	"github.com/ClashrAuto/coast/transport/jls"
+	"github.com/ClashrAuto/coast/transport/restls"
+	"github.com/ClashrAuto/coast/transport/shadowtls"
+	"github.com/ClashrAuto/coast/transport/tlsmirror"
 
 	"github.com/metacubex/tls"
 )

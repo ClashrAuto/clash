@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/listener/inner"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/dialer"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/listener/inner"
 
 	"github.com/metacubex/http"
 )

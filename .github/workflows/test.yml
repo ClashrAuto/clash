@@ -6,12 +6,12 @@ on:
       - "README.md"
       - ".github/ISSUE_TEMPLATE/**"
     branches:
-      - Alpha
+      - master
     tags:
       - "v*"
   pull_request:
     branches:
-      - Alpha
+      - master
 
 jobs:
   test:
@@ -42,7 +42,7 @@ jobs:
       GOTOOLCHAIN: local
       # Fix mingw trying to be smart and converting paths https://github.com/moby/moby/issues/24029#issuecomment-250412919
       MSYS_NO_PATHCONV: true
-      # Skip mihomo inbound interop test
+      # Skip coast inbound interop test
       SKIP_INTEROP_TEST: 1
     steps:
       - uses: actions/checkout@v6

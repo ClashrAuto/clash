@@ -8,11 +8,11 @@ import (
 
 	"github.com/metacubex/sing/common/metadata"
 
-	"github.com/metacubex/mihomo/common/lru"
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/sniffer"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/common/lru"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/sniffer"
+	"github.com/ClashrAuto/coast/log"
 )
 
 var (

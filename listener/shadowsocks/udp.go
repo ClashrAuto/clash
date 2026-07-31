@@ -4,13 +4,13 @@ import (
 	"context"
 	"net"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/sockopt"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/shadowsocks/core"
-	"github.com/metacubex/mihomo/transport/socks5"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/sockopt"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/transport/shadowsocks/core"
+	"github.com/ClashrAuto/coast/transport/socks5"
 )
 
 type UDPListener struct {

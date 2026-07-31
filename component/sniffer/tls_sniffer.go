@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/sniffer"
+	"github.com/ClashrAuto/coast/common/utils"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/sniffer"
 )
 
 var (

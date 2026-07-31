@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/metacubex/mihomo/component/profile/cachefile"
+	"github.com/ClashrAuto/coast/component/profile/cachefile"
 
 	"github.com/metacubex/chi"
 	"github.com/metacubex/chi/render"

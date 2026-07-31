@@ -12,7 +12,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/log"
 )
 
 type hashReadConn struct {

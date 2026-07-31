@@ -1,7 +1,7 @@
 package inbound
 
 import (
-	LC "github.com/metacubex/mihomo/listener/config"
+	LC "github.com/ClashrAuto/coast/listener/config"
 )
 
 type ResTLS struct {

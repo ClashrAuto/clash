@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/constant"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/sniffer"
+	"github.com/ClashrAuto/coast/common/buf"
+	"github.com/ClashrAuto/coast/common/pool"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/constant"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/sniffer"
 
 	"github.com/metacubex/quic-go/quicvarint"
 	"golang.org/x/crypto/hkdf"

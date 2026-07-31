@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/metacubex/mihomo/component/ca"
-	tlsC "github.com/metacubex/mihomo/component/tls"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/component/ca"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/tls"
 	"golang.org/x/exp/slices"

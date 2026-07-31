@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/metacubex/mihomo/adapter/outbound"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	C "github.com/ClashrAuto/coast/constant"
 	"github.com/stretchr/testify/require"
 )
 
-func TestMihomo_Trojan(t *testing.T) {
+func TestCoast_Trojan(t *testing.T) {
 	cfg := &container.Config{
 		Image:        ImageTrojan,
 		ExposedPorts: defaultExposedPorts,
@@ -48,7 +48,7 @@ func TestMihomo_Trojan(t *testing.T) {
 	testSuit(t, proxy)
 }
 
-func TestMihomo_TrojanGrpc(t *testing.T) {
+func TestCoast_TrojanGrpc(t *testing.T) {
 	cfg := &container.Config{
 		Image:        ImageXray,
 		ExposedPorts: defaultExposedPorts,
@@ -87,7 +87,7 @@ func TestMihomo_TrojanGrpc(t *testing.T) {
 	testSuit(t, proxy)
 }
 
-func TestMihomo_TrojanWebsocket(t *testing.T) {
+func TestCoast_TrojanWebsocket(t *testing.T) {
 	cfg := &container.Config{
 		Image:        ImageTrojanGo,
 		ExposedPorts: defaultExposedPorts,
@@ -123,7 +123,7 @@ func TestMihomo_TrojanWebsocket(t *testing.T) {
 	testSuit(t, proxy)
 }
 
-func TestMihomo_TrojanXTLS(t *testing.T) {
+func TestCoast_TrojanXTLS(t *testing.T) {
 	cfg := &container.Config{
 		Image:        ImageXray,
 		ExposedPorts: defaultExposedPorts,

@@ -9,9 +9,9 @@ import (
 	"net"
 	"sync"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/transport/socks5"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/pool"
+	"github.com/ClashrAuto/coast/transport/socks5"
 )
 
 const (

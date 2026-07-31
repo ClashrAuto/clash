@@ -12,12 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/anytls/padding"
-	"github.com/metacubex/mihomo/transport/anytls/util"
+	"github.com/ClashrAuto/coast/common/buf"
+	"github.com/ClashrAuto/coast/common/pool"
+	"github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/transport/anytls/padding"
+	"github.com/ClashrAuto/coast/transport/anytls/util"
 )
 
 type Session struct {
@@ -84,7 +84,7 @@ func (s *Session) Run() {
 
 	settings := util.StringMap{
 		"v":           "2",
-		"client":      "mihomo/" + constant.Version,
+		"client":      "coast/" + constant.Version,
 		"padding-md5": s.padding.Load().Md5,
 	}
 	f := newFrame(cmdSettings, 0)

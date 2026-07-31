@@ -3,11 +3,11 @@ package outbound
 import (
 	"context"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/proxydialer"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/proxydialer"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
 
 	mux "github.com/metacubex/sing-mux"
 	E "github.com/metacubex/sing/common/exceptions"

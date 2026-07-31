@@ -11,11 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/common/httputils"
-	"github.com/metacubex/mihomo/common/once"
-	"github.com/metacubex/mihomo/component/dialer"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/vmess"
+	"github.com/ClashrAuto/coast/common/httputils"
+	"github.com/ClashrAuto/coast/common/once"
+	"github.com/ClashrAuto/coast/component/dialer"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/vmess"
 
 	"github.com/metacubex/http"
 	"golang.org/x/exp/slices"

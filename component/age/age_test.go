@@ -3,7 +3,7 @@ package age_test
 import (
 	"testing"
 
-	"github.com/metacubex/mihomo/component/age"
+	"github.com/ClashrAuto/coast/component/age"
 )
 
 func TestAge(t *testing.T) {

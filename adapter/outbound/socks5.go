@@ -9,10 +9,10 @@ import (
 	"net/netip"
 	"strconv"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/ca"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/socks5"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/component/ca"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/socks5"
 
 	"github.com/metacubex/tls"
 )

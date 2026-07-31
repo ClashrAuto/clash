@@ -8,8 +8,8 @@ import (
 	"net"
 	"net/netip"
 
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/socks5"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/socks5"
 )
 
 const (

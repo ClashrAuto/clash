@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/log"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/log"
 )
 
 var ErrFallbackCompleted = errors.New("shadow-tls: connection relayed to fallback")

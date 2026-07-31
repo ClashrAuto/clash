@@ -11,9 +11,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/metacubex/mihomo/component/ca"
-	tlsC "github.com/metacubex/mihomo/component/tls"
-	"github.com/metacubex/mihomo/ntp"
+	"github.com/ClashrAuto/coast/component/ca"
+	tlsC "github.com/ClashrAuto/coast/component/tls"
+	"github.com/ClashrAuto/coast/ntp"
 
 	"github.com/metacubex/http"
 	"github.com/metacubex/randv2"

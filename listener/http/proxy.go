@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/auth"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/component/auth"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/http"
 )

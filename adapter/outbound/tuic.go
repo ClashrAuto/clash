@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/ech"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/tuic"
-	"github.com/metacubex/mihomo/transport/tuic/common"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/ech"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/tuic"
+	"github.com/ClashrAuto/coast/transport/tuic/common"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/metacubex/quic-go"

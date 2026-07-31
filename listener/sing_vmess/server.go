@@ -7,22 +7,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/ech"
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/jls"
-	"github.com/metacubex/mihomo/listener/reality"
-	"github.com/metacubex/mihomo/listener/restls"
-	"github.com/metacubex/mihomo/listener/shadowtls"
-	"github.com/metacubex/mihomo/listener/sing"
-	"github.com/metacubex/mihomo/listener/tlsmirror"
-	"github.com/metacubex/mihomo/ntp"
-	"github.com/metacubex/mihomo/transport/gun"
-	"github.com/metacubex/mihomo/transport/mekya"
-	"github.com/metacubex/mihomo/transport/mkcp"
-	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/component/ech"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/jls"
+	"github.com/ClashrAuto/coast/listener/reality"
+	"github.com/ClashrAuto/coast/listener/restls"
+	"github.com/ClashrAuto/coast/listener/shadowtls"
+	"github.com/ClashrAuto/coast/listener/sing"
+	"github.com/ClashrAuto/coast/listener/tlsmirror"
+	"github.com/ClashrAuto/coast/ntp"
+	"github.com/ClashrAuto/coast/transport/gun"
+	"github.com/ClashrAuto/coast/transport/mekya"
+	"github.com/ClashrAuto/coast/transport/mkcp"
+	coastVMess "github.com/ClashrAuto/coast/transport/vmess"
 
 	"github.com/metacubex/http"
 	"github.com/metacubex/mhurl"
@@ -201,7 +201,7 @@ func New(config LC.VmessServer, lc C.InboundListenConfig, tunnel C.Tunnel, addit
 	if config.WsPath != "" {
 		httpMux := http.NewServeMux()
 		httpMux.HandleFunc(config.WsPath, func(w http.ResponseWriter, r *http.Request) {
-			conn, err := mihomoVMess.StreamUpgradedWebsocketConn(w, r)
+			conn, err := coastVMess.StreamUpgradedWebsocketConn(w, r)
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return

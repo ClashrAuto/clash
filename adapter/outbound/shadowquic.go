@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/ca"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/ntp"
-	"github.com/metacubex/mihomo/transport/shadowquic"
-	"github.com/metacubex/mihomo/transport/tuic"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/ca"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/ntp"
+	"github.com/ClashrAuto/coast/transport/shadowquic"
+	"github.com/ClashrAuto/coast/transport/tuic"
 
 	"github.com/metacubex/jls-quic-go"
 	"github.com/metacubex/jls-tls"

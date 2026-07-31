@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/rules/common"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/rules/common"
 )
 
 type Logic struct {

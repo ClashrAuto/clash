@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/component/slowdown"
-	P "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/slowdown"
+	P "github.com/ClashrAuto/coast/constant/provider"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/metacubex/fswatch"
 	"github.com/samber/lo"

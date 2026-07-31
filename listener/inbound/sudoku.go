@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/sudoku"
-	"github.com/metacubex/mihomo/log"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/sudoku"
+	"github.com/ClashrAuto/coast/log"
 )
 
 type SudokuOption struct {
@@ -28,7 +28,7 @@ type SudokuOption struct {
 	Fallback               string                 `inbound:"fallback,omitempty"`
 	HTTPMaskOptions        *SudokuHTTPMaskOptions `inbound:"httpmask,omitempty"`
 
-	// mihomo private extension (not the part of standard Sudoku protocol)
+	// coast private extension (not the part of standard Sudoku protocol)
 	MuxOption MuxOption `inbound:"mux-option,omitempty"`
 }
 

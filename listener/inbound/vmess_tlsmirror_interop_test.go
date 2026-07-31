@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/listener/inbound"
-	"github.com/metacubex/mihomo/transport/tlsmirror"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/listener/inbound"
+	"github.com/ClashrAuto/coast/transport/tlsmirror"
 
 	"github.com/metacubex/http"
 	"github.com/metacubex/tls"
@@ -73,7 +73,7 @@ func TestInboundVMess_TLSMirror_V2RayInterop(t *testing.T) {
 		},
 		payloadSize: 128,
 	})
-	tlsMirrorInteropMihomoClientH2EmbeddedTrafficGenerator(t, v2rayBin)
+	tlsMirrorInteropCoastClientH2EmbeddedTrafficGenerator(t, v2rayBin)
 }
 
 type tlsMirrorInteropAdvanced struct {
@@ -89,8 +89,8 @@ type tlsMirrorInteropCarrier struct {
 	certChainHash string
 }
 
-func tlsMirrorInteropMihomoClientH2EmbeddedTrafficGenerator(t *testing.T, v2rayBin string) {
-	t.Run("h2 embedded traffic/mihomo client to v2ray server", func(t *testing.T) {
+func tlsMirrorInteropCoastClientH2EmbeddedTrafficGenerator(t *testing.T, v2rayBin string) {
+	t.Run("h2 embedded traffic/coast client to v2ray server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		forward := startTLSMirrorInteropCarrierHTTP2(t)
 		v2rayPort := vmessInteropReserveTCPPort(t)
@@ -137,7 +137,7 @@ func tlsMirrorInteropMihomoClientH2EmbeddedTrafficGenerator(t *testing.T, v2rayB
 }
 
 func tlsMirrorInteropTestCase(t *testing.T, v2rayBin, name string, advanced tlsMirrorInteropAdvanced) {
-	t.Run(name+"/mihomo client to v2ray server", func(t *testing.T) {
+	t.Run(name+"/coast client to v2ray server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		forward := startTLSMirrorInteropCarrierTLS(t, advanced.configureCarrierTLS)
 		v2rayPort := vmessInteropReserveTCPPort(t)
@@ -170,7 +170,7 @@ func tlsMirrorInteropTestCase(t *testing.T, v2rayBin, name string, advanced tlsM
 		require.NoError(t, vmessInteropRoundTripConn(conn, advanced.payloadSize))
 	})
 
-	t.Run(name+"/v2ray client to mihomo server", func(t *testing.T) {
+	t.Run(name+"/v2ray client to coast server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		forward := startTLSMirrorInteropCarrierTLS(t, advanced.configureCarrierTLS)
 		v2rayPort := vmessInteropReserveTCPPort(t)

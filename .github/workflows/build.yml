@@ -11,18 +11,16 @@ on:
       - "README.md"
       - ".github/ISSUE_TEMPLATE/**"
     branches:
-      - Alpha
+      - master
     tags:
       - "v*"
   pull_request:
     branches:
-      - Alpha
+      - master
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
   
-env:
-  REGISTRY: docker.io
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -190,7 +188,7 @@ jobs:
       run: |
         VERSION="${GITHUB_REF_NAME,,}-$(git rev-parse --short HEAD)"
         VERSION="${VERSION//\//-}"
-        PackageVersion="$(curl -s "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" | jq -r '.tag_name' | sed 's/v//g' | awk -F '.' '{$NF = $NF + 1; print}' OFS='.').${VERSION/-/.}"
+        PackageVersion="$(curl -s "https://api.github.com/repos/ClashrAuto/coast/releases/latest" | jq -r '.tag_name' | sed 's/v//g' | awk -F '.' '{$NF = $NF + 1; print}' OFS='.').${VERSION/-/.}"
         if [ -n "${{ github.event.inputs.version }}" ]; then
           VERSION=${{ github.event.inputs.version }}
           PackageVersion="${VERSION#v}"
@@ -242,14 +240,14 @@ jobs:
         GOMIPS: ${{matrix.jobs.gomips}}
       run: |
         go env
-        go build -v -tags "with_gvisor" -trimpath -ldflags "${BUILDTAG} -X 'github.com/metacubex/mihomo/constant.Version=${VERSION}' -X 'github.com/metacubex/mihomo/constant.BuildTime=${BUILDTIME}' -w -s -buildid="
+        go build -v -tags "with_gvisor" -trimpath -ldflags "${BUILDTAG} -X 'github.com/ClashrAuto/coast/constant.Version=${VERSION}' -X 'github.com/ClashrAuto/coast/constant.BuildTime=${BUILDTIME}' -w -s -buildid="
         if [ "${{matrix.jobs.goos}}" = "windows" ]; then
-          cp mihomo.exe mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
-          zip -r mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+          cp coast.exe coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+          zip -r coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
         else
-          cp mihomo mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
-          gzip -c mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
-          rm mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
+          cp coast coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
+          gzip -c coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
+          rm coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
         fi
 
     - name: Package DEB
@@ -261,9 +259,9 @@ jobs:
 
         fpm -t deb \
           -v "${PackageVersion}" \
-          -p "mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.deb" \
+          -p "coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.deb" \
           --architecture ${{ matrix.jobs.debian }} \
-          mihomo=/usr/bin/mihomo
+          coast=/usr/bin/coast
 
     - name: Package RPM
       if: matrix.jobs.rpm != ''
@@ -274,9 +272,9 @@ jobs:
 
         fpm -t rpm \
           -v "${PackageVersion}" \
-          -p "mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.rpm" \
+          -p "coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.rpm" \
           --architecture ${{ matrix.jobs.rpm }} \
-          mihomo=/usr/bin/mihomo
+          coast=/usr/bin/coast
 
     - name: Package Pacman
       if: matrix.jobs.pacman != ''
@@ -288,9 +286,9 @@ jobs:
 
         fpm -t pacman \
           -v "${PackageVersion}" \
-          -p "mihomo-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.pkg.tar.zst" \
+          -p "coast-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.pkg.tar.zst" \
           --architecture ${{ matrix.jobs.pacman }} \
-          mihomo=/usr/bin/mihomo
+          coast=/usr/bin/coast
 
     - name: Pack Golang Toolchain
       if: ${{ matrix.jobs.goversion == '' && matrix.jobs.tarball == 'tarball' }}
@@ -317,11 +315,11 @@ jobs:
       with:
         name: "${{ matrix.jobs.goos }}-${{ matrix.jobs.output }}"
         path: |
-          mihomo*.gz
-          mihomo*.deb
-          mihomo*.rpm
-          mihomo*.pkg.tar.zst
-          mihomo*.zip
+          coast*.gz
+          coast*.deb
+          coast*.rpm
+          coast*.pkg.tar.zst
+          coast*.zip
           toolchain.tar.gz
           vendor.tar.gz
           version.txt
@@ -369,7 +367,7 @@ jobs:
         Release created at  ${{ env.BUILDTIME }}
         Synchronize ${{ github.ref_name }} branch code updates, keeping only the latest version
         <br>
-        [我应该下载哪个文件? / Which file should I download?](https://github.com/MetaCubeX/mihomo/wiki/FAQ)
+        [我应该下载哪个文件? / Which file should I download?](https://github.com/ClashrAuto/coast/wiki/FAQ)
         [二进制文件筛选 / Binary file selector](https://metacubex.github.io/Meta-Docs/startup/#_1)
         [查看文档 / Docs](https://metacubex.github.io/Meta-Docs/)
         EOF
@@ -394,7 +392,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: Meta
+          ref: master
           fetch-depth: '0'
           fetch-tags: 'true'
 
@@ -404,18 +402,9 @@ jobs:
           git fetch --tags
           echo "PREVERSION=$(git describe --tags --abbrev=0 HEAD)" >> $GITHUB_ENV
 
-      - name: Force push Alpha branch to Meta
+      - name: Tag the commit on master
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git fetch origin Alpha:Alpha
-          git push origin Alpha:Meta --force
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Tag the commit on Alpha
-        run: |
-          git checkout Alpha 
+          git checkout master
           git tag ${{ github.event.inputs.version }}
           git push origin ${{ github.event.inputs.version }}
         env:
@@ -444,97 +433,3 @@ jobs:
           files: bin/*
           body_path: release.md
 
-  Docker:
-    if: ${{ !startsWith(github.event_name, 'pull_request') }}
-    permissions: write-all
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: actions/download-artifact@v8
-        with:
-          path: bin/
-          merge-multiple: true
-
-      - name: Display structure of downloaded files
-        run: ls -R
-        working-directory: bin
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v4
-        with:
-          version: latest
-      
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        id: meta_alpha
-        uses: docker/metadata-action@v6
-        with:
-          images: '${{ env.REGISTRY }}/${{ github.repository }}'
-      
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
-        id: meta_release
-        uses: docker/metadata-action@v6
-        with:
-          images: '${{ env.REGISTRY }}/${{ github.repository }}'
-          tags: |
-            ${{ github.event.inputs.version }}
-          flavor: |
-            latest=true
-          labels: org.opencontainers.image.version=${{ github.event.inputs.version }}
-      
-      - name: Show files
-        run: |
-          ls .
-          ls bin/
-      
-      - name: login to docker REGISTRY
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_HUB_USER }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          platforms: |
-            linux/386
-            linux/amd64
-            linux/arm64
-            linux/arm/v7
-          tags: ${{ steps.meta_alpha.outputs.tags }}
-          labels: ${{ steps.meta_alpha.outputs.labels }}
-      
-      - name: Build and push Docker image
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          platforms: |
-            linux/386
-            linux/amd64
-            linux/arm64
-            linux/arm/v7
-          tags: ${{ steps.meta_release.outputs.tags }}
-          labels: ${{ steps.meta_release.outputs.labels }}

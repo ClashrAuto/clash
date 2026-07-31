@@ -15,18 +15,18 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/metacubex/mihomo/common/cmd"
-	"github.com/metacubex/mihomo/component/age"
-	"github.com/metacubex/mihomo/component/generator"
-	"github.com/metacubex/mihomo/component/geodata"
-	"github.com/metacubex/mihomo/component/updater"
-	"github.com/metacubex/mihomo/config"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/features"
-	"github.com/metacubex/mihomo/hub"
-	"github.com/metacubex/mihomo/hub/executor"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/rules/provider"
+	"github.com/ClashrAuto/coast/common/cmd"
+	"github.com/ClashrAuto/coast/component/age"
+	"github.com/ClashrAuto/coast/component/generator"
+	"github.com/ClashrAuto/coast/component/geodata"
+	"github.com/ClashrAuto/coast/component/updater"
+	"github.com/ClashrAuto/coast/config"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/constant/features"
+	"github.com/ClashrAuto/coast/hub"
+	"github.com/ClashrAuto/coast/hub/executor"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/rules/provider"
 
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -72,7 +72,7 @@ func init() {
 	flag.StringVar(&postUp, "post-up", os.Getenv("CLASH_POST_UP"), "set post-up script")
 	flag.StringVar(&postDown, "post-down", os.Getenv("CLASH_POST_DOWN"), "set post-down script")
 	flag.BoolVar(&geodataMode, "m", false, "set geodata mode")
-	flag.BoolVar(&version, "v", false, "show current version of mihomo")
+	flag.BoolVar(&version, "v", false, "show current version of coast")
 	flag.BoolVar(&testConfig, "t", false, "test configuration and exit")
 	flag.Parse()
 }
@@ -114,7 +114,7 @@ func main() {
 	}
 
 	if version {
-		fmt.Printf("Mihomo Meta %s %s %s with %s %s\n",
+		fmt.Printf("Coast Meta %s %s %s with %s %s\n",
 			C.Version, runtime.GOOS, runtime.GOARCH, runtime.Version(), C.BuildTime)
 		if tags := features.Tags(); len(tags) != 0 {
 			fmt.Printf("Use tags: %s\n", strings.Join(tags, ", "))

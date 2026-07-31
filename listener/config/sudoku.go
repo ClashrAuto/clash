@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 
-	"github.com/metacubex/mihomo/listener/sing"
+	"github.com/ClashrAuto/coast/listener/sing"
 )
 
 // SudokuServer describes a Sudoku inbound server configuration.
@@ -25,7 +25,7 @@ type SudokuServer struct {
 	PathRoot               string   `json:"path-root,omitempty"`
 	Fallback               string   `json:"fallback,omitempty"`
 
-	// mihomo private extension (not the part of standard Sudoku protocol)
+	// coast private extension (not the part of standard Sudoku protocol)
 	MuxOption sing.MuxOption `json:"mux-option,omitempty"`
 }
 

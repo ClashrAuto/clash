@@ -7,10 +7,10 @@ import (
 	"net/netip"
 	"syscall"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	"github.com/metacubex/mihomo/common/sockopt"
-	"github.com/metacubex/mihomo/component/keepalive"
-	"github.com/metacubex/mihomo/component/mptcp"
+	"github.com/ClashrAuto/coast/common/atomic"
+	"github.com/ClashrAuto/coast/common/sockopt"
+	"github.com/ClashrAuto/coast/component/keepalive"
+	"github.com/ClashrAuto/coast/component/mptcp"
 
 	"github.com/metacubex/tfo-go"
 )

@@ -3,8 +3,8 @@ package convert_test
 import (
 	"testing"
 
-	"github.com/metacubex/mihomo/adapter"
-	. "github.com/metacubex/mihomo/common/convert"
+	"github.com/ClashrAuto/coast/adapter"
+	. "github.com/ClashrAuto/coast/common/convert"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -233,7 +233,7 @@ func TestConvertsV2RayVlessHTTPTransportUsesH2Opts(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// Regression test for MetaCubeX/mihomo#2738: the legacy v2rayN-style
+// Regression test for ClashrAuto/coast#2738: the legacy v2rayN-style
 // base64-JSON VMess parser must place `host` under h2-opts.host instead
 // of stranding it inside a non-existent h2-opts.headers.Host key.
 func TestConvertsV2RayVmessBase64H2Transport(t *testing.T) {

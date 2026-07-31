@@ -1,6 +1,6 @@
 package inbound
 
-import LC "github.com/metacubex/mihomo/listener/config"
+import LC "github.com/ClashrAuto/coast/listener/config"
 
 type MKCPConfig struct {
 	Enable           bool   `inbound:"enable,omitempty"`

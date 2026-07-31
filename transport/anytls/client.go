@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/transport/anytls/padding"
-	"github.com/metacubex/mihomo/transport/anytls/session"
-	"github.com/metacubex/mihomo/transport/vmess"
+	"github.com/ClashrAuto/coast/common/buf"
+	"github.com/ClashrAuto/coast/transport/anytls/padding"
+	"github.com/ClashrAuto/coast/transport/anytls/session"
+	"github.com/ClashrAuto/coast/transport/vmess"
 
 	M "github.com/metacubex/sing/common/metadata"
 	N "github.com/metacubex/sing/common/network"

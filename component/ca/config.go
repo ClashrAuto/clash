@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/metacubex/mihomo/common/once"
-	"github.com/metacubex/mihomo/ntp"
+	"github.com/ClashrAuto/coast/common/once"
+	"github.com/ClashrAuto/coast/ntp"
 
 	"github.com/metacubex/tls"
 )

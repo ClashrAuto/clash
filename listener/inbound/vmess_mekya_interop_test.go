@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/listener/inbound"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/listener/inbound"
 
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +18,7 @@ func TestInboundVMess_Mekya_V2RayInterop(t *testing.T) {
 	vmessInteropSkip(t)
 
 	v2rayBin := vmessInteropV2RayBinary(t)
-	t.Run("mihomo client to v2ray server", func(t *testing.T) {
+	t.Run("coast client to v2ray server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		v2rayPort := vmessInteropReserveTCPPort(t)
 		certFile, keyFile := mekyaInteropCertificateFiles(t)
@@ -45,7 +45,7 @@ func TestInboundVMess_Mekya_V2RayInterop(t *testing.T) {
 		}, 64*1024)
 	})
 
-	t.Run("v2ray client to mihomo server", func(t *testing.T) {
+	t.Run("v2ray client to coast server", func(t *testing.T) {
 		echoAddr := startVMessInteropEcho(t)
 		v2rayPort := vmessInteropReserveTCPPort(t)
 

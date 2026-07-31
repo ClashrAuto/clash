@@ -5,9 +5,9 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/listener/inbound"
-	"github.com/metacubex/mihomo/transport/vless/encryption"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/listener/inbound"
+	"github.com/ClashrAuto/coast/transport/vless/encryption"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	C "github.com/metacubex/mihomo/constant"
-	mihomoVMess "github.com/metacubex/mihomo/transport/vmess"
+	C "github.com/ClashrAuto/coast/constant"
+	coastVMess "github.com/ClashrAuto/coast/transport/vmess"
 
 	"github.com/metacubex/smux"
 )
@@ -173,7 +173,7 @@ func (d *relayDialer) dialRelayServer(ctx context.Context, fallbackAddress strin
 	}
 
 	if d.option.TLS {
-		tlsConn, err := mihomoVMess.StreamTLSConn(ctx, conn, &mihomoVMess.TLSConfig{
+		tlsConn, err := coastVMess.StreamTLSConn(ctx, conn, &coastVMess.TLSConfig{
 			Host:              d.serverName(relayAddress),
 			SkipCertVerify:    d.option.SkipCertVerify,
 			NameCertVerify:    d.option.NameCertVerify,

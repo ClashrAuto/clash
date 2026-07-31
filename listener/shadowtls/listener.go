@@ -5,12 +5,12 @@ import (
 	"net"
 	"runtime/debug"
 
-	N "github.com/metacubex/mihomo/common/net"
-	C "github.com/metacubex/mihomo/constant"
-	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/listener/inner"
-	"github.com/metacubex/mihomo/log"
-	"github.com/metacubex/mihomo/transport/shadowtls"
+	N "github.com/ClashrAuto/coast/common/net"
+	C "github.com/ClashrAuto/coast/constant"
+	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/listener/inner"
+	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/transport/shadowtls"
 )
 
 type Builder struct {

@@ -3,15 +3,15 @@ package dns
 import (
 	"context"
 	"fmt"
-	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/ClashrAuto/coast/component/resolver"
 	"net"
 	"runtime"
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/deque"
-	"github.com/metacubex/mihomo/component/ca"
-	C "github.com/metacubex/mihomo/constant"
+	"github.com/ClashrAuto/coast/common/deque"
+	"github.com/ClashrAuto/coast/component/ca"
+	C "github.com/ClashrAuto/coast/constant"
 
 	"github.com/metacubex/tls"
 	D "github.com/miekg/dns"

@@ -3,7 +3,7 @@ package xsync
 // copy and modified from https://github.com/puzpuzpuz/xsync/blob/v4.5.0/map.go
 // which is licensed under Apache v2.
 //
-// mihomo modified:
+// coast modified:
 // 1. restore xsync/v3's LoadOrCompute api and rename to LoadOrStoreFn.
 // 2. the zero Map is ready for use.
 // 3. remove unnecessary member variables added by xsync/v3's "optimize Map for integer keys"
@@ -18,7 +18,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/metacubex/mihomo/common/maphash"
+	"github.com/ClashrAuto/coast/common/maphash"
 )
 
 const (

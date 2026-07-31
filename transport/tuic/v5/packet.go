@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/metacubex/mihomo/common/atomic"
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/transport/tuic/types"
+	"github.com/ClashrAuto/coast/common/atomic"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/pool"
+	"github.com/ClashrAuto/coast/transport/tuic/types"
 
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/randv2"

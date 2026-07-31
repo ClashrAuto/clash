@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/ntp"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/ntp"
 
 	tls "github.com/metacubex/jls-tls"
 )

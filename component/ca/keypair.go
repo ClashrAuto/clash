@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	C "github.com/metacubex/mihomo/constant"
+	C "github.com/ClashrAuto/coast/constant"
 
 	"github.com/metacubex/fswatch"
 	"github.com/metacubex/tls"

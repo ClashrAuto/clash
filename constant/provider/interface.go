@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/metacubex/mihomo/common/utils"
-	"github.com/metacubex/mihomo/constant"
+	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/constant"
 )
 
 // Vehicle Type

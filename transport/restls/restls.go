@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/ntp"
+	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/ClashrAuto/coast/ntp"
 
 	tls "github.com/metacubex/restls-client-go"
 )

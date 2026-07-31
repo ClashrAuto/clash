@@ -5,9 +5,9 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/metacubex/mihomo/component/dialer"
-	"github.com/metacubex/mihomo/component/resolver"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/resolver"
+	"github.com/ClashrAuto/coast/log"
 
 	tun "github.com/metacubex/sing-tun"
 	"github.com/metacubex/sing-tun/ping"

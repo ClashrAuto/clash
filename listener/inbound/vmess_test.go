@@ -5,9 +5,9 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/metacubex/mihomo/adapter/outbound"
-	"github.com/metacubex/mihomo/listener/inbound"
-	"github.com/metacubex/mihomo/transport/tlsmirror"
+	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/listener/inbound"
+	"github.com/ClashrAuto/coast/transport/tlsmirror"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -166,9 +166,9 @@ func TestInboundVMess_MKCP(t *testing.T) {
 		seed   string
 		header string
 	}{
-		{name: "seed", seed: "mihomo-mkcp-test"},
+		{name: "seed", seed: "coast-mkcp-test"},
 		{name: "header srtp", header: "srtp"},
-		{name: "seed header srtp", seed: "mihomo-mkcp-test", header: "srtp"},
+		{name: "seed header srtp", seed: "coast-mkcp-test", header: "srtp"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

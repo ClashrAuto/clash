@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/metacubex/mihomo/common/pool"
-	"github.com/metacubex/mihomo/common/yaml"
-	"github.com/metacubex/mihomo/component/resource"
-	C "github.com/metacubex/mihomo/constant"
-	P "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/rules/common"
+	"github.com/ClashrAuto/coast/common/pool"
+	"github.com/ClashrAuto/coast/common/yaml"
+	"github.com/ClashrAuto/coast/component/resource"
+	C "github.com/ClashrAuto/coast/constant"
+	P "github.com/ClashrAuto/coast/constant/provider"
+	"github.com/ClashrAuto/coast/rules/common"
 )
 
 var tunnel P.Tunnel

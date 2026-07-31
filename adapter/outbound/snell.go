@@ -6,14 +6,14 @@ import (
 	"net"
 	"strconv"
 
-	N "github.com/metacubex/mihomo/common/net"
-	"github.com/metacubex/mihomo/common/structure"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/transport/jls"
-	"github.com/metacubex/mihomo/transport/restls"
-	"github.com/metacubex/mihomo/transport/shadowtls"
-	obfs "github.com/metacubex/mihomo/transport/simple-obfs"
-	"github.com/metacubex/mihomo/transport/snell"
+	N "github.com/ClashrAuto/coast/common/net"
+	"github.com/ClashrAuto/coast/common/structure"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/transport/jls"
+	"github.com/ClashrAuto/coast/transport/restls"
+	"github.com/ClashrAuto/coast/transport/shadowtls"
+	obfs "github.com/ClashrAuto/coast/transport/simple-obfs"
+	"github.com/ClashrAuto/coast/transport/snell"
 )
 
 type Snell struct {

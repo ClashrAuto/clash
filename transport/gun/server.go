@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/metacubex/mihomo/common/buf"
-	"github.com/metacubex/mihomo/common/httputils"
-	N "github.com/metacubex/mihomo/common/net"
+	"github.com/ClashrAuto/coast/common/buf"
+	"github.com/ClashrAuto/coast/common/httputils"
+	N "github.com/ClashrAuto/coast/common/net"
 
 	"github.com/metacubex/http"
 )

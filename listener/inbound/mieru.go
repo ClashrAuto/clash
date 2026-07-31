@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/metacubex/mihomo/adapter/inbound"
-	"github.com/metacubex/mihomo/common/utils"
-	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/listener/mieru"
-	"github.com/metacubex/mihomo/log"
+	"github.com/ClashrAuto/coast/adapter/inbound"
+	"github.com/ClashrAuto/coast/common/utils"
+	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/listener/mieru"
+	"github.com/ClashrAuto/coast/log"
 	"google.golang.org/protobuf/proto"
 
 	mieruserver "github.com/enfein/mieru/v3/apis/server"
