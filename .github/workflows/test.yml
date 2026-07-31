@@ -24,14 +24,10 @@ jobs:
           - 'ubuntu-24.04-arm' # arm64 linux
           - 'windows-11-arm' # arm64 windows
           - 'macos-26-intel' # amd64 macos
+        # 只测最新版 Go。上游在这里列了 1.20~1.26 七个版本（6 系统 × 7 版本 = 42 个 job），
+        # 我们不给老系统出包，多测的那六个版本没有对应产物。
         go-version:
           - '1.26'
-          - '1.25'
-          - '1.24'
-          - '1.23'
-          - '1.22'
-          - '1.21'
-          - '1.20'
       fail-fast: false
     runs-on: ${{ matrix.os }}
     defaults:
