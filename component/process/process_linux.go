@@ -163,7 +163,7 @@ func resolveSocketByNetlink(network string, ip netip.Addr, srcPort int) (uid uin
 		default:
 			continue
 		}
-		if src != ip.Unmap() {
+		if !sameSocketAddr(src, ip) {
 			continue
 		}
 
@@ -172,6 +172,19 @@ func resolveSocketByNetlink(network string, ip netip.Addr, srcPort int) (uid uin
 	}
 
 	return
+}
+
+// sameSocketAddr 比较 netlink 回来的地址和我们要找的地址。
+//
+// netlink 的结果永远不带 zone，而 metadata.SrcIP 对链路本地地址（fe80::/10）
+// 是带 zone 的 —— Go 会给 net.TCPAddr.Zone 赋值，一路 AddrPort() 传下来还在。
+// 原来直接 src != ip.Unmap() 比，对这类源地址永远不相等，于是每次都落到上面
+// 那句 "always set to allow fallback" 的兜底，返回的是 dump 里最后一条 socket
+// 的 uid/inode —— PROCESS-NAME / UID 规则会匹配到一个毫不相干的进程。
+//
+// rules/common/ipcidr.go 里比较源地址时同样是先 WithZone("") 再比。
+func sameSocketAddr(a, b netip.Addr) bool {
+	return a.Unmap().WithZone("") == b.Unmap().WithZone("")
 }
 
 func resolveProcessNameByProcSearch(inode, uid uint32) (string, error) {
