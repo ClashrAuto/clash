@@ -3,6 +3,7 @@ package dns
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 	"time"
 
@@ -97,14 +98,30 @@ func (r *Resolver) LookupIP(ctx context.Context, host string) (ips []netip.Addr,
 	select {
 	case ipv6s, open := <-ch:
 		if !open && err != nil {
-			return nil, resolver.ErrIPNotFound
+			return nil, wrapIPNotFound(err)
 		}
 		ips = append(ips, ipv6s...)
 	case <-waitIPv6.C:
 		// wait ipv6 result
 	}
 
+	// A 查询失败、AAAA 又没在 ipv6-timeout 内回来时，原来是 return ips, nil：
+	// 调用方拿到空切片 + nil error，真正的上游失败原因（SERVFAIL、全部 DNS 请求失败……）
+	// 被完全吞掉，日志里只剩 dialer 那句 no ip address。这里把它带出去。
+	if len(ips) == 0 && err != nil {
+		return nil, wrapIPNotFound(err)
+	}
+
 	return ips, nil
+}
+
+// wrapIPNotFound 保留 ErrIPNotFound 这个哨兵（tunnel.shouldStopRetry 靠它判断
+// 不必重试），同时把真实原因挂在后面，便于排查。
+func wrapIPNotFound(cause error) error {
+	if cause == nil {
+		return resolver.ErrIPNotFound
+	}
+	return fmt.Errorf("%w: %w", resolver.ErrIPNotFound, cause)
 }
 
 // LookupIPv4 request with TypeA
