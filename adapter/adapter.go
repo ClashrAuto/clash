@@ -34,6 +34,8 @@ const (
 	downloadConnectHeadroom = 10 * time.Second
 	// 调用方没给 timeout（或给了非正数）时的默认测速窗口
 	defaultDownloadWindow = 5000 * time.Millisecond
+	// 读缓冲上限：测速地址的 Content-Length 常有几十上百 MB，不能照着它开
+	maxDownloadBufferSize = 1 << 20
 	// 把测速窗口切成多少片做移动平均
 	downloadSpeedSlices = 100
 )
@@ -419,11 +421,14 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 		timeStart := time.Now()
 		timeEnd := timeStart.Add(window)
 
-		contentLength := resp.ContentLength
-		if contentLength <= 0 {
-			contentLength = 1 << 20 // fallback buffer when unknown length
+		// 读缓冲按 Content-Length 走，但封顶 maxDownloadBufferSize：
+		// 测速地址动辄几十上百 MB，照着 Content-Length 直接开会一次分配同样大的内存，
+		// 而这里只是循环读丢，缓冲区大小对测量结果没有影响。
+		bufferSize := resp.ContentLength
+		if bufferSize <= 0 || bufferSize > maxDownloadBufferSize {
+			bufferSize = maxDownloadBufferSize
 		}
-		buffer := make([]byte, contentLength)
+		buffer := make([]byte, bufferSize)
 
 		var contentRead int64 = 0
 		timeSlice := window / downloadSpeedSlices
