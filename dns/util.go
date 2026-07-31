@@ -247,6 +247,10 @@ func warpClientWithEdns0Subnet(c dnsClient, params map[string]string) dnsClient 
 	return c
 }
 
+// noDataSOATTL 是空答案的否定缓存时长。取值保守：够挡住连续拨号造成的
+// AAAA 风暴，又不至于在用户把 ipv6 打开之后还长时间生效。
+const noDataSOATTL = 600
+
 func handleMsgWithEmptyAnswer(r *D.Msg) *D.Msg {
 	msg := &D.Msg{}
 	msg.Answer = []D.RR{}
@@ -255,7 +259,34 @@ func handleMsgWithEmptyAnswer(r *D.Msg) *D.Msg {
 	msg.Authoritative = true
 	msg.RecursionAvailable = true
 
+	// RFC 2308：NOERROR + 空 Answer（NODATA）只有带上 SOA 才能被下游做否定缓存。
+	// 原来不带，于是 dns.ipv6: false（或 fake-ip 没有 v6 池）时，每个应用的
+	// 每一次连接都会把同一个 AAAA 重问一遍，查询量白白翻倍。
+	if len(r.Question) > 0 {
+		msg.Ns = []D.RR{noDataSOA(r.Question[0].Name)}
+	}
+
 	return msg
+}
+
+// noDataSOA 造一条合成 SOA 挂在 Authority 段。owner 直接用查询名 —— 本地
+// 解析器没有真实 zone 信息，AdGuard Home 等也是这么做的，客户端都认。
+func noDataSOA(name string) *D.SOA {
+	return &D.SOA{
+		Hdr: D.RR_Header{
+			Name:   name,
+			Rrtype: D.TypeSOA,
+			Class:  D.ClassINET,
+			Ttl:    noDataSOATTL,
+		},
+		Ns:      "fake-ns.coast.invalid.",
+		Mbox:    "hostmaster.coast.invalid.",
+		Serial:  1,
+		Refresh: 3600,
+		Retry:   600,
+		Expire:  86400,
+		Minttl:  noDataSOATTL,
+	}
 }
 
 func msgToIP(msg *D.Msg) (ips []netip.Addr) {
