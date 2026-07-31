@@ -1535,6 +1535,16 @@ func parseDNS(rawCfg *RawConfig, ruleProviders map[string]P.RuleProvider) (*DNS,
 			dnsCfg.FakeIPPool = pool
 		}
 
+		// dns.ipv6 关着的时候 NewEnhancer 会把 v6 池整个丢掉（见 dns/enhancer.go），
+		// 这里必须同步，否则下面那条"两个 range 不能都空"的校验会被一个根本不会
+		// 生效的 v6 池骗过去：fake-ip-range 显式留空 + 只配 fake-ip-range6 时，
+		// 校验通过，但 enhancer 两个池都是 nil，withFakeIP 对 A 和 AAAA 一律回空答案
+		// —— 整个 DNS 变成黑洞，而且一行日志都没有。
+		if dnsCfg.FakeIPRange6.IsValid() && !cfg.IPv6 {
+			log.Warnln("dns.fake-ip-range6 is ignored because dns.ipv6 is disabled")
+			dnsCfg.FakeIPRange6 = netip.Prefix{}
+		}
+
 		if dnsCfg.FakeIPRange6.IsValid() {
 			pool6, err := fakeip.New(fakeip.Options{
 				IPNet:       dnsCfg.FakeIPRange6,
@@ -1548,7 +1558,7 @@ func parseDNS(rawCfg *RawConfig, ruleProviders map[string]P.RuleProvider) (*DNS,
 		}
 
 		if dnsCfg.FakeIPPool == nil && dnsCfg.FakeIPPool6 == nil {
-			return nil, errors.New("disallow `fake-ip-range` and `fake-ip-range6` both empty with fake-ip mode")
+			return nil, errors.New("disallow `fake-ip-range` and `fake-ip-range6` both empty with fake-ip mode (note: `fake-ip-range6` only takes effect when `dns.ipv6` is enabled)")
 		}
 	}
 
