@@ -1,6 +1,6 @@
 module coast-test
 
-go 1.20
+go 1.26
 
 require (
 	github.com/docker/docker v20.10.21+incompatible
