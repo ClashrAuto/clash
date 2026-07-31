@@ -154,7 +154,20 @@ func ResolveIPv6(ctx context.Context, host string) (netip.Addr, error) {
 // LookupIPWithResolver same as LookupIP, but with a resolver
 func LookupIPWithResolver(ctx context.Context, host string, r Resolver) ([]netip.Addr, error) {
 	if node, ok := DefaultHosts.Search(host, false); ok {
-		return node.IPs, nil
+		ips := node.IPs
+		if DisableIPv6 {
+			// hosts 里的 v6 条目同样要受全局 ipv6 开关约束。
+			// LookupIPv4WithResolver 会过滤、LookupIPv6WithResolver 会直接拒绝，
+			// 只有这里原来是整份返回 —— 于是 ipv6: false 时照样把 AAAA
+			// 交给 dialer 去拨，和"阻断所有 IPv6 连接"的语义相反。
+			ips = utils.Filter(ips, func(ip netip.Addr) bool {
+				return ip.Unmap().Is4()
+			})
+		}
+		// 全被过滤掉时往下走正常解析，和 LookupIPv4WithResolver 的行为一致。
+		if len(ips) > 0 {
+			return ips, nil
+		}
 	}
 
 	if r != nil && r.Invalid() {
