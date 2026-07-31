@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/metacubex/http"
 	"github.com/ClashrAuto/coast/component/ca"
+	"github.com/metacubex/http"
 	"github.com/metacubex/tls"
 
 	"github.com/stretchr/testify/require"

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/ClashrAuto/coast/adapter/outbound"
 	C "github.com/ClashrAuto/coast/constant"
+	"github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/require"
 )
 
