@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/ClashrAuto/clash/component/auth"
-	"github.com/ClashrAuto/clash/listener/reality"
+	"github.com/metacubex/mihomo/component/auth"
+	"github.com/metacubex/mihomo/listener/reality"
 )
 
 // AuthServer for http/socks/mixed server

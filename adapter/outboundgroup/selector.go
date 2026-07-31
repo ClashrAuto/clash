@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	C "github.com/ClashrAuto/clash/constant"
-	P "github.com/ClashrAuto/clash/constant/provider"
+	C "github.com/metacubex/mihomo/constant"
+	P "github.com/metacubex/mihomo/constant/provider"
 )
 
 type Selector struct {

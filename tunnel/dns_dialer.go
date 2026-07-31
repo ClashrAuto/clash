@@ -8,11 +8,11 @@ import (
 	"net"
 	"strings"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/component/resolver"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/tunnel/statistic"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/resolver"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
 const DnsRespectRules = "RULES"

@@ -5,11 +5,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/atomic"
-	"github.com/ClashrAuto/clash/common/buf"
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/common/utils"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/common/atomic"
+	"github.com/metacubex/mihomo/common/buf"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/utils"
+	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/gofrs/uuid/v5"
 )

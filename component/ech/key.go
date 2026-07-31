@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ClashrAuto/clash/component/ca"
-	tlsC "github.com/ClashrAuto/clash/component/tls"
+	"github.com/metacubex/mihomo/component/ca"
+	tlsC "github.com/metacubex/mihomo/component/tls"
 
 	"golang.org/x/crypto/cryptobyte"
 )

@@ -8,9 +8,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/ClashrAuto/clash/common/pool"
-	"github.com/ClashrAuto/clash/transport/shadowsocks/shadowaead"
-	"github.com/ClashrAuto/clash/transport/socks5"
+	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/mihomo/transport/shadowsocks/shadowaead"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 const (

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/lru"
-	"github.com/ClashrAuto/clash/component/fakeip"
-	"github.com/ClashrAuto/clash/component/resolver"
-	C "github.com/ClashrAuto/clash/constant"
-	icontext "github.com/ClashrAuto/clash/context"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/common/lru"
+	"github.com/metacubex/mihomo/component/fakeip"
+	"github.com/metacubex/mihomo/component/resolver"
+	C "github.com/metacubex/mihomo/constant"
+	icontext "github.com/metacubex/mihomo/context"
+	"github.com/metacubex/mihomo/log"
 
 	D "github.com/miekg/dns"
 )

@@ -10,12 +10,12 @@ import (
 	"net/netip"
 	"strconv"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/component/ca"
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/component/proxydialer"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/transport/socks5"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/ca"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/proxydialer"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 type Socks5 struct {

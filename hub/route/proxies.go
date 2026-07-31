@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ClashrAuto/clash/adapter/outboundgroup"
-	"github.com/ClashrAuto/clash/common/utils"
-	"github.com/ClashrAuto/clash/component/profile/cachefile"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/tunnel"
+	"github.com/metacubex/mihomo/adapter/outboundgroup"
+	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/profile/cachefile"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/tunnel"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

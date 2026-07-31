@@ -6,10 +6,10 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/ClashrAuto/clash/adapter/inbound"
-	"github.com/ClashrAuto/clash/common/pool"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	"github.com/metacubex/mihomo/common/pool"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 type packet struct {

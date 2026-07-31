@@ -6,13 +6,13 @@ import (
 	"net"
 	"strconv"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/common/structure"
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/component/proxydialer"
-	C "github.com/ClashrAuto/clash/constant"
-	obfs "github.com/ClashrAuto/clash/transport/simple-obfs"
-	"github.com/ClashrAuto/clash/transport/snell"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/structure"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/proxydialer"
+	C "github.com/metacubex/mihomo/constant"
+	obfs "github.com/metacubex/mihomo/transport/simple-obfs"
+	"github.com/metacubex/mihomo/transport/snell"
 )
 
 type Snell struct {

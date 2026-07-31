@@ -1,10 +1,10 @@
 package hub
 
 import (
-	"github.com/ClashrAuto/clash/config"
-	"github.com/ClashrAuto/clash/hub/executor"
-	"github.com/ClashrAuto/clash/hub/route"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/config"
+	"github.com/metacubex/mihomo/hub/executor"
+	"github.com/metacubex/mihomo/hub/route"
+	"github.com/metacubex/mihomo/log"
 )
 
 type Option func(*config.Config)

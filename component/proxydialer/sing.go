@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	C "github.com/ClashrAuto/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 
 	M "github.com/metacubex/sing/common/metadata"
 	N "github.com/metacubex/sing/common/network"

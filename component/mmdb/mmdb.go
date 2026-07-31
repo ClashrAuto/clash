@@ -3,9 +3,9 @@ package mmdb
 import (
 	"sync"
 
-	clashautoOnce "github.com/ClashrAuto/clash/common/once"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	clashautoOnce "github.com/metacubex/mihomo/common/once"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/oschwald/maxminddb-golang"
 )

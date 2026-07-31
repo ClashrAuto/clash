@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/netip"
 
-	"github.com/ClashrAuto/clash/common/lru"
-	"github.com/ClashrAuto/clash/component/fakeip"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/common/lru"
+	"github.com/metacubex/mihomo/component/fakeip"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type ResolverEnhancer struct {

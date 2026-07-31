@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ClashrAuto/clash/component/profile"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/profile"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/metacubex/bbolt"
 )

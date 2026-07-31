@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/common/pool"
-	"github.com/ClashrAuto/clash/log"
-	"github.com/ClashrAuto/clash/transport/ssr/tools"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/transport/ssr/tools"
 
 	"github.com/metacubex/randv2"
 )

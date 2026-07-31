@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	C "github.com/ClashrAuto/clash/constant"
+	N "github.com/metacubex/mihomo/common/net"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 var tunnel C.Tunnel

@@ -3,12 +3,12 @@ package common
 import (
 	"fmt"
 
-	"github.com/ClashrAuto/clash/component/geodata"
-	_ "github.com/ClashrAuto/clash/component/geodata/memconservative"
-	"github.com/ClashrAuto/clash/component/geodata/router"
-	_ "github.com/ClashrAuto/clash/component/geodata/standard"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/geodata"
+	_ "github.com/metacubex/mihomo/component/geodata/memconservative"
+	"github.com/metacubex/mihomo/component/geodata/router"
+	_ "github.com/metacubex/mihomo/component/geodata/standard"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 type GEOSITE struct {

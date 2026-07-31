@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 )
 
 type aeadWriter struct {

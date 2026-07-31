@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/ClashrAuto/clash/constant"
-	LC "github.com/ClashrAuto/clash/listener/config"
-	"github.com/ClashrAuto/clash/listener/http"
-	"github.com/ClashrAuto/clash/log"
+	C "github.com/metacubex/mihomo/constant"
+	LC "github.com/metacubex/mihomo/listener/config"
+	"github.com/metacubex/mihomo/listener/http"
+	"github.com/metacubex/mihomo/log"
 )
 
 type HTTPOption struct {

@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/buf"
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/component/ech"
-	tlsC "github.com/ClashrAuto/clash/component/tls"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/common/buf"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/ech"
+	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"

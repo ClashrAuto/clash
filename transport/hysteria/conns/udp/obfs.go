@@ -1,7 +1,7 @@
 package udp
 
 import (
-	"github.com/ClashrAuto/clash/transport/hysteria/obfs"
+	"github.com/metacubex/mihomo/transport/hysteria/obfs"
 	"net"
 	"sync"
 	"time"

@@ -6,7 +6,7 @@ import (
 	"net/netip"
 	"runtime"
 
-	"github.com/ClashrAuto/clash/component/dialer"
+	"github.com/metacubex/mihomo/component/dialer"
 )
 
 func ListenDHCPClient(ctx context.Context, ifaceName string) (net.PacketConn, error) {

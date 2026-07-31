@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClashrAuto/clash/log"
-	"github.com/ClashrAuto/clash/ntp"
+	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/ntp"
 
 	"github.com/metacubex/randv2"
 	utls "github.com/metacubex/utls"

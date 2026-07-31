@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ClashrAuto/clash/component/trie"
-	C "github.com/ClashrAuto/clash/constant"
-	P "github.com/ClashrAuto/clash/constant/provider"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/trie"
+	C "github.com/metacubex/mihomo/constant"
+	P "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/log"
 
 	"golang.org/x/exp/slices"
 )

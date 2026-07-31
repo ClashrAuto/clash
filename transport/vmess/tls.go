@@ -6,9 +6,9 @@ import (
 	"errors"
 	"net"
 
-	"github.com/ClashrAuto/clash/component/ca"
-	"github.com/ClashrAuto/clash/component/ech"
-	tlsC "github.com/ClashrAuto/clash/component/tls"
+	"github.com/metacubex/mihomo/component/ca"
+	"github.com/metacubex/mihomo/component/ech"
+	tlsC "github.com/metacubex/mihomo/component/tls"
 )
 
 type TLSConfig struct {

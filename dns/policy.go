@@ -1,8 +1,8 @@
 package dns
 
 import (
-	"github.com/ClashrAuto/clash/component/trie"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/component/trie"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type dnsPolicy interface {

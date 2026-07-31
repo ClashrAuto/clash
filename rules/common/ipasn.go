@@ -1,10 +1,10 @@
 package common
 
 import (
-	"github.com/ClashrAuto/clash/component/geodata"
-	"github.com/ClashrAuto/clash/component/mmdb"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/geodata"
+	"github.com/metacubex/mihomo/component/mmdb"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 type ASN struct {

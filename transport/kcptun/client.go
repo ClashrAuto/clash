@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/metacubex/kcp-go"
 	"github.com/metacubex/randv2"

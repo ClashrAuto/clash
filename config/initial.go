@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 // Init prepare necessary files

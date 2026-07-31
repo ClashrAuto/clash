@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/listener/inner"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/listener/inner"
 
 	M "github.com/metacubex/sing/common/metadata"
 	N "github.com/metacubex/sing/common/network"

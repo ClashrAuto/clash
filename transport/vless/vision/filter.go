@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/log"
 )
 
 var (

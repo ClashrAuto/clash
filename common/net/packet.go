@@ -1,8 +1,8 @@
 package net
 
 import (
-	"github.com/ClashrAuto/clash/common/net/deadline"
-	"github.com/ClashrAuto/clash/common/net/packet"
+	"github.com/metacubex/mihomo/common/net/deadline"
+	"github.com/metacubex/mihomo/common/net/packet"
 )
 
 type EnhancePacketConn = packet.EnhancePacketConn

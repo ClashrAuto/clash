@@ -3,8 +3,8 @@ package sing_tun
 import (
 	"time"
 
-	"github.com/ClashrAuto/clash/constant/features"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/constant/features"
+	"github.com/metacubex/mihomo/log"
 
 	tun "github.com/metacubex/sing-tun"
 )

@@ -3,9 +3,9 @@ package provider
 import (
 	"net/netip"
 
-	C "github.com/ClashrAuto/clash/constant"
-	P "github.com/ClashrAuto/clash/constant/provider"
-	"github.com/ClashrAuto/clash/rules/common"
+	C "github.com/metacubex/mihomo/constant"
+	P "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/rules/common"
 )
 
 type RuleSet struct {

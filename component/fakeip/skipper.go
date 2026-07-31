@@ -1,7 +1,7 @@
 package fakeip
 
 import (
-	C "github.com/ClashrAuto/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type Skipper struct {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ClashrAuto/clash/component/resolver"
+	"github.com/metacubex/mihomo/component/resolver"
 
 	D "github.com/miekg/dns"
 )

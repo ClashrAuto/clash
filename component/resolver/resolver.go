@@ -7,8 +7,8 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/utils"
-	"github.com/ClashrAuto/clash/component/trie"
+	"github.com/metacubex/mihomo/common/utils"
+	"github.com/metacubex/mihomo/component/trie"
 
 	"github.com/metacubex/randv2"
 	"github.com/miekg/dns"

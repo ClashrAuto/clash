@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	N "github.com/metacubex/mihomo/common/net"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 type packetSender struct {

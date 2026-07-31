@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	tlsC "github.com/ClashrAuto/clash/component/tls"
-	"github.com/ClashrAuto/clash/transport/hysteria/obfs"
-	"github.com/ClashrAuto/clash/transport/hysteria/pmtud_fix"
-	"github.com/ClashrAuto/clash/transport/hysteria/transport"
-	"github.com/ClashrAuto/clash/transport/hysteria/utils"
+	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/metacubex/mihomo/transport/hysteria/obfs"
+	"github.com/metacubex/mihomo/transport/hysteria/pmtud_fix"
+	"github.com/metacubex/mihomo/transport/hysteria/transport"
+	"github.com/metacubex/mihomo/transport/hysteria/utils"
 
 	"github.com/metacubex/quic-go"
 	"github.com/metacubex/quic-go/congestion"

@@ -3,7 +3,7 @@ package packet
 import (
 	"net"
 
-	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 )
 
 type WaitReadFrom interface {

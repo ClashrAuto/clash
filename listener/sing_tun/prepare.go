@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/component/resolver"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/log"
 
 	tun "github.com/metacubex/sing-tun"
 	"github.com/metacubex/sing-tun/ping"

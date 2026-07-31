@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/ClashrAuto/clash/component/iface"
+	"github.com/metacubex/mihomo/component/iface"
 )
 
 const (

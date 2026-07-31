@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 
 	"golang.org/x/sys/windows"
 )

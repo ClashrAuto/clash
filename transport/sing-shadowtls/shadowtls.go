@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/ClashrAuto/clash/component/ca"
-	tlsC "github.com/ClashrAuto/clash/component/tls"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/ca"
+	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/metacubex/sing-shadowtls"
 	"golang.org/x/exp/slices"

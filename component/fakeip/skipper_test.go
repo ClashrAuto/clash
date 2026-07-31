@@ -3,8 +3,8 @@ package fakeip
 import (
 	"testing"
 
-	"github.com/ClashrAuto/clash/component/trie"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/component/trie"
+	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/stretchr/testify/assert"
 )

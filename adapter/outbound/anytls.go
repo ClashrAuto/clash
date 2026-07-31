@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	CN "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/component/proxydialer"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/transport/anytls"
-	"github.com/ClashrAuto/clash/transport/vmess"
+	CN "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/proxydialer"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/transport/anytls"
+	"github.com/metacubex/mihomo/transport/vmess"
 
 	M "github.com/metacubex/sing/common/metadata"
 	"github.com/metacubex/sing/common/uot"

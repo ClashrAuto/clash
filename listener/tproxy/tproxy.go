@@ -3,10 +3,10 @@ package tproxy
 import (
 	"net"
 
-	"github.com/ClashrAuto/clash/adapter/inbound"
-	"github.com/ClashrAuto/clash/component/keepalive"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/transport/socks5"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	"github.com/metacubex/mihomo/component/keepalive"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 type Listener struct {

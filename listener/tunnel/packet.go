@@ -3,7 +3,7 @@ package tunnel
 import (
 	"net"
 
-	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 )
 
 type packet struct {

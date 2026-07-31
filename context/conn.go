@@ -1,11 +1,11 @@
 package context
 
 import (
-	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/metacubex/mihomo/common/utils"
 	"net"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	C "github.com/ClashrAuto/clash/constant"
+	N "github.com/metacubex/mihomo/common/net"
+	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/gofrs/uuid/v5"
 )

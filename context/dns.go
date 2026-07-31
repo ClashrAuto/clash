@@ -3,7 +3,7 @@ package context
 import (
 	"context"
 
-	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/metacubex/mihomo/common/utils"
 
 	"github.com/gofrs/uuid/v5"
 )

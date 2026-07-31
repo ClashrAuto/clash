@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	clashautoHttp "github.com/ClashrAuto/clash/component/http"
+	clashautoHttp "github.com/metacubex/mihomo/component/http"
 )
 
 const defaultHttpTimeout = time.Second * 90

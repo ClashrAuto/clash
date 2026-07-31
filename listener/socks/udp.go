@@ -3,12 +3,12 @@ package socks
 import (
 	"net"
 
-	"github.com/ClashrAuto/clash/adapter/inbound"
-	N "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/common/sockopt"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
-	"github.com/ClashrAuto/clash/transport/socks5"
+	"github.com/metacubex/mihomo/adapter/inbound"
+	N "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/common/sockopt"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 type UDPListener struct {

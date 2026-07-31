@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/ClashrAuto/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type InName struct {

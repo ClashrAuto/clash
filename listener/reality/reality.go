@@ -10,11 +10,11 @@ import (
 	"runtime/debug"
 	"time"
 
-	N "github.com/ClashrAuto/clash/common/net"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/listener/inner"
-	"github.com/ClashrAuto/clash/log"
-	"github.com/ClashrAuto/clash/ntp"
+	N "github.com/metacubex/mihomo/common/net"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/listener/inner"
+	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/ntp"
 
 	utls "github.com/metacubex/utls"
 )

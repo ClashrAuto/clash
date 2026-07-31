@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/log"
 	"github.com/oschwald/maxminddb-golang"
 )
 

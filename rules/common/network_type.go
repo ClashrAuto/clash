@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	C "github.com/ClashrAuto/clash/constant"
+	C "github.com/metacubex/mihomo/constant"
 	"strings"
 )
 

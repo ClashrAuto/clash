@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/listener/redir"
-	"github.com/ClashrAuto/clash/log"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/listener/redir"
+	"github.com/metacubex/mihomo/log"
 )
 
 type RedirOption struct {

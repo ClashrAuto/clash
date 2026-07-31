@@ -2,7 +2,7 @@ package dns
 
 // export functions from tunnel module
 
-import "github.com/ClashrAuto/clash/tunnel"
+import "github.com/metacubex/mihomo/tunnel"
 
 const RespectRules = tunnel.DnsRespectRules
 

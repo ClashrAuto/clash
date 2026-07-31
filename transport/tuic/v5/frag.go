@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/ClashrAuto/clash/common/lru"
+	"github.com/metacubex/mihomo/common/lru"
 
 	"github.com/metacubex/quic-go"
 )

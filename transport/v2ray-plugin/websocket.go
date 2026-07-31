@@ -6,9 +6,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/ClashrAuto/clash/component/ca"
-	"github.com/ClashrAuto/clash/component/ech"
-	"github.com/ClashrAuto/clash/transport/vmess"
+	"github.com/metacubex/mihomo/component/ca"
+	"github.com/metacubex/mihomo/component/ech"
+	"github.com/metacubex/mihomo/transport/vmess"
 )
 
 // Option is options of websocket obfs

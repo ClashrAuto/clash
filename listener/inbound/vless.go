@@ -3,10 +3,10 @@ package inbound
 import (
 	"strings"
 
-	C "github.com/ClashrAuto/clash/constant"
-	LC "github.com/ClashrAuto/clash/listener/config"
-	"github.com/ClashrAuto/clash/listener/sing_vless"
-	"github.com/ClashrAuto/clash/log"
+	C "github.com/metacubex/mihomo/constant"
+	LC "github.com/metacubex/mihomo/listener/config"
+	"github.com/metacubex/mihomo/listener/sing_vless"
+	"github.com/metacubex/mihomo/log"
 )
 
 type VlessOption struct {

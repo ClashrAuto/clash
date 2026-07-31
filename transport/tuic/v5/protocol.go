@@ -8,9 +8,9 @@ import (
 	"net/netip"
 	"strconv"
 
-	"github.com/ClashrAuto/clash/common/utils"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/transport/socks5"
+	"github.com/metacubex/mihomo/common/utils"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/transport/socks5"
 
 	"github.com/metacubex/quic-go"
 )

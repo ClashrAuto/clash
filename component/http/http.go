@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClashrAuto/clash/component/ca"
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/listener/inner"
+	"github.com/metacubex/mihomo/component/ca"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/listener/inner"
 )
 
 var (

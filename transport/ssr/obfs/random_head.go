@@ -6,7 +6,7 @@ import (
 	"hash/crc32"
 	"net"
 
-	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 
 	"github.com/metacubex/randv2"
 )

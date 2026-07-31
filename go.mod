@@ -1,4 +1,4 @@
-module github.com/ClashrAuto/clash
+module github.com/metacubex/mihomo
 
 go 1.20
 

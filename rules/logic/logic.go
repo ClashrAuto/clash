@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/rules/common"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/rules/common"
 
 	list "github.com/bahlo/generic-list-go"
 )

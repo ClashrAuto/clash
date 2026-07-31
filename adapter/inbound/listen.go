@@ -7,7 +7,7 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/ClashrAuto/clash/component/keepalive"
+	"github.com/metacubex/mihomo/component/keepalive"
 
 	"github.com/metacubex/tfo-go"
 )

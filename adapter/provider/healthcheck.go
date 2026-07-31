@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/atomic"
-	"github.com/ClashrAuto/clash/common/singledo"
-	"github.com/ClashrAuto/clash/common/utils"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/common/atomic"
+	"github.com/metacubex/mihomo/common/singledo"
+	"github.com/metacubex/mihomo/common/utils"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/dlclark/regexp2"
 	"golang.org/x/sync/errgroup"

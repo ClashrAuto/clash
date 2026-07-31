@@ -9,7 +9,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/ClashrAuto/clash/constant/features"
+	"github.com/metacubex/mihomo/constant/features"
 
 	"golang.org/x/sys/windows"
 )

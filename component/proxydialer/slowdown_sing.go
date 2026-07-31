@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/ClashrAuto/clash/component/slowdown"
+	"github.com/metacubex/mihomo/component/slowdown"
 	M "github.com/metacubex/sing/common/metadata"
 )
 

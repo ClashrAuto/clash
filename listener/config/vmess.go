@@ -3,8 +3,8 @@ package config
 import (
 	"encoding/json"
 
-	"github.com/ClashrAuto/clash/listener/reality"
-	"github.com/ClashrAuto/clash/listener/sing"
+	"github.com/metacubex/mihomo/listener/reality"
+	"github.com/metacubex/mihomo/listener/sing"
 )
 
 type VmessUser struct {

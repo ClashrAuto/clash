@@ -3,8 +3,8 @@ package common
 import (
 	"fmt"
 
-	"github.com/ClashrAuto/clash/common/utils"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/common/utils"
+	C "github.com/metacubex/mihomo/constant"
 )
 
 type DSCP struct {

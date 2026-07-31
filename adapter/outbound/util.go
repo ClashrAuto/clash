@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/ClashrAuto/clash/component/resolver"
-	C "github.com/ClashrAuto/clash/constant"
-	"github.com/ClashrAuto/clash/transport/socks5"
+	"github.com/metacubex/mihomo/component/resolver"
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/transport/socks5"
 )
 
 func serializesSocksAddr(metadata *C.Metadata) []byte {

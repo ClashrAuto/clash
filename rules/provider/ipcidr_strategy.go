@@ -5,10 +5,10 @@ import (
 	"io"
 	"net/netip"
 
-	"github.com/ClashrAuto/clash/component/cidr"
-	C "github.com/ClashrAuto/clash/constant"
-	P "github.com/ClashrAuto/clash/constant/provider"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/component/cidr"
+	C "github.com/metacubex/mihomo/constant"
+	P "github.com/metacubex/mihomo/constant/provider"
+	"github.com/metacubex/mihomo/log"
 
 	"go4.org/netipx"
 )

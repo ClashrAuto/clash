@@ -18,11 +18,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/buf"
-	"github.com/ClashrAuto/clash/common/pool"
-	"github.com/ClashrAuto/clash/component/ech"
-	tlsC "github.com/ClashrAuto/clash/component/tls"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/common/buf"
+	"github.com/metacubex/mihomo/common/pool"
+	"github.com/metacubex/mihomo/component/ech"
+	tlsC "github.com/metacubex/mihomo/component/tls"
+	C "github.com/metacubex/mihomo/constant"
 
 	"golang.org/x/net/http2"
 )

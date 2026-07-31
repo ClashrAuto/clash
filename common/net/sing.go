@@ -4,7 +4,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/ClashrAuto/clash/common/net/deadline"
+	"github.com/metacubex/mihomo/common/net/deadline"
 
 	"github.com/metacubex/sing/common"
 	"github.com/metacubex/sing/common/bufio"

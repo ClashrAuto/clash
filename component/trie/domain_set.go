@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/metacubex/mihomo/common/utils"
 	"github.com/openacid/low/bitmap"
 )
 

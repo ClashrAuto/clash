@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/ClashrAuto/clash/adapter/outbound"
-	C "github.com/ClashrAuto/clash/constant"
+	"github.com/metacubex/mihomo/adapter/outbound"
+	C "github.com/metacubex/mihomo/constant"
 	"github.com/stretchr/testify/assert"
 )
 

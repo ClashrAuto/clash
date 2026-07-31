@@ -4,8 +4,8 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/ClashrAuto/clash/adapter/outbound"
-	"github.com/ClashrAuto/clash/listener/inbound"
+	"github.com/metacubex/mihomo/adapter/outbound"
+	"github.com/metacubex/mihomo/listener/inbound"
 
 	"github.com/stretchr/testify/assert"
 )

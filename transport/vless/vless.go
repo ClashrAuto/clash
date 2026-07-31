@@ -3,7 +3,7 @@ package vless
 import (
 	"net"
 
-	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/metacubex/mihomo/common/utils"
 
 	"github.com/gofrs/uuid/v5"
 )

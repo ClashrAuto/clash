@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/textproto"
 
-	"github.com/ClashrAuto/clash/common/utils"
+	"github.com/metacubex/mihomo/common/utils"
 
 	"github.com/metacubex/randv2"
 )

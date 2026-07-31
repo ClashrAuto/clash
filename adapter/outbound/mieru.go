@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"sync"
 
-	CN "github.com/ClashrAuto/clash/common/net"
-	"github.com/ClashrAuto/clash/component/dialer"
-	"github.com/ClashrAuto/clash/component/proxydialer"
-	C "github.com/ClashrAuto/clash/constant"
+	CN "github.com/metacubex/mihomo/common/net"
+	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/proxydialer"
+	C "github.com/metacubex/mihomo/constant"
 
 	mieruclient "github.com/enfein/mieru/v3/apis/client"
 	mierucommon "github.com/enfein/mieru/v3/apis/common"

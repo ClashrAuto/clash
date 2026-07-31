@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/pool"
+	"github.com/metacubex/mihomo/common/pool"
 
 	"github.com/metacubex/blake3"
 	"github.com/metacubex/randv2"

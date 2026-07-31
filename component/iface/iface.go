@@ -6,7 +6,7 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/singledo"
+	"github.com/metacubex/mihomo/common/singledo"
 
 	"github.com/metacubex/bart"
 )

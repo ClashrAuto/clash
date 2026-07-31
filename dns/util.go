@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClashrAuto/clash/common/picker"
-	"github.com/ClashrAuto/clash/component/resolver"
-	"github.com/ClashrAuto/clash/log"
+	"github.com/metacubex/mihomo/common/picker"
+	"github.com/metacubex/mihomo/component/resolver"
+	"github.com/metacubex/mihomo/log"
 
 	D "github.com/miekg/dns"
 	"github.com/samber/lo"
