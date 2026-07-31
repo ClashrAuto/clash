@@ -28,6 +28,16 @@ const (
 	defaultHistoriesNum = 10
 )
 
+const (
+	// 拨号 / TLS 握手 / 等响应头的额外预算。这段时间不该从测速窗口里扣，
+	// 否则链路 RTT 稍大就会在开始下载前就把 context 耗光。
+	downloadConnectHeadroom = 10 * time.Second
+	// 调用方没给 timeout（或给了非正数）时的默认测速窗口
+	defaultDownloadWindow = 5000 * time.Millisecond
+	// 把测速窗口切成多少片做移动平均
+	downloadSpeedSlices = 100
+)
+
 type internalProxyState struct {
 	alive   atomic.Bool
 	history *queue.Queue[C.DelayHistory]
@@ -337,6 +347,8 @@ func (p *Proxy) LastSpeed() (speed float64) {
 }
 
 // URLDownload performs a timed HTTP GET through this proxy and returns estimated download speed.
+// timeout 是「下载测量窗口」的长度（毫秒），只从收到响应头那一刻开始计；
+// 拨号和握手另有 downloadConnectHeadroom 的预算，不占用这个窗口。
 func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 	defer func() {
 		p.alive.Store(err == nil)
@@ -356,7 +368,14 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout))
+	window := time.Millisecond * time.Duration(timeout)
+	if window <= 0 {
+		window = defaultDownloadWindow
+	}
+
+	// ctx 覆盖「拨号 + 握手 + 响应头 + 整个下载窗口」。原来这里只给了 window，
+	// 于是握手一慢就在开始读 body 之前 context deadline exceeded，测速直接报错。
+	ctx, cancel := context.WithTimeout(context.Background(), window+downloadConnectHeadroom)
 	defer cancel()
 
 	instance, err := p.DialContext(ctx, &addr)
@@ -396,9 +415,9 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusOK {
-		downloadTestTime := time.Millisecond * time.Duration(timeout)
+		// 窗口从「响应头已到手」开始算，拨号/握手耗时不计入
 		timeStart := time.Now()
-		timeEnd := timeStart.Add(downloadTestTime)
+		timeEnd := timeStart.Add(window)
 
 		contentLength := resp.ContentLength
 		if contentLength <= 0 {
@@ -407,7 +426,7 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 		buffer := make([]byte, contentLength)
 
 		var contentRead int64 = 0
-		timeSlice := downloadTestTime / 100
+		timeSlice := window / downloadSpeedSlices
 		timeCounter := 1
 		var lastContentRead int64 = 0
 		nextTime := timeStart.Add(timeSlice * time.Duration(timeCounter))
@@ -436,7 +455,7 @@ func (p *Proxy) URLDownload(timeout int, url string) (t float64, err error) {
 			}
 		}
 		// average bytes per slice; convert to bytes per second
-		t = e.Value() / (downloadTestTime.Seconds() / 100)
+		t = e.Value() / (window.Seconds() / downloadSpeedSlices)
 	} else {
 		t = 0
 	}
