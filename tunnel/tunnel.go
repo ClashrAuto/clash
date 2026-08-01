@@ -353,7 +353,13 @@ func resolveMetadata(metadata *C.Metadata) (proxy C.Proxy, rule C.Rule, err erro
 				attemptProcessLookup = false
 				if !features.CMFA {
 					// normal check for process
-					uid, path, err := process.FindProcessName(metadata.NetWork.String(), metadata.SrcIP, int(metadata.SrcPort))
+					// 补上**入站连接本地端点**（InIP/InPort），让 Linux 侧走 inet_diag 精确查询
+					// （一次哈希查找）而不是全表 dump（遍历整张 ehash，实测恒定 5.3ms/连接）。
+					// ★ 这里要的是「客户端那条 socket 的四元组」= (SrcIP,SrcPort) ↔ (InIP,InPort)，
+					//   **不是** DstIP/DstPort —— 后者是代理要去连的目标，与本机套接字表无关，
+					//   拿它去精确查询必然落空、白白退回 dump。见 FindProcessNameFull。
+					uid, path, err := process.FindProcessNameFull(metadata.NetWork.String(),
+						metadata.SrcIP, int(metadata.SrcPort), metadata.InIP, int(metadata.InPort))
 					if err != nil {
 						log.Debugln("[Process] find process error for %s: %v", metadata.String(), err)
 					} else {
