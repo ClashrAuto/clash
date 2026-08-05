@@ -26,6 +26,14 @@ func WithInUser(user string) Addition {
 	}
 }
 
+// WithEgressInterface 让这个入站上来的连接从指定的**本机网卡**出去。
+// 与 WithInUser/WithSpecialRules 完全同构：listener 上配一次，盖在每条连接的 Metadata 上。
+func WithEgressInterface(name string) Addition {
+	return func(metadata *C.Metadata) {
+		metadata.EgressInterface = name
+	}
+}
+
 func WithSpecialRules(specialRules string) Addition {
 	return func(metadata *C.Metadata) {
 		metadata.SpecialRules = specialRules

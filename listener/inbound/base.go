@@ -96,6 +96,11 @@ type BaseOption struct {
 	SpecialRules string `inbound:"rule,omitempty"`
 	SpecialProxy string `inbound:"proxy,omitempty"`
 	RoutingMark  int    `inbound:"routing-mark,omitempty"`
+	// 这个入站上来的连接从哪张**本机网卡**出去。留空 = 沿用全局默认（与以前完全一致）。
+	// 透明网关同时接多条上行时，每台设备该从自己挂着的那条出去——而"哪张卡"是**入站的属性**，
+	// 配置里原本只能绑在出站对象上。详见 component/dialer/egress.go。
+	// 与紧邻的 routing-mark 同一性质：都是"这个入站的连接怎么出去"。
+	InterfaceName string `inbound:"interface-name,omitempty"`
 
 	//
 	// The following parameters are used internally, assign value by the structure decoder are disallowed
@@ -116,6 +121,7 @@ func (o BaseOption) Additions() []inbound.Addition {
 		inbound.WithInName(o.NameStr),
 		inbound.WithSpecialRules(o.SpecialRules),
 		inbound.WithSpecialProxy(o.SpecialProxy),
+		inbound.WithEgressInterface(o.InterfaceName),
 	}
 }
 

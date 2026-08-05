@@ -15,6 +15,7 @@ import (
 	"github.com/ClashrAuto/coast/common/atomic"
 	N "github.com/ClashrAuto/coast/common/net"
 	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/dialer"
 	"github.com/ClashrAuto/coast/component/loopback"
 	"github.com/ClashrAuto/coast/component/nat"
 	"github.com/ClashrAuto/coast/component/process"
@@ -471,6 +472,9 @@ func handleUDPConn(packet C.PacketAdapter) {
 
 			dialMetadata := metadata.Pure()
 			ctx, cancel := context.WithTimeout(context.Background(), C.DefaultUDPTimeout)
+			// 把入站盖在 Metadata 上的出口网卡带给拨号器。**必须在这里塞**：这个 ctx 是
+			// context.Background() 新建的，入站那条连接的 ctx 并不流到这里。
+			ctx = dialer.WithEgressInterface(ctx, metadata.EgressInterface)
 			defer cancel()
 			rawPc, err := retry(ctx, func(ctx context.Context) (C.PacketConn, error) {
 				return proxy.ListenPacketContext(ctx, dialMetadata)
@@ -578,6 +582,9 @@ func handleTCPConn(connCtx C.ConnContext) {
 	var peekLen int
 
 	ctx, cancel := context.WithTimeout(context.Background(), C.DefaultTCPTimeout)
+	// 把入站盖在 Metadata 上的出口网卡带给拨号器。**必须在这里塞**：这个 ctx 是
+	// context.Background() 新建的，入站那条连接的 ctx 并不流到这里。
+	ctx = dialer.WithEgressInterface(ctx, dialMetadata.EgressInterface)
 	defer cancel()
 	remoteConn, err := retry(ctx, func(ctx context.Context) (remoteConn C.Conn, err error) {
 		remoteConn, err = proxy.DialContext(ctx, dialMetadata)

@@ -86,6 +86,11 @@ func ListenPacket(ctx context.Context, network, address string, rAddrPort netip.
 	if DefaultSocketHook != nil { // ignore interfaceName, routingMark when DefaultSocketHook not null (in CMFA)
 		socketHookToListenConfig(lc)
 	} else {
+		// 入站携带的出口网卡（透明网关：每台设备从它自己那条上行出去）。
+		// 排在全局默认**之前**、出站显式 interface-name **之后**——见 egress.go 的优先级说明。
+		if opt.interfaceName == "" {
+			opt.interfaceName = EgressInterfaceFromContext(ctx)
+		}
 		if opt.interfaceName == "" {
 			opt.interfaceName = DefaultInterface.Load()
 		}
@@ -143,6 +148,11 @@ func dialContext(ctx context.Context, network string, destination netip.Addr, po
 	if DefaultSocketHook != nil { // ignore interfaceName, routingMark and tfo when DefaultSocketHook not null (in CMFA)
 		socketHookToToDialer(dialer)
 	} else {
+		// 入站携带的出口网卡（透明网关：每台设备从它自己那条上行出去）。
+		// 排在全局默认**之前**、出站显式 interface-name **之后**——见 egress.go 的优先级说明。
+		if opt.interfaceName == "" {
+			opt.interfaceName = EgressInterfaceFromContext(ctx)
+		}
 		if opt.interfaceName == "" {
 			opt.interfaceName = DefaultInterface.Load()
 		}
