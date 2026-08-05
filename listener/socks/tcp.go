@@ -186,9 +186,29 @@ func HandleSocks5(conn net.Conn, tunnel C.Tunnel, store auth.AuthStore, addition
 	}
 	if command == socks5.CmdUDPAssociate {
 		defer conn.Close()
+		// ★ 认证得到的 user 以前在这里被直接丢掉，于是这条会话后续的 UDP 数据报在核心眼里
+		//   完全没有身份（IN-USER 不命中、inboundUser 恒空）。改成按客户端在 ASSOCIATE 请求里
+		//   声明的 UDP 源地址登记，寿命跟着这条控制连接 —— 下面的 io.Copy 一返回就注销。
+		//   target 就是那个请求的 DST.ADDR:DST.PORT（见 socks5.ServerHandshake）。
+		//   客户端没声明（0.0.0.0:0）时 udpAssociateKey 返回空串，登记是空操作，行为不变。
+		defer registerUDPUser(udpAssociateKey(target), user)()
 		io.Copy(io.Discard, conn)
 		return
 	}
 	additions = append(additions, inbound.WithInUser(user))
 	tunnel.HandleTCPConn(inbound.NewSocket(target, conn, C.SOCKS5, additions...))
+}
+
+// udpAssociateKey 把 UDP ASSOCIATE 请求里声明的来源地址转成 udpUsers 的键，
+// 形态与 net.PacketConn 读到的 addr.String() 一致（v4 `1.2.3.4:p`，v6 `[::1]:p`）。
+//
+// 端口为 0 视为「没声明」：RFC 1928 允许客户端在还不知道自己端口时填 0，那样的声明
+// 无法唯一定位一条会话，登记了反而可能张冠李戴 —— 宁可不认。域名型 ATYP 同理
+// （UDPAddr() 对它返回 nil）：来源地址必须是核心能逐包比对的字面地址。
+func udpAssociateKey(target socks5.Addr) string {
+	ua := target.UDPAddr()
+	if ua == nil || ua.Port == 0 || ua.IP == nil || ua.IP.IsUnspecified() {
+		return ""
+	}
+	return ua.String()
 }

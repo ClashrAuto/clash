@@ -94,5 +94,15 @@ func handleSocksUDP(pc net.PacketConn, tunnel C.Tunnel, buf []byte, put func(), 
 		payload: payload,
 		put:     put,
 	}
+	// ★ 逐包补上身份：UDP 中继是共享套接字，数据报本身不带认证信息，只能按**源地址**反查
+	//   当初做过认证的那条控制连接（登记见 tcp.go 的 CmdUDPAssociate 分支 / udpuser.go）。
+	//   查不到就保持原样 —— 免认证入站、以及没声明来源地址的第三方客户端都走这条路。
+	if user := lookupUDPUser(addr.String()); user != "" {
+		// ★ 必须**复制**再 append：additions 是监听器共享的那一份，TCP 那边的每条连接也在
+		//   往它上面 append（tcp.go 的 WithInUser）。cap 有余量时直接 append 会写进同一块
+		//   底层数组，把别人的身份覆盖掉 —— 这种串号只在并发下偶发，最难查。
+		additions = append(append(make([]inbound.Addition, 0, len(additions)+1), additions...),
+			inbound.WithInUser(user))
+	}
 	tunnel.HandleUDPPacket(inbound.NewPacket(target, packet, C.SOCKS5, additions...))
 }
