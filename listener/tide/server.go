@@ -11,6 +11,7 @@ import (
 	"github.com/ClashrAuto/coast/adapter/inbound"
 	C "github.com/ClashrAuto/coast/constant"
 	LC "github.com/ClashrAuto/coast/listener/config"
+	"github.com/ClashrAuto/coast/log"
 	"github.com/ClashrAuto/coast/transport/socks5"
 
 	tideproto "github.com/ClashrAuto/tide"
@@ -131,11 +132,23 @@ func New(config LC.TideServer, lc C.InboundListenConfig, tunnel C.Tunnel, additi
 		// h3 请求反代到掩护源站。一台在 TCP/443 上服务 HTTPS 的主机，
 		// 在 UDP/443 上跑一个"握手能成、却不回任何 h3 请求"的端点是说不通的，
 		// 探测方一次普通 h3 请求就能挑出来。
-		if config.H3 {
-			go func(a string) { _ = srv.ServeH3(a) }(addr)
-			continue
-		}
-		go func(a string) { _ = srv.ServeQUIC(a) }(addr)
+		// ★ 绑定失败**必须**说出来。这里从前是 `_ =`，于是 quic-listen 绑不上
+		// （端口被占、权限不足……）时整条链路一声不吭：服务端照常起来，
+		// 客户端拨 QUIC 失败后按 tide spec §8 **静默**回落 TCP——那是协议要求的行为，
+		// 不会有任何报错。用户只会觉得"加速通道没生效"，而日志里一个字都没有。
+		go func(a string, h3 bool) {
+			var err error
+			if h3 {
+				err = srv.ServeH3(a)
+			} else {
+				err = srv.ServeQUIC(a)
+			}
+			// 正常停机时 Serve 返回 nil；非 nil 才是真出事了。
+			if err != nil {
+				log.Errorln("[TIDE] QUIC listen on %s failed: %s "+
+					"(the accelerator is now absent; clients fall back to TCP silently)", a, err)
+			}
+		}(addr, config.H3)
 	}
 	return sl, nil
 }
