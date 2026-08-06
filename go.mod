@@ -3,7 +3,7 @@ module github.com/ClashrAuto/coast
 go 1.26
 
 require (
-	github.com/ClashrAuto/tide v0.2.0
+	github.com/ClashrAuto/tide v0.2.1-0.20260806231220-4939798e0ec8
 	github.com/VividCortex/ewma v1.2.0
 	github.com/bahlo/generic-list-go v0.2.0
 	github.com/coreos/go-iptables v0.8.0
@@ -127,6 +127,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pires/go-proxyproto v0.8.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.61.0 // indirect
 	github.com/safchain/ethtool v0.3.0 // indirect
 	github.com/sagernet/netlink v0.0.0-20240612041022-b9a21c07ac6a // indirect

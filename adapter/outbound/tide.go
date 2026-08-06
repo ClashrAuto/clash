@@ -46,6 +46,18 @@ type TideOption struct {
 	// UDP 被封时静默回落 TCP，不需要用户操心。
 	QUIC     bool `proxy:"quic,omitempty"`
 	QUICPort int  `proxy:"quic-port,omitempty"`
+	// H3 让 QUIC 面跑在 HTTP/3 之上（tide spec §12.6）。
+	//
+	// ★ **两端必须一致，而且不一致时完全没有症状。** 两边 ALPN 都是 "h3"，
+	// QUIC 握手照样成功，之后服务端把 h3 的 HEADERS 帧当 TIDE 的 HELLO 解，
+	// 路径悄悄死掉，客户端按 §8 静默回落 TCP——用户只会觉得"加速通道好像没生效"，
+	// 日志里一个字都没有。
+	//
+	// ⚠️ 这一项从前**根本不存在**：tide-server 的启动横幅在开了 -h3 时会打出
+	// `h3: true` 并注明"这一行必须跟着开"，用户照抄贴进配置，而 mihomo 的解码器
+	// 对结构体里没有的键是**静默丢弃**的（只有带 remain 标签的结构才会报未知键）。
+	// 于是横幅让用户加的那一行被无声吃掉，症状恰好就是横幅警告的那一个。
+	H3 bool `proxy:"h3,omitempty"`
 	// Redundancy 常驻两条路径：路径死掉时不用重连，流直接切过去。
 	// 移动网络建议开，稳定有线网没必要。
 	Redundancy bool `proxy:"redundancy,omitempty"`
@@ -131,6 +143,7 @@ func NewTide(option TideOption) (*Tide, error) {
 		},
 		Bare:       option.Bare,
 		EnableQUIC: option.QUIC,
+		H3:         option.H3,
 		QUICPort:   option.QUICPort,
 		Redundancy: option.Redundancy,
 		// 走 clash 的 dialer，接口绑定 / fwmark / DNS 策略才会生效。
