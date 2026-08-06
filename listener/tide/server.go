@@ -57,8 +57,23 @@ func New(config LC.TideServer, lc C.InboundListenConfig, tunnel C.Tunnel, additi
 		return nil, err
 	}
 
+	// ★ 空用户表 = 谁都能用这台代理。
+	//
+	// 客户端在 TIDE 握手里**从不证明**自己知道私钥——它只需要**公钥**（做 KEM 封装），
+	// 而公钥本来就要发给每一个客户端。所以没有 users: 的配置起出来的是一台
+	// 开放中继，而且日志里一个字都没有。这与上面 cover 那条是同一类：
+	// 静默降级掉的安全属性没人会发现它已经没了，所以必须**显式**选择。
+	//
+	// 库那边（tideproto.NewServer）也会拒，这里先拦一道只是为了给出配置层面的措辞。
+	if len(config.Users) == 0 {
+		return nil, errors.New("tide: users is required; add at least one name:password entry " +
+			"(an empty user list accepts ANY client that has the public key, which is not a secret)")
+	}
 	users := make(map[[16]byte]string, len(config.Users))
 	for name, password := range config.Users {
+		if password == "" {
+			return nil, errors.New("tide: user " + name + " has an empty password")
+		}
 		users[tideproto.UserIDFromPassword(password)] = name
 	}
 
