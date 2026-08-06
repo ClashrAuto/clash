@@ -46,6 +46,7 @@ const (
 	Ssh
 	Mieru
 	AnyTLS
+	Tide
 	Sudoku
 	Masque
 	TrustTunnel
@@ -225,6 +226,8 @@ func (at AdapterType) String() string {
 		return "Mieru"
 	case AnyTLS:
 		return "AnyTLS"
+	case Tide:
+		return "Tide"
 	case Sudoku:
 		return "Sudoku"
 	case Masque:

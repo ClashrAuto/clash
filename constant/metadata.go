@@ -39,6 +39,7 @@ const (
 	TUIC
 	HYSTERIA2
 	ANYTLS
+	TIDE
 	MIERU
 	SUDOKU
 	TRUSTTUNNEL
@@ -116,6 +117,8 @@ func (t Type) String() string {
 		return "Hysteria2"
 	case ANYTLS:
 		return "AnyTLS"
+	case TIDE:
+		return "Tide"
 	case MIERU:
 		return "Mieru"
 	case SUDOKU:
@@ -166,6 +169,8 @@ func ParseType(t string) (*Type, error) {
 		res = HYSTERIA2
 	case "ANYTLS":
 		res = ANYTLS
+	case "TIDE":
+		res = TIDE
 	case "MIERU":
 		res = MIERU
 	case "SUDOKU":

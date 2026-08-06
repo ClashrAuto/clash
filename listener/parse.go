@@ -154,6 +154,13 @@ func ParseListener(mapping map[string]any) (C.InboundListener, error) {
 			return nil, err
 		}
 		listener, err = IN.NewAnyTLS(anytlsOption)
+	case "tide":
+		tideOption := &IN.TideOption{}
+		err = decoder.Decode(mapping, tideOption)
+		if err != nil {
+			return nil, err
+		}
+		listener, err = IN.NewTide(tideOption)
 	case "mieru":
 		mieruOption := &IN.MieruOption{}
 		err = decoder.Decode(mapping, mieruOption)
