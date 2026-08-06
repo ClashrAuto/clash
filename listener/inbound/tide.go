@@ -20,6 +20,9 @@ type TideOption struct {
 	// Cover 是掩护源站，必填。见 listener/config/tide.go 的说明。
 	Cover      string `inbound:"cover"`
 	QUICListen string `inbound:"quic-listen,omitempty"`
+	// H3 让 QUIC 面跑在 HTTP/3 之上（tide spec §12.6）：非 TIDE 的 h3 请求会被
+	// 反代到掩护源站，而不是沉默。两端必须一致，见 listener/config/tide.go 的说明。
+	H3         bool   `inbound:"h3,omitempty"`
 	AllowBare  bool   `inbound:"allow-bare,omitempty"`
 	Congestion string `inbound:"congestion,omitempty"`
 }
@@ -47,6 +50,7 @@ func NewTide(options *TideOption) (*Tide, error) {
 			Enable:        true,
 			Listen:        base.RawAddress(),
 			QUICListen:    options.QUICListen,
+			H3:            options.H3,
 			Users:         options.Users,
 			PrivateKey:    options.PrivateKey,
 			Certificate:   options.Certificate,

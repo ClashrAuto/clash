@@ -126,6 +126,15 @@ func New(config LC.TideServer, lc C.InboundListenConfig, tunnel C.Tunnel, additi
 		if addr == "" {
 			continue
 		}
+		// ★ h3 模式与原生 QUIC 的区别不是性能，是**抗主动探测**：
+		// ServeQUIC 对非 TIDE 的 QUIC 客户端只能沉默，而 ServeH3 会把非 TIDE 的
+		// h3 请求反代到掩护源站。一台在 TCP/443 上服务 HTTPS 的主机，
+		// 在 UDP/443 上跑一个"握手能成、却不回任何 h3 请求"的端点是说不通的，
+		// 探测方一次普通 h3 请求就能挑出来。
+		if config.H3 {
+			go func(a string) { _ = srv.ServeH3(a) }(addr)
+			continue
+		}
 		go func(a string) { _ = srv.ServeQUIC(a) }(addr)
 	}
 	return sl, nil

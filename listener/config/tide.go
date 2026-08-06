@@ -9,8 +9,20 @@ type TideServer struct {
 	Listen string `yaml:"listen" json:"listen"`
 	// QUICListen 是可选的加速通道。TIDE 的抗主动探测完全靠 TCP 那条路径
 	// （QUIC 路径不做掩护转发，见 tide spec §12.6），所以它绝不能单独开放。
-	QUICListen string            `yaml:"quic-listen,omitempty" json:"quic-listen,omitempty"`
-	Users      map[string]string `yaml:"users" json:"users,omitempty"`
+	QUICListen string `yaml:"quic-listen,omitempty" json:"quic-listen,omitempty"`
+	// H3 让 QUIC 面跑在 HTTP/3 之上（tide spec §12.6）。
+	//
+	// ★ 这不是性能开关，是**抗主动探测**开关，而且只在 h3 模式下才存在：
+	// ServeQUIC 对非 TIDE 的 QUIC 客户端只能沉默，而一台在 TCP/443 上服务 HTTPS
+	// 的主机，在 UDP/443 上跑一个"握手能成、却不回任何 h3 请求"的端点，是说不通的
+	// ——探测方一个 quicping 或一次普通 h3 请求就能把它挑出来。
+	// ServeH3 则把非 TIDE 的 h3 请求**反代到掩护源站**，探测方拿到的是真实响应。
+	//
+	// ⚠️ 两端必须一致：客户端的 proxies 里也要写 h3: true，否则 QUIC 通道会
+	// **静默失效**（两边 ALPN 都是 h3，握手照样成功，之后服务端把 h3 的 HEADERS 帧
+	// 当 TIDE 的 HELLO 解，路径悄悄死掉，客户端按 §8 静默回落 TCP）。
+	H3    bool              `yaml:"h3,omitempty" json:"h3,omitempty"`
+	Users map[string]string `yaml:"users" json:"users,omitempty"`
 	// PrivateKey 是 TIDE 的静态密钥（base64，96 字节种子），
 	// 用 `tide-selftest -mode keygen` 生成。注意它和 TLS 的私钥是两回事。
 	PrivateKey string `yaml:"private-key" json:"private-key,omitempty"`
