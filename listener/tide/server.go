@@ -71,8 +71,9 @@ func New(config LC.TideServer, lc C.InboundListenConfig, tunnel C.Tunnel, additi
 			// 一个只谈 TLS 却不通告任何 ALPN 的服务端本身就是特征。
 			NextProtos: []string{"h2", "http/1.1"},
 		},
-		CoverAddr: config.Cover,
-		AllowBare: config.AllowBare,
+		CoverAddr:  config.Cover,
+		AllowBare:  config.AllowBare,
+		Congestion: config.Congestion,
 	})
 	if err != nil {
 		return nil, err

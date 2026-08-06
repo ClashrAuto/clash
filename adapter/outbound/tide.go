@@ -52,6 +52,10 @@ type TideOption struct {
 	// SessionGrace 是所有路径都断了之后会话还能活多久（秒）。这段时间里
 	// 服务端替你保留着上游连接，所以 Wi-Fi 切换、基站切换都不会断连接。
 	SessionGrace int `proxy:"session-grace,omitempty"`
+	// Congestion 指定 TCP 路径的拥塞控制（Linux 专有）。留空 = 不动系统默认。
+	// ⚠️ 别想当然填 "bbr"：实测双向 5% 丢包下它把 p99 从 125ms 抬到 620ms——
+	//    内核里的 bbr 是 v1，对随机丢包的处理正是它的弱点。
+	Congestion string `proxy:"congestion,omitempty"`
 }
 
 func (t *Tide) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
@@ -137,6 +141,7 @@ func NewTide(option TideOption) (*Tide, error) {
 	if option.SessionGrace > 0 {
 		cfg.SessionGrace = time.Duration(option.SessionGrace) * time.Second
 	}
+	cfg.Congestion = option.Congestion
 	cfg.UserID = tide.UserIDFromPassword(option.Password)
 
 	cl, err := tide.NewClient(cfg)

@@ -22,6 +22,8 @@ type TideServer struct {
 	Cover string `yaml:"cover" json:"cover,omitempty"`
 	// AllowBare 允许协商裸帧模式（内层不加密，安全性完全由外层 TLS 承担）。
 	AllowBare bool `yaml:"allow-bare,omitempty" json:"allow-bare,omitempty"`
+	// Congestion 指定 TCP 路径的拥塞控制（Linux 专有）。留空 = 不动系统默认。
+	Congestion string `yaml:"congestion,omitempty" json:"congestion,omitempty"`
 }
 
 func (t TideServer) String() string {

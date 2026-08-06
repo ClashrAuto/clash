@@ -21,6 +21,7 @@ type TideOption struct {
 	Cover      string `inbound:"cover"`
 	QUICListen string `inbound:"quic-listen,omitempty"`
 	AllowBare  bool   `inbound:"allow-bare,omitempty"`
+	Congestion string `inbound:"congestion,omitempty"`
 }
 
 func (o TideOption) Equal(config C.InboundConfig) bool {
@@ -52,6 +53,7 @@ func NewTide(options *TideOption) (*Tide, error) {
 			PrivateKeyPEM: options.PrivateKeyPEM,
 			Cover:         options.Cover,
 			AllowBare:     options.AllowBare,
+			Congestion:    options.Congestion,
 		},
 	}, nil
 }
