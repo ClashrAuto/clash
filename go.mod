@@ -3,7 +3,7 @@ module github.com/ClashrAuto/coast
 go 1.26
 
 require (
-	github.com/ClashrAuto/tide v0.2.1-0.20260807060639-f55106a0dc09
+	github.com/ClashrAuto/tide v0.2.1-0.20260807085356-b627303c6f27
 	github.com/VividCortex/ewma v1.2.0
 	github.com/bahlo/generic-list-go v0.2.0
 	github.com/coreos/go-iptables v0.8.0
