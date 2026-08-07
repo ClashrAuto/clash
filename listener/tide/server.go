@@ -114,7 +114,18 @@ func New(config LC.TideServer, lc C.InboundListenConfig, tunnel C.Tunnel, additi
 			return nil, err
 		}
 		sl.listeners = append(sl.listeners, l)
-		go func(l net.Listener) { _ = srv.Serve(l) }(l)
+		// ★ TCP 那条 Serve 的返回值同样不能丢。
+		//
+		// 第 36 轮把 QUIC 那条的错误捞出来打了日志，却漏了这一条——而它更严重：
+		// QUIC 挂了只是没有加速通道，TCP 这条 Serve 一旦返回，**整个入站就永久
+		// 停止接受连接**了。进程还在、端口还 listen 着，现象只是"服务好好的、
+		// 但再也连不上"。库那边已经把 EMFILE 一类临时错误改成退避重试，
+		// 走到这里的就是真正不可恢复的了，必须说出来。
+		go func(l net.Listener) {
+			if err := srv.Serve(l); err != nil {
+				log.Errorln("[TIDE] listener on %s stopped accepting: %s", l.Addr(), err)
+			}
+		}(l)
 	}
 	if len(sl.listeners) == 0 {
 		sl.Close()
