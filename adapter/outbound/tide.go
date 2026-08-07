@@ -6,10 +6,14 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"sort"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	C "github.com/ClashrAuto/coast/constant"
+	"github.com/ClashrAuto/coast/log"
 
 	"github.com/ClashrAuto/tide"
 )
@@ -24,6 +28,9 @@ type Tide struct {
 	*Base
 	client *tide.Client
 	option *TideOption
+	// 上一次打过的路径构成，用来做「只在变化时才打日志」（见 logPathsIfChanged）。
+	pathMu    sync.Mutex
+	lastPaths string
 }
 
 type TideOption struct {
@@ -76,6 +83,7 @@ func (t *Tide) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, e
 	if err != nil {
 		return nil, err
 	}
+	t.logPathsIfChanged()
 	return NewConn(c, t), nil
 }
 
@@ -87,6 +95,7 @@ func (t *Tide) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (C
 	if err != nil {
 		return nil, err
 	}
+	t.logPathsIfChanged()
 	return NewPacketConn(&tidePacketConn{ps: ps}, t), nil
 }
 
@@ -95,6 +104,46 @@ func (t *Tide) ProxyInfo() C.ProxyInfo {
 	info := t.Base.ProxyInfo()
 	info.DialerProxy = t.option.DialerProxy
 	return info
+}
+
+// logPathsIfChanged 把当前的路径构成（每条路径的 kind，如 tcp/tcp、tcp/quic）
+// 打到 debug 日志，且**只在构成变化时打一次**，不随连接数刷屏。
+//
+// ★ 加它的理由是一次差点交付出去的假缺陷报告。tide 自己是知道路径状态的
+//   （Session.Paths() 带 Kind），但**没有任何地方把它露出来**，于是「QUIC 到底
+//   起没起」只能靠抓包，而抓包这条路我 2026-08-08 连着走错三次：
+//     · `ss -unp | grep <服务端>:8443` —— 恒为 0。QUIC 用的是**未连接**的 UDP
+//       套接字（ListenUDP + WriteToUDP），内核里压根没有"对端地址"这一项，
+//       按对端去 grep 永远匹配不到。
+//     · `ss -unp | grep pid=<核心>` —— 同样是 0，未连接套接字默认不显示。
+//     · 于是我依次怀疑到"没设 quic-port"（QUICPort=0 本就复用 Server 端口）、
+//       "服务端没开 QUIC 面"（TIDE_QUIC_LISTEN=:8443 设了），两次都被证伪。
+//   最后是 tcpdump 看见 1409 字节的 QUIC 包正双向跑着 —— 多路径一直好好的，
+//   坏的是我的观测手段。有了这行日志，`log-level: debug` 就能直接回答这个问题。
+func (t *Tide) logPathsIfChanged() {
+	s := t.client.CurrentSession()
+	if s == nil {
+		return
+	}
+	kinds := make([]string, 0, 4)
+	for _, p := range s.Paths() {
+		kinds = append(kinds, p.Kind)
+	}
+	if len(kinds) == 0 {
+		return
+	}
+	sort.Strings(kinds) // 顺序无意义，排序后才能拿来比"变没变"
+	sum := strings.Join(kinds, "+")
+	t.pathMu.Lock()
+	changed := sum != t.lastPaths
+	if changed {
+		t.lastPaths = sum
+	}
+	t.pathMu.Unlock()
+	if changed {
+		log.Debugln("[TIDE] %s 路径构成: %s（共 %d 条，累计建立 %d 次）",
+			t.Name(), sum, len(kinds), s.PathsEstablished())
+	}
 }
 
 // Close implements C.ProxyAdapter
