@@ -121,6 +121,15 @@ func (t *Tide) ProxyInfo() C.ProxyInfo {
 //   最后是 tcpdump 看见 1409 字节的 QUIC 包正双向跑着 —— 多路径一直好好的，
 //   坏的是我的观测手段。有了这行日志，`log-level: debug` 就能直接回答这个问题。
 func (t *Tide) logPathsIfChanged() {
+	// ★ 非 debug 直接返回。这个函数挂在**每一次 DialContext / ListenPacketContext**
+	//   上，而下面每跑一遍都要：取会话锁做路径快照、分配切片、排序、拼字符串。
+	//   繁忙代理每秒几百条连接时这是实打实的分配churn，而它的产出（一行 debug 日志）
+	//   在非 debug 级别下根本不会被打印。
+	//   顺带说明为什么不能只靠 log.Debugln 自己拦：它是**无条件**把事件塞进 logCh
+	//   再由 print 判级别的，级别不够时 newLog 的分配和 channel 发送照样发生。
+	if log.Level() > log.DEBUG {
+		return
+	}
 	s := t.client.CurrentSession()
 	if s == nil {
 		return
