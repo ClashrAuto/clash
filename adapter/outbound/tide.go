@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"net"
+	"net/netip"
 	"strconv"
 	"time"
 
@@ -149,6 +150,28 @@ func NewTide(option TideOption) (*Tide, error) {
 		// 走 clash 的 dialer，接口绑定 / fwmark / DNS 策略才会生效。
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			return out.dialer.DialContext(ctx, network, address)
+		},
+		// ★ QUIC/h3 那条路的 UDP 套接字也必须从 clash 的 dialer 里出来。
+		//
+		// 少了这一条，tide 会用 quic.DialAddr 自己开一个裸 UDP 套接字，于是绕过了
+		// 接口绑定、fwmark，以及最要命的"这是内核自身流量"的标记。开了 TUN 的机器上
+		// 后果是环路：客户端发往服务端的 QUIC 包被**自己的 TUN** 捕获绕回路由器，
+		// 嗅探器再从 QUIC ClientHello 里读出 SNI 把目的地改写成那个名字（比如 tide.local），
+		// 然后解析失败，日志刷屏：
+		//   [UDP] dial ... --> tide.local:8443 error: can't resolve ip: couldn't find ip
+		// TCP 路径完全正常，所以现象看着像"域名配错了"，其实跟配置无关。
+		// 2026-08-07 用户在 Coast 1.0.974 + 增强(TUN) 上实测到的就是这个。
+		ListenPacket: func(ctx context.Context, address string) (net.PacketConn, error) {
+			ua, err := net.ResolveUDPAddr("udp", address)
+			if err != nil {
+				return nil, err
+			}
+			ap, ok := netip.AddrFromSlice(ua.IP)
+			if !ok {
+				return nil, errors.New("tide: 无法解析 QUIC 目的地址 " + address)
+			}
+			return out.dialer.ListenPacket(ctx, "udp", "",
+				netip.AddrPortFrom(ap.Unmap(), uint16(ua.Port)))
 		},
 	}
 	if option.SessionGrace > 0 {
