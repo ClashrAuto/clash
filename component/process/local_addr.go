@@ -32,7 +32,9 @@ var localAddrs = struct {
 // 但也不能让一波查不到的连接把刷新打成风暴 —— 所以「未命中才刷新，且至少隔这么久」。
 const localAddrRefreshInterval = 3 * time.Second
 
-func refreshLocalAddrs() {
+// 真正去枚举网卡。做成变量是为了给测试一个缝隙 —— 否则「一波并发未命中会枚举几次」
+// 这件事没法量化，而它正是下面 refreshMu 要解决的问题。
+var enumerate = func() map[netip.Addr]struct{} {
 	set := make(map[netip.Addr]struct{}, 16)
 	if ifaces, err := net.Interfaces(); err == nil {
 		for _, iface := range ifaces {
@@ -56,6 +58,30 @@ func refreshLocalAddrs() {
 			}
 		}
 	}
+	return set
+}
+
+// ★ 刷新必须**串行**，否则上面那句「不能让一波查不到的连接把刷新打成风暴」是空话：
+//   间隔检查在 isLocalAddr 里、锁外做，而时间戳要等枚举完才更新 —— 3 秒窗口一到，
+//   同时越过检查的每一个 goroutine 都会**各自完整枚举一遍网卡**。而「每条连接都未命中」
+//   正是这个文件存在的场景（透明网关，源地址全是局域网别的机器）。
+//   实测：64 条并发未命中会触发 64 次枚举；加上这把锁 + 双检之后是 1 次。
+var refreshMu sync.Mutex
+
+// seen 是调用方读到的那个时间戳。等锁期间若已经有人刷过（时间戳变了），直接返回 ——
+// 那份结果对本次调用同样有效，没必要再枚举一遍。
+func refreshLocalAddrs(seen time.Time) {
+	refreshMu.Lock()
+	defer refreshMu.Unlock()
+
+	localAddrs.mu.RLock()
+	cur := localAddrs.refresh
+	localAddrs.mu.RUnlock()
+	if cur.After(seen) {
+		return
+	}
+
+	set := enumerate()
 	localAddrs.mu.Lock()
 	// 拿不到任何地址时**不要**用空集合覆盖：那会把所有连接都判成「非本机」，
 	// 等于悄悄关掉进程查找。宁可继续用上一份（顶多多 dump 几次）。
@@ -85,7 +111,7 @@ func isLocalAddr(ip netip.Addr) bool {
 	// 未命中：可能是缓存过期（刚拿到新地址），也可能真的是别人的地址。
 	// 只在超过刷新间隔时才真去枚举网卡，然后再判一次；仍未命中才认定非本机。
 	if set == nil || time.Since(refreshed) >= localAddrRefreshInterval {
-		refreshLocalAddrs()
+		refreshLocalAddrs(refreshed)
 		localAddrs.mu.RLock()
 		set = localAddrs.set
 		localAddrs.mu.RUnlock()
