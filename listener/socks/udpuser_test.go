@@ -128,3 +128,26 @@ func TestUDPUserConcurrent(t *testing.T) {
 		t.Fatalf("全部注销后不该有残留，got %q", got)
 	}
 }
+
+// ★ 上面那个用例**抓不到撞车路径上的竞态**：它全程只用一个用户名，于是
+// registerUDPUser 里 `e.user != user` 永不成立，写 `e.user = ""` 那条根本不执行 ——
+// 「读」和「写」从来没有同时发生过，-race 自然什么都看不到。
+//
+// 这里刻意让两个**不同**身份撞同一个来源地址，把那条写路径拉进并发窗口。
+// 2026-08-11 用它跑 -race，当场指到 udpuser.go 的 `e.user = ""`（写）与
+// `return e.user`（读，当时在 RUnlock 之后）—— map 被锁保护住了，但 map 存的是指针，
+// 锁外读那个指针指向的字段仍然是竞争。修法是把读放回读锁里。
+func TestUDPUserConflictConcurrent(t *testing.T) {
+	const addr = "127.0.0.1:51000"
+	var wg sync.WaitGroup
+	for i := 0; i < 200; i++ {
+		wg.Add(3)
+		go func() { defer wg.Done(); registerUDPUser(addr, "dev-a")() }()
+		go func() { defer wg.Done(); registerUDPUser(addr, "dev-b")() }()
+		go func() { defer wg.Done(); _ = lookupUDPUser(addr) }()
+	}
+	wg.Wait()
+	if got := lookupUDPUser(addr); got != "" {
+		t.Fatalf("全部注销后不该有残留，got %q", got)
+	}
+}

@@ -72,13 +72,20 @@ func registerUDPUser(addr string, user string) (release func()) {
 }
 
 // lookupUDPUser 按数据报的源地址反查身份，查不到返回空串。
+//
+// ★ **`e.user` 必须在读锁**里读完。原来的写法是先 RUnlock 再 `return e.user` —— map 本身
+//   是保护住了，但 map 存的是**指针**，锁外读那个指针指向的字段与 registerUDPUser 里
+//   `e.user = ""`（撞车作废那条，持写锁）构成数据竞争。go test -race 直接指到这两行。
+//   后果不是"偶尔读到旧值"那么温和：Go 的 string 是 (ptr,len) 两个字，撕裂读可能拿到
+//   新 ptr 配旧 len，越界读 → 核心在 **UDP 数据面**上 panic。而这个函数是**每个数据报
+//   调一次**的，暴露面按包计。
 func lookupUDPUser(addr string) string {
 	if addr == "" {
 		return ""
 	}
 	udpUserMu.RLock()
+	defer udpUserMu.RUnlock()
 	e, ok := udpUsers[addr]
-	udpUserMu.RUnlock()
 	if !ok {
 		return ""
 	}
