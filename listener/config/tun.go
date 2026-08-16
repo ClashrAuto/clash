@@ -54,6 +54,10 @@ type Tun struct {
 	ICMPTimeout                           int64          `yaml:"icmp-timeout" json:"icmp-timeout,omitempty"`
 	DisableICMPForwarding                 bool           `yaml:"disable-icmp-forwarding" json:"disable-icmp-forwarding,omitempty"`
 	FileDescriptor                        int            `yaml:"file-descriptor" json:"file-descriptor"`
+	// FileDescriptorSocket：从这个 unix socket 上用 SCM_RIGHTS 收 tun 的 fd。
+	// Android 专用 —— 那里 tun 由 VpnService 建、核心是独立子进程，fd **号**传不过去。
+	// 详见 listener/sing_tun/fd_socket_unix.go 开头那段。
+	FileDescriptorSocket                  string         `yaml:"file-descriptor-socket" json:"file-descriptor-socket,omitempty"`
 
 	Inet4RouteAddress        []netip.Prefix `yaml:"inet4-route-address" json:"inet4-route-address,omitempty"`
 	Inet6RouteAddress        []netip.Prefix `yaml:"inet6-route-address" json:"inet6-route-address,omitempty"`
@@ -206,6 +210,9 @@ func (t *Tun) Equal(other Tun) bool {
 		return false
 	}
 	if t.DisableICMPForwarding != other.DisableICMPForwarding {
+		return false
+	}
+	if t.FileDescriptorSocket != other.FileDescriptorSocket {
 		return false
 	}
 	if t.FileDescriptor != other.FileDescriptor {

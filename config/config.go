@@ -315,6 +315,7 @@ type RawTun struct {
 	ICMPTimeout                           int64          `yaml:"icmp-timeout" json:"icmp-timeout,omitempty"`
 	DisableICMPForwarding                 bool           `yaml:"disable-icmp-forwarding" json:"disable-icmp-forwarding,omitempty"`
 	FileDescriptor                        int            `yaml:"file-descriptor" json:"file-descriptor"`
+	FileDescriptorSocket                  string         `yaml:"file-descriptor-socket" json:"file-descriptor-socket,omitempty"`
 
 	Inet4RouteAddress        []netip.Prefix `yaml:"inet4-route-address" json:"inet4-route-address,omitempty"`
 	Inet6RouteAddress        []netip.Prefix `yaml:"inet6-route-address" json:"inet6-route-address,omitempty"`
@@ -1730,6 +1731,7 @@ func parseTun(rawTun RawTun, dns *DNS, general *General) error {
 		ICMPTimeout:                           rawTun.ICMPTimeout,
 		DisableICMPForwarding:                 rawTun.DisableICMPForwarding,
 		FileDescriptor:                        rawTun.FileDescriptor,
+		FileDescriptorSocket:                  rawTun.FileDescriptorSocket,
 
 		Inet4RouteAddress:        rawTun.Inet4RouteAddress,
 		Inet6RouteAddress:        rawTun.Inet6RouteAddress,

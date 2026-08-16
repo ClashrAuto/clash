@@ -148,6 +148,16 @@ func New(options LC.Tun, tunnel C.Tunnel, additions ...inbound.Addition) (l *Lis
 	if !supportRedirect {
 		options.AutoRedirect = false
 	}
+	// ★ 必须在下面那些「有没有 fd」的判断之前收，否则核心会以为要自己建 tun
+	if options.FileDescriptor <= 0 && options.FileDescriptorSocket != "" {
+		fd, fdErr := receiveTunFileDescriptor(options.FileDescriptorSocket)
+		if fdErr != nil {
+			err = E.Cause(fdErr, "receive tun file descriptor")
+			return
+		}
+		log.Infoln("[TUN] 从 %s 收到 tun fd %d", options.FileDescriptorSocket, fd)
+		options.FileDescriptor = fd
+	}
 	tunName := options.Device
 	if options.FileDescriptor == 0 && (tunName == "" || !checkTunName(tunName)) {
 		tunName = CalculateInterfaceName(InterfaceName)
