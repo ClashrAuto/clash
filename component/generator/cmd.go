@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/ClashrAuto/coast/component/ca"
 	"github.com/ClashrAuto/coast/component/ech"
 	"github.com/ClashrAuto/coast/transport/sudoku"
 	"github.com/ClashrAuto/coast/transport/vless/encryption"
@@ -107,6 +108,29 @@ func Main(args []string) {
 		}
 		fmt.Println("PrivateKey: " + k.String())
 		fmt.Println("PublicKey: " + k.Public().String())
+	case "self-signed-cert":
+		// 自签证书 + 私钥（都是 PEM）。TIDE 的 listener 要求 certificate 与
+		// private-key-pem **都非空**，它不像 component/ca 的 NewTLSKeyPairLoader
+		// 那样在两者皆空时自动生成——所以调用方必须自己备一对。
+		//
+		// ★ 生成一次就要**持久化**，别每次启动重新生成：证书天天换本身就是
+		// 一个可疑信号，而 TIDE 的外层 TLS 存在的意义正是伪装。
+		host := "localhost"
+		if len(args) > 1 && args[1] != "" {
+			host = args[1]
+		}
+		keyType := ca.KeyPairTypeP256
+		if len(args) > 2 && args[2] != "" {
+			keyType = ca.KeyPairType(args[2])
+		}
+		certPEM, keyPEM, fingerprint, err := GenSelfSignedCert(host, keyType)
+		if err != nil {
+			panic(err)
+		}
+		// PEM 块自带 BEGIN/END 边界，调用方按边界提取即可，不需要额外分隔符。
+		fmt.Print(certPEM)
+		fmt.Print(keyPEM)
+		fmt.Println("Fingerprint: " + fingerprint)
 	default:
 		// ★ 从前没有这个分支：子命令名打错就**静默退出 0**，什么都不输出。
 		// 调用方（脚本、Coast 桌面端）拿到的是「成功但没有密钥」，
@@ -116,4 +140,5 @@ func Main(args []string) {
 }
 
 const usage = "Using: generate uuid/reality-keypair/wg-keypair/ech-keypair/" +
-	"vless-mlkem768/vless-x25519/sudoku-keypair/tide-keypair"
+	"vless-mlkem768/vless-x25519/sudoku-keypair/tide-keypair/" +
+	"self-signed-cert [host] [rsa|p256|p384]"
