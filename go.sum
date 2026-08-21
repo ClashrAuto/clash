@@ -46,6 +46,8 @@ github.com/ClashrAuto/tide v0.2.1-0.20260807140259-6b7c782c02fe h1:ka63JmVmd/KLa
 github.com/ClashrAuto/tide v0.2.1-0.20260807140259-6b7c782c02fe/go.mod h1:b6dwPA/SqyckoTXsj6i6A5w38tQD+FeobsIQgeLyXQk=
 github.com/ClashrAuto/tide v0.2.1-0.20260807184820-9337413eba4a h1:cM8Dd8xn+ztSe9eIAx8tKaXgOAmryqmuwNaetwq6arA=
 github.com/ClashrAuto/tide v0.2.1-0.20260807184820-9337413eba4a/go.mod h1:b6dwPA/SqyckoTXsj6i6A5w38tQD+FeobsIQgeLyXQk=
+github.com/ClashrAuto/tide v0.2.1-0.20260821164318-5083c1730695 h1:OhL1+0/C7Yyq7vJhxmvOGHRLiR8E1LDOhdXLpIChDJY=
+github.com/ClashrAuto/tide v0.2.1-0.20260821164318-5083c1730695/go.mod h1:b6dwPA/SqyckoTXsj6i6A5w38tQD+FeobsIQgeLyXQk=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
