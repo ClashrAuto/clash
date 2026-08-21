@@ -7,6 +7,7 @@ import (
 	"github.com/ClashrAuto/coast/common/atomic"
 	"github.com/ClashrAuto/coast/common/xsync"
 	"github.com/ClashrAuto/coast/component/memory"
+	"github.com/ClashrAuto/coast/component/suspend"
 )
 
 var DefaultManager *Manager
@@ -116,6 +117,11 @@ func (m *Manager) handle() {
 	ticker := time.NewTicker(time.Second)
 
 	for range ticker.C {
+		// ★ Coast：挂起态（设备睡眠/息屏）连这一秒一次的归零都省掉 ——
+		//   没人看速率，temp 里攒着的字节会在恢复后的第一拍一次结清，总量不丢。
+		if suspend.Suspended() {
+			continue
+		}
 		m.uploadBlip.Store(m.uploadTemp.Swap(0))
 		m.downloadBlip.Store(m.downloadTemp.Swap(0))
 	}

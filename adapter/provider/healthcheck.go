@@ -9,6 +9,7 @@ import (
 	"github.com/ClashrAuto/coast/common/atomic"
 	"github.com/ClashrAuto/coast/common/singledo"
 	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/suspend"
 	C "github.com/ClashrAuto/coast/constant"
 	"github.com/ClashrAuto/coast/log"
 
@@ -44,9 +45,23 @@ type HealthCheck struct {
 func (hc *HealthCheck) process() {
 	ticker := time.NewTicker(hc.interval)
 	go hc.check()
+	// ★ Coast：设备醒来时补一轮 —— 只补「挂起前最近被用过」的组（与 lazy 同一判据），
+	//   没人用的组醒来也不用测。key 用 hc 自身指针，close 时成对注销（热重载会走这对）。
+	suspend.RegisterResumeHook(hc, func() {
+		if !hc.lazy || time.Since(hc.lastTouch.Load()) < hc.interval {
+			go hc.check()
+		}
+	})
 	for {
 		select {
 		case <-ticker.C:
+			// ★ Coast：挂起态（设备睡眠/息屏）跳过周期探测 —— 这正是本产品
+			//   「挂着 VPN 整夜耗电」的主因（每 60 秒全节点真实握手，lazy 挡不住：
+			//   lastTouch 在每次经组拨号时都被摸，而手机永远有后台滴流）。
+			//   隧道转发不受影响，停的只是我们主动发起的探测；恢复逻辑见上面的 hook。
+			if suspend.Suspended() {
+				continue
+			}
 			lastTouch := hc.lastTouch.Load()
 			since := time.Since(lastTouch)
 			if !hc.lazy || since < hc.interval {
@@ -56,6 +71,7 @@ func (hc *HealthCheck) process() {
 			}
 		case <-hc.ctx.Done():
 			ticker.Stop()
+			suspend.UnregisterResumeHook(hc)
 			return
 		}
 	}
