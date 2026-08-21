@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && cgo
 
 // phys_footprint —— jetsam 真正记账的那个数。
 //

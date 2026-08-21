@@ -1,7 +1,9 @@
-// ★ darwin 约束（ios 隐含 darwin tag）：这个包只属于 iOS 线（c-archive 入口），
-//   不加的话 fork 的六平台 `go test ./...` 会在非 darwin 腿上撞到
-//   memfootprint_darwin.go 里那批只有 darwin 实现的符号。
-//go:build darwin
+// ★ darwin && cgo 约束（ios 隐含 darwin tag）：这个包只属于 iOS 线（c-archive
+//   入口）。darwin 挡住非 mac 腿（memfootprint_darwin.go 的符号只有 darwin 实现）；
+//   cgo 挡住 fork Test 工作流的 CGO_ENABLED=0 —— 那时本文件（import "C"）会被
+//   **静默排除**，而测试文件不带 cgo 约束就会 undefined 一片。约束要与
+//   doc.go（!darwin || !cgo 的空 main 桩）严格互补，别单改一边。
+//go:build darwin && cgo
 
 // iOS 上核心必须**链进进程**，不能像 Android 那样当子进程起（没有 fork/exec）。
 // 这里是给 iOS 用的 c-archive 入口：编出 libcoast.a + libcoast.h，
