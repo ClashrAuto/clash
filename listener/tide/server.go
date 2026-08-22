@@ -94,12 +94,30 @@ func New(config LC.TideServer, lc C.InboundListenConfig, tunnel C.Tunnel, additi
 	if err != nil {
 		return nil, err
 	}
+	// ★★ 把认证到的用户名挂到每一条连接上。
+	//
+	//   握手时服务端已经按 users 表比对出了是谁（`Session.user`），但在此之前那个结论
+	//   **只用于放行、不往上层传** —— 于是一台服务端上所有客户端的连接在
+	//   `/connections` 里长得完全一样，上层想回答「哪台设备在线、它跑了多少流量」
+	//   就只能靠猜。桌面端要按设备列表管理远程客户端，靠的正是这个字段。
+	//
+	// ⚠️ 每条连接**现取现拼**，不能在外面拼一次共用：`additions` 是所有连接共享的切片，
+	//   直接 append 会写进同一块底层数组（socks/udp.go 那边为同一件事记过一次）。
+	withUser := func(uid [16]byte) []inbound.Addition {
+		name, ok := users[uid]
+		if !ok {
+			return additions // 认不出就别编一个名字出来，宁可没有
+		}
+		out := make([]inbound.Addition, 0, len(additions)+1)
+		out = append(out, additions...)
+		return append(out, inbound.WithInUser(name))
+	}
 	srv.Handler = func(ctx context.Context, st *tideproto.Stream) {
 		tunnel.HandleTCPConn(inbound.NewSocket(
-			socks5.ParseAddr(st.RemoteAddr().String()), st, C.TIDE, additions...))
+			socks5.ParseAddr(st.RemoteAddr().String()), st, C.TIDE, withUser(st.User())...))
 	}
 	srv.PacketHandler = func(ctx context.Context, ps *tideproto.PacketStream) {
-		handlePackets(ps, tunnel, additions...)
+		handlePackets(ps, tunnel, withUser(ps.User())...)
 	}
 
 	sl := &Listener{config: config, srv: srv}
