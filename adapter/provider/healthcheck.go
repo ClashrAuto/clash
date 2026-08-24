@@ -22,6 +22,62 @@ type HealthCheckOption struct {
 	Interval uint
 }
 
+// ── Coast：跨 HealthCheck 实例的探测闸门 ─────────────────────────────────────
+//
+// 同一个节点常被多个组引用（种子把每个订阅节点放进 AUTO + 订阅组 + 地区组，恰好 3 个），
+// 而**每个组各持一套独立的 HealthCheck**（outboundgroup/parser.go 里每组 NewHealthCheck），
+// 下面的 singleDo 只在单个实例内去重。于是所有「全量开测」的时刻——加载/热重载
+// （process() 起手无条件 check()）、唤醒补测、以及 REST 测组摸了 lastTouch 之后的下一个
+// 周期 tick——同一个节点会被并发真实握手 3 次。实测一份 57 节点的配置每次重载打出
+// 171 个探测请求。
+//
+// 这里按「节点名 + 测速 URL」共享一个 singledo.Single：并发的重复调用合流成一次，
+// 刚测完的（窗口内）直接复用结果。窗口取 10s：
+//   · 足够盖住「多组同时开测」（它们的间隔是毫秒级）；
+//   · 远小于常用 interval（种子写 60s），不会吞掉正常的周期轮，
+//     用户自定义的激进 interval（≥15s 都安全）也不受影响。
+// ⚠️ 手动测速（REST /proxies/<name>/delay）直接调 Proxy.URLTest，**不经这里** ——
+//    用户点一下就该真测一次，闸门只拦后台健康检查自己的重复。
+// ⚠️ key 不含 expectedStatus：同 URL 不同 expected-status 的两个组会共享结果，
+//    记录侧（URLTest 的 defer）本就按 URL 归档，语义一致。
+// ⚠️ 复用/合流拿到的是**发起方**那次调用的结果；发起方的 HC 在热重载中被关闭时，
+//    等待方会分到一次 ctx 取消的失败样本——下一轮（≥interval）就自愈，不值得为它加锁序。
+type probeGate struct {
+	mu      sync.Mutex
+	entries map[string]*probeGateEntry
+}
+
+type probeGateEntry struct {
+	single   *singledo.Single[struct{}]
+	lastUsed time.Time
+}
+
+const probeReuseWindow = 10 * time.Second
+
+var sharedProbeGate = &probeGate{entries: map[string]*probeGateEntry{}}
+
+// forKey 取（必要时建）这个 key 的合流器，并顺手把闲置太久的条目清掉——
+// 节点随订阅增删，key 集合会漂，不清就是跨重载的慢泄漏。
+func (g *probeGate) forKey(key string) *singledo.Single[struct{}] {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	e, ok := g.entries[key]
+	if !ok {
+		if len(g.entries) > 1024 {
+			cutoff := time.Now().Add(-5 * time.Minute)
+			for k, v := range g.entries {
+				if v.lastUsed.Before(cutoff) {
+					delete(g.entries, k)
+				}
+			}
+		}
+		e = &probeGateEntry{single: singledo.NewSingle[struct{}](probeReuseWindow)}
+		g.entries[key] = e
+	}
+	e.lastUsed = time.Now()
+	return e.single
+}
+
 type extraOption struct {
 	expectedStatus utils.IntRanges[uint16]
 	filters        map[string]struct{}
@@ -194,11 +250,19 @@ func (hc *HealthCheck) execute(b *errgroup.Group, url, uid string, option *extra
 
 		p := proxy
 		b.Go(func() error {
-			ctx, cancel := context.WithTimeout(hc.ctx, hc.timeout)
-			defer cancel()
-			log.Debugln("Health Checking, proxy: %s, url: %s, id: {%s}", p.Name(), url, uid)
-			_, _ = p.URLTest(ctx, url, expectedStatus)
-			log.Debugln("Health Checked, proxy: %s, url: %s, alive: %t, delay: %d ms uid: {%s}", p.Name(), url, p.AliveForTestUrl(url), p.LastDelayForTestUrl(url), uid)
+			// Coast：经共享闸门测——并发的重复请求（别的组的同一节点）合流成一次，
+			// 窗口内刚测过的直接复用。见文件顶部 probeGate 的说明。
+			_, _, shared := sharedProbeGate.forKey(p.Name() + "|" + url).Do(func() (struct{}, error) {
+				ctx, cancel := context.WithTimeout(hc.ctx, hc.timeout)
+				defer cancel()
+				log.Debugln("Health Checking, proxy: %s, url: %s, id: {%s}", p.Name(), url, uid)
+				_, _ = p.URLTest(ctx, url, expectedStatus)
+				log.Debugln("Health Checked, proxy: %s, url: %s, alive: %t, delay: %d ms uid: {%s}", p.Name(), url, p.AliveForTestUrl(url), p.LastDelayForTestUrl(url), uid)
+				return struct{}{}, nil
+			})
+			if shared {
+				log.Debugln("Health Check reused, proxy: %s, url: %s, id: {%s}", p.Name(), url, uid)
+			}
 			return nil
 		})
 	}
