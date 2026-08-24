@@ -501,5 +501,9 @@ func CoastResume() {
 //
 //export CoastResetDNS
 func CoastResetDNS() {
+	// ★ 走核心自己的 logger：这一行会落进 App Group 的 tunnel-core.log（持久、
+	//   日志页可见）。os_log 那侧的 info 级只在内存缓冲里活十几分钟，整夜验证
+	//   「长冻醒来有没有真的重置」只能靠这里（2026-08-24 真机验证时定的）。
+	log.Infoln("thaw: reset DNS upstream connections after long freeze")
 	resolver.ResetConnection()
 }
