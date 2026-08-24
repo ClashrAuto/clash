@@ -21,6 +21,7 @@ import "C"
 
 import (
 	"fmt"
+	"github.com/ClashrAuto/coast/component/resolver"
 	"github.com/ClashrAuto/coast/component/suspend"
 	"os"
 	"path/filepath"
@@ -484,4 +485,21 @@ func CoastSuspend() {
 //export CoastResume
 func CoastResume() {
 	suspend.Resume()
+}
+
+// CoastResetDNS 让核心重置 DNS 上游解析连接（DoH/DoT 的长连接）。
+//
+// ★★ 治的是与 Android 完全同源的一类假活（`CoastVpnService.watchWakeAndNetwork`
+// 那段注释是全文）：设备长睡时 WiFi 省电 + AP 的 NAT 老化把 DoH 长连接变成
+// 「接口 UP、包已不通」，醒来后国内域名（必须本地解析才能 DIRECT）每条都要等
+// 内核的 shouldRetry 超时才重建 —— 十几秒的卡顿只有国内路中招。
+//
+// ★ Android 只能走 REST `PUT /configs`（整份 ApplyConfig 是搭进去的开销，
+// 因为那是子进程唯一暴露 ResetConnection 的通道）；iOS 核心在进程内，
+// 直接调这个原语即可 —— 不重载配置、不重建规则树、不触发健康检查。
+// 两个 goroutine 立刻返回，wake() 里调它不占系统给的预算。
+//
+//export CoastResetDNS
+func CoastResetDNS() {
+	resolver.ResetConnection()
 }
