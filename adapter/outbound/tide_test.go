@@ -2,8 +2,11 @@ package outbound
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ClashrAuto/coast/common/structure"
+
+	"github.com/ClashrAuto/tide"
 )
 
 // tide-server 的启动横幅会打出一整段"贴进客户端就能用"的配置。
@@ -58,5 +61,49 @@ func TestBannerConfigFullyDecodes(t *testing.T) {
 	if opt.Server != "example.com" || opt.Port != 8443 ||
 		opt.Password != "pw" || opt.PublicKey != "AAAA" || opt.SNI != "tide.local" {
 		t.Fatalf("标量字段没解对：%+v", opt)
+	}
+}
+
+// tideRttMs 是 `/proxies` 里 `tide-rtt` 字段的唯一来源。三条规则都要钉住：
+//
+//   · 只看 active/degraded —— suspect/dead 的 RTT 不代表这个出站还能不能用；
+//   · 下限钳 1 —— 手机两线把 0 定义成「测过且超时」、-1 定义成「没测过」
+//     （android NodeListing.kt / ios NodeListing.swift），LAN 上 srtt < 1ms 向下
+//     取整成 0 会被当成超时**藏掉**，而那正是这个字段要服务的头号场景；
+//   · 没有样本就说没有 —— 编一个 0 出去等于把「刚建的会话」显示成「超时」。
+func TestTideRttMs(t *testing.T) {
+	ms := func(d time.Duration) tide.PathInfo { return tide.PathInfo{State: "active", RTT: d} }
+
+	if _, ok := tideRttMs(nil); ok {
+		t.Fatal("没有路径时不该给值")
+	}
+	if _, ok := tideRttMs([]tide.PathInfo{{State: "active", RTT: 0}}); ok {
+		t.Fatal("还没有探测样本（RTT=0）时不该给值")
+	}
+	if _, ok := tideRttMs([]tide.PathInfo{
+		{State: "suspect", RTT: 5 * time.Millisecond},
+		{State: "dead", RTT: 2 * time.Millisecond},
+	}); ok {
+		t.Fatal("suspect/dead 路径的 RTT 不该被采用")
+	}
+
+	// 多路径取最小；degraded 也算（新流仍会选它，见 path.usable）。
+	got, ok := tideRttMs([]tide.PathInfo{
+		ms(40 * time.Millisecond),
+		{State: "degraded", RTT: 7 * time.Millisecond},
+		{State: "suspect", RTT: 1 * time.Millisecond},
+	})
+	if !ok || got != 7 {
+		t.Fatalf("该取可用路径里最小的 7ms，得到 %d (ok=%v)", got, ok)
+	}
+
+	// LAN 上的亚毫秒 RTT 钳到 1，不能变成「超时」。
+	if got, ok = tideRttMs([]tide.PathInfo{ms(300 * time.Microsecond)}); !ok || got != 1 {
+		t.Fatalf("亚毫秒 RTT 该钳到 1ms，得到 %d (ok=%v)", got, ok)
+	}
+
+	// 上界收在 uint16 里。
+	if got, ok = tideRttMs([]tide.PathInfo{ms(90 * time.Second)}); !ok || got != 65535 {
+		t.Fatalf("超大 RTT 该封顶 65535，得到 %d (ok=%v)", got, ok)
 	}
 }

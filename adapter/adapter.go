@@ -162,6 +162,16 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 	mapping["udp"] = p.SupportUDP()
 	mapping["uot"] = p.SupportUOT()
 
+	// TIDE 出站额外带上协议自己量出来的「本机↔服务端路径 RTT」（毫秒）。
+	// history 对 TIDE 节点（典型是「我的电脑」）量的是"经对端出口访问测速 URL 的全程"，
+	// 不是到对端的距离——客户端拿这个字段来展示后者。详见 outbound.(*Tide).PathRTTMs。
+	// 用匿名接口断言而不是在 constant 里加方法：只有 TIDE 实现它，别让所有适配器背一个空实现。
+	if tr, ok := p.ProxyAdapter.(interface{ PathRTTMs() (uint16, bool) }); ok {
+		if ms, has := tr.PathRTTMs(); has {
+			mapping["tide-rtt"] = ms
+		}
+	}
+
 	proxyInfo := p.ProxyInfo()
 	mapping["xudp"] = proxyInfo.XUDP
 	mapping["tfo"] = proxyInfo.TFO

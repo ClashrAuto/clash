@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"math"
 	"net"
 	"net/netip"
 	"sort"
@@ -153,6 +154,57 @@ func (t *Tide) logPathsIfChanged() {
 		log.Debugln("[TIDE] %s 路径构成: %s（共 %d 条，累计建立 %d 次）",
 			t.Name(), sum, len(kinds), s.PathsEstablished())
 	}
+}
+
+// tideRttMs 从路径快照里挑出**新流会走的那批路径**（active/degraded，与 path.usable
+// 同一判据）中最小的平滑 RTT，毫秒。ok=false 表示没有任何带样本的可用路径。
+//
+// ★ 下限钳到 1：手机两线把 delay==0 定义成「测过且超时」、-1 定义成「没测过」
+//   （android NodeListing.kt / ios NodeListing.swift 的契约）。环回或千兆 LAN 上
+//   srtt 完全可能不足 1ms，向下取整成 0 会被那边当成超时藏掉。
+func tideRttMs(paths []tide.PathInfo) (uint16, bool) {
+	best := time.Duration(0)
+	for _, p := range paths {
+		if p.State != "active" && p.State != "degraded" {
+			continue // suspect/dead：新流不会选它，它的 RTT 不代表这个出站
+		}
+		if p.RTT <= 0 {
+			continue // 探测还没拿到第一个样本
+		}
+		if best == 0 || p.RTT < best {
+			best = p.RTT
+		}
+	}
+	if best == 0 {
+		return 0, false
+	}
+	ms := int64(best / time.Millisecond)
+	if ms < 1 {
+		ms = 1
+	}
+	if ms > math.MaxUint16 {
+		ms = math.MaxUint16
+	}
+	return uint16(ms), true
+}
+
+// PathRTTMs 返回当前会话到 TIDE 服务端的路径 RTT（毫秒），供 REST 层以 `tide-rtt`
+// 字段暴露（adapter.Proxy.MarshalJSON）。
+//
+// ★ 它和 URLTest 的 history 延迟回答的是**两个不同的问题**：history 是「经这个出站
+//   访问测速 URL 的全程」——对「我的电脑」这类 TIDE 出站，请求进了对端还要过对端
+//   自己的分流规则，测速 URL（gstatic）命中 PROXY 时量到的是对端出口节点的延迟
+//   （局域网里的电脑显示 400+ms 就是这么来的）；而这里是协议自己的 PATH_PROBE
+//   量出来的**本机↔服务端这一跳**。客户端对 TIDE 节点展示后者，健康检查仍用前者
+//   （出口坏了要能判死，见手机侧 nodeDelay 的注释）。
+// ★ 没有会话时返回 false 而不是去建一条：这是只读的观测口，挂在每次 /proxies
+//   序列化上，让它拨号等于让轮询本身产生流量。
+func (t *Tide) PathRTTMs() (uint16, bool) {
+	s := t.client.CurrentSession()
+	if s == nil {
+		return 0, false
+	}
+	return tideRttMs(s.Paths())
 }
 
 // Close implements C.ProxyAdapter
