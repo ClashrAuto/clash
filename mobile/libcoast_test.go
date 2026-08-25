@@ -30,28 +30,41 @@ func TestApplyMemoryLimit(t *testing.T) {
 	defer debug.SetMemoryLimit(old)
 
 	applyMemoryLimit()
-	if got := debug.SetMemoryLimit(-1); got != 36<<20 {
-		t.Fatalf("缺省上限应当是 36 MiB，实际 %d", got)
+	if got := debug.SetMemoryLimit(-1); got != defaultMemLimit {
+		t.Fatalf("应当装上本平台缺省上限 %d，实际 %d", defaultMemLimit, got)
+	}
+}
+
+// `COAST_GOMEMLIMIT` 的全部分支。
+//
+// ★★ **刻意拿 iOS 的缺省值（36 MiB）当参数跑，而不是用本平台的。**
+//
+//	`resolveMemLimit` 做成平台无关的纯函数就是为了这一条：GOOS=ios 跑不了
+//	`go test`，所以 iOS 那条路径**只能**在开发机（GOOS=darwin）上借这个函数覆盖。
+//	把解析逻辑写死在按平台分的文件里的话，它在任何 CI 上都不会被跑到 ——
+//	而 `applyMemoryLimit` 是 iOS 上「核心被 jetsam 杀掉」的唯一防线。
+func TestResolveMemLimit(t *testing.T) {
+	const iosDefault = int64(36 << 20)
+
+	if got := resolveMemLimit(iosDefault); got != iosDefault {
+		t.Fatalf("没有环境变量时应当返回缺省值，实际 %d", got)
 	}
 
 	// ★ 覆盖这条路是给真机上二分调参用的 —— 它坏掉的话人会以为"调了没用"，
 	//   然后把结论归到内存上限这个方案本身不管用。
 	t.Setenv("COAST_GOMEMLIMIT", "20971520") // 20 MiB
-	applyMemoryLimit()
-	if got := debug.SetMemoryLimit(-1); got != 20<<20 {
+	if got := resolveMemLimit(iosDefault); got != 20<<20 {
 		t.Fatalf("环境变量没生效，实际 %d", got)
 	}
 
 	// ★ 垃圾值必须被忽略而不是把上限设成 0 —— 设成 0 等于"每次分配都 GC"，
 	//   那比没有上限还糟（CPU 烧满、吞吐归零），而且同样零报错。
 	t.Setenv("COAST_GOMEMLIMIT", "abc")
-	applyMemoryLimit()
-	if got := debug.SetMemoryLimit(-1); got != 36<<20 {
+	if got := resolveMemLimit(iosDefault); got != iosDefault {
 		t.Fatalf("垃圾值应当退回缺省，实际 %d", got)
 	}
 	t.Setenv("COAST_GOMEMLIMIT", "0")
-	applyMemoryLimit()
-	if got := debug.SetMemoryLimit(-1); got != 36<<20 {
+	if got := resolveMemLimit(iosDefault); got != iosDefault {
 		t.Fatalf("0 应当退回缺省，实际 %d", got)
 	}
 }

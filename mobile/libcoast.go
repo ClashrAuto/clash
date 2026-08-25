@@ -121,16 +121,42 @@ func startCore(home, conf string) error {
 // ★ 可以用 `COAST_GOMEMLIMIT`（字节）覆盖，方便在真机上二分调参而不用重编库 ——
 //
 //	这一条**只能在设备上量**（模拟器里根本加载不了 NEPacketTunnelProvider）。
+//
+// ★★ **缺省值与要不要装仪表都按平台分**（`memlimit_ios.go` / `memlimit_mac.go`）：
+//
+//	上面整段说的是 iOS。macOS 的 System Extension **没有** jetsam 的
+//	每进程硬上限，那里的取值与理由见 `memlimit_mac.go`。
+//	⚠️ 别把 iOS 的 36 MiB 照搬到 macOS —— 后果不是被杀，是 GC 疯转、
+//	吞吐大幅下降，而且**不报错、不重启，只是慢**，从外面完全看不出来。
 func applyMemoryLimit() {
-	limit := int64(36 << 20)
+	limit := resolveMemLimit(defaultMemLimit)
+	if limit > 0 {
+		debug.SetMemoryLimit(limit)
+		log.Infoln("Go memory limit set to %d MiB (%s)", limit>>20, memLimitReason)
+	} else {
+		log.Infoln("Go memory limit not set (%s)", memLimitReason)
+	}
+	if memWatchEnabled {
+		startMemoryWatch()
+	}
+}
+
+// resolveMemLimit 把 `COAST_GOMEMLIMIT` 叠加到平台缺省值上。
+//
+// ★★ **刻意做成平台无关的纯函数**，缺省值当参数传进来 —— 这样 iOS 那条路径的
+//
+//	全部分支（覆盖、垃圾值退回、0 退回）在**开发机（GOOS=darwin）上就测得到**。
+//	把它写死在按平台分的文件里的话，`go test` 永远只跑得到 macOS 那一份，
+//	而 iOS 的这段逻辑**在任何 CI 上都没有覆盖**（GOOS=ios 跑不了 go test）——
+//	那正是 `applyMemoryLimit` 这条「唯一防线」最不该有的状态。
+//	按平台分的只剩一个常量，写错的风险远低于写错逻辑。
+func resolveMemLimit(defaultLimit int64) int64 {
 	if v := os.Getenv("COAST_GOMEMLIMIT"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
-			limit = n
+			return n
 		}
 	}
-	debug.SetMemoryLimit(limit)
-	log.Infoln("Go memory limit set to %d MiB (NE extension jetsam cap is 50 MiB)", limit>>20)
-	startMemoryWatch()
+	return defaultLimit
 }
 
 // captureStderr 把进程的 stderr 重定向到 App Group 里的一个文件。
