@@ -65,6 +65,13 @@ func TakeTideHaltEvent() (string, bool) {
 	}
 }
 
+// TideHaltEventsChan 把事件通道交给 REST 层流式推送（hub/route 的 /tidehalt）。
+//
+// ★ Android 的核心是子进程，REST 是唯一的运行时通道 —— 那侧的 app 挂一条常驻的
+// 流式请求等事件（回环上的空闲 TCP，零流量零唤醒）；iOS 走上面的轮询口。
+// 每个进程只有一个平台在消费，两个口共用同一条通道没有竞争问题。
+func TideHaltEventsChan() <-chan string { return tideHaltEvents }
+
 type dialBreaker struct {
 	name string // 出站名，只进日志
 	// halt 档：开 = 熔断后冷却 1 小时并发一次系统通知事件（见 tideBreakerHaltCooldown）。
