@@ -21,6 +21,7 @@ import "C"
 
 import (
 	"fmt"
+	"github.com/ClashrAuto/coast/adapter/outbound"
 	"github.com/ClashrAuto/coast/component/dialer"
 	"github.com/ClashrAuto/coast/component/iface"
 	"github.com/ClashrAuto/coast/component/resolver"
@@ -534,6 +535,22 @@ func CoastResetDNS() {
 	//   「长冻醒来有没有真的重置」只能靠这里（2026-08-24 真机验证时定的）。
 	log.Infoln("thaw: reset DNS upstream connections after long freeze")
 	resolver.ResetConnection()
+}
+
+// CoastNextTideHalt 取一条「TIDE 出站已停止重试」事件（值 = 出站名，调用方负责
+// free）；没有返回 NULL。
+//
+// ★ 这是「我的电脑」卡片选了「不使用」备用节点时那条链的出口：连败熔断进入
+// halt 档（tide_breaker.go）后投一条事件，Swift 侧在日志拉取的节拍里轮询它并发
+// **系统通知**——手机整夜锁着、app 早被杀了，通知是那个状态唯一能到达用户的通道。
+// 轮询挂在既有节拍上（1~5s 自适应），不新增任何唤醒。
+//
+//export CoastNextTideHalt
+func CoastNextTideHalt() *C.char {
+	if n, ok := outbound.TakeTideHaltEvent(); ok {
+		return C.CString(n)
+	}
+	return nil
 }
 
 // CoastSetDefaultInterface 把「系统此刻偏好的底层物理口」钉给核心的出站拨号。

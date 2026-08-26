@@ -118,9 +118,18 @@ func TestTideRttMs(t *testing.T) {
 //   该开不开 = 「一夜 30% 电」原样复发，而且两种都零报错。
 
 func testBreaker(at *time.Time) *dialBreaker {
-	b := newDialBreaker("test")
+	b := newDialBreaker("test", false)
 	b.now = func() time.Time { return *at }
 	return b
+}
+
+// 排空事件队列——它是包级共享的，上一个用例留下的事件会让断言验错对象。
+func drainTideHaltEvents() {
+	for {
+		if _, ok := TakeTideHaltEvent(); !ok {
+			return
+		}
+	}
 }
 
 func dialFail(t *testing.T, b *dialBreaker) {
@@ -333,5 +342,85 @@ func TestBreakerEndToEndFastFail(t *testing.T) {
 			NetWork: C.UDP}); err == nil ||
 		!strings.Contains(err.Error(), "circuit open") {
 		t.Fatalf("UDP 入口也该被熔断，得到：%v", err)
+	}
+}
+
+// ── halt 档（「不使用」备用节点）───────────────────────────────────────────
+
+// halt 档的三条契约：冷却 1 小时（「不再连」的落点）、一段事故只通知一次
+// （每小时重开都通知的话比不通知更糟）、恢复后的**下一段**事故要重新通知。
+func TestBreakerHaltModeHourCooldownAndSingleNotify(t *testing.T) {
+	drainTideHaltEvents()
+	at := time.Unix(1000, 0)
+	b := newDialBreaker("halt-test", true)
+	b.now = func() time.Time { return at }
+
+	for i := 0; i < tideBreakerThreshold; i++ {
+		dialFail(t, b)
+	}
+	if b.cooldown != tideBreakerHaltCooldown {
+		t.Fatalf("halt 档熔断后冷却应为 1 小时，得到 %v", b.cooldown)
+	}
+	if n, ok := TakeTideHaltEvent(); !ok || n != "halt-test" {
+		t.Fatalf("熔断时应投一条通知事件，得到 (%q, %v)", n, ok)
+	}
+	if _, ok := TakeTideHaltEvent(); ok {
+		t.Fatal("同一段事故只该有一条事件")
+	}
+
+	// 一小时后的探针又失败：重开仍是 1 小时，且**不再**发事件。
+	at = at.Add(tideBreakerHaltCooldown + time.Second)
+	if err := b.admit(); err != nil {
+		t.Fatalf("到期探针应放行：%v", err)
+	}
+	b.record(context.DeadlineExceeded)
+	if b.cooldown != tideBreakerHaltCooldown {
+		t.Fatalf("halt 档重开冷却应仍为 1 小时，得到 %v", b.cooldown)
+	}
+	if _, ok := TakeTideHaltEvent(); ok {
+		t.Fatal("重开不该再发事件")
+	}
+
+	// 探针成功 → 复位；再一段连败是**新事故**，要重新通知。
+	at = at.Add(tideBreakerHaltCooldown + time.Second)
+	if err := b.admit(); err != nil {
+		t.Fatal(err)
+	}
+	b.record(nil)
+	for i := 0; i < tideBreakerThreshold; i++ {
+		dialFail(t, b)
+	}
+	if n, ok := TakeTideHaltEvent(); !ok || n != "halt-test" {
+		t.Fatalf("新一段事故应重新通知，得到 (%q, %v)", n, ok)
+	}
+}
+
+// 普通档绝不投事件——通知是「不使用」模式专属的。
+func TestBreakerNormalModeNeverNotifies(t *testing.T) {
+	drainTideHaltEvents()
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+	for i := 0; i < tideBreakerThreshold; i++ {
+		dialFail(t, b)
+	}
+	if _, ok := TakeTideHaltEvent(); ok {
+		t.Fatal("普通档不该投通知事件")
+	}
+}
+
+// `halt-on-fail` 的 proxy tag 拼写。写错键名解码器**静默丢弃**、零报错——
+// 「不使用」就变成了普通档，通知永远不来（与 h3 当年丢键是同一类坑）。
+func TestHaltOnFailDecodes(t *testing.T) {
+	dec := structure.NewDecoder(structure.Option{TagName: "proxy", WeaklyTypedInput: true})
+	raw := map[string]any{
+		"name": "x", "server": "s", "port": 1, "password": "p",
+		"public-key": "k", "halt-on-fail": true,
+	}
+	opt := TideOption{}
+	if err := dec.Decode(raw, &opt); err != nil {
+		t.Fatal(err)
+	}
+	if !opt.HaltOnFail {
+		t.Fatal("halt-on-fail 没有落进 TideOption —— proxy tag 拼错了？")
 	}
 }

@@ -72,6 +72,10 @@ type TideOption struct {
 	// Redundancy 常驻两条路径：路径死掉时不用重连，流直接切过去。
 	// 移动网络建议开，稳定有线网没必要。
 	Redundancy bool `proxy:"redundancy,omitempty"`
+	// HaltOnFail：连败熔断进入 halt 档（见 tide_breaker.go）——熔断后冷却 1 小时
+	// 而不是 5 分钟封顶，并投一条事件让平台侧发系统通知。
+	// 「我的电脑」卡片上把备用节点选成「不使用」时由 ConfigBuilder 下发。
+	HaltOnFail bool `proxy:"halt-on-fail,omitempty"`
 	// SessionGrace 是所有路径都断了之后会话还能活多久（秒）。这段时间里
 	// 服务端替你保留着上游连接，所以 Wi-Fi 切换、基站切换都不会断连接。
 	SessionGrace int `proxy:"session-grace,omitempty"`
@@ -251,7 +255,7 @@ func NewTide(option TideOption) (*Tide, error) {
 		}),
 		option: &option,
 	}
-	out.breaker = newDialBreaker(option.Name)
+	out.breaker = newDialBreaker(option.Name, option.HaltOnFail)
 	out.dialer = option.NewDialer(out.DialOptions())
 
 	sni := option.SNI

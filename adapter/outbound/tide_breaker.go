@@ -42,22 +42,48 @@ const (
 	tideBreakerThreshold   = 3
 	tideBreakerCooldownMin = 60 * time.Second
 	tideBreakerCooldownMax = 5 * time.Minute
+	// halt 档（`halt-on-fail: true`，「我的电脑」卡片上选了「不使用」备用节点时下发）：
+	// 用户的意思是「连不上就别再连了，通知我」。冷却直接给 1 小时——不是字面上的
+	// 「永不再连」：每小时一次半开探针让「电脑回来后最迟一小时自动恢复」仍然成立，
+	// 而一小时一拨在电池账上可以忽略。配置重载/隧道重启照样立即复位。
+	tideBreakerHaltCooldown = time.Hour
 )
+
+// tideHaltEvents：halt 档的出站进入「不再连」状态时投一条（值 = 出站名），由
+// 平台侧（iOS 隧道进程）取走并发系统通知。有界、非阻塞投递——没人取时宁可丢
+// 事件也不能卡住拨号路径。
+var tideHaltEvents = make(chan string, 8)
+
+// TakeTideHaltEvent 取一条「已停止重试」事件；没有返回 ("", false)。
+// libcoast 的 CoastNextTideHalt 轮询它。
+func TakeTideHaltEvent() (string, bool) {
+	select {
+	case n := <-tideHaltEvents:
+		return n, true
+	default:
+		return "", false
+	}
+}
 
 type dialBreaker struct {
 	name string // 出站名，只进日志
+	// halt 档：开 = 熔断后冷却 1 小时并发一次系统通知事件（见 tideBreakerHaltCooldown）。
+	halt bool
 
 	mu        sync.Mutex
 	fails     int           // 连续失败数（成功清零）
 	cooldown  time.Duration // 当前这一轮的冷却长度（半开探针失败时翻倍）
 	openUntil time.Time     // 零值 = 关
 	probing   bool          // 半开态下已放行的那个探针还在途
+	// halt 档里这一段「连不上事故」有没有通知过。成功复位时清掉——
+	// 缺这个的话对端整夜不在时每小时的重开都发一条通知，比不通知更糟。
+	notified bool
 
 	now func() time.Time // 可注入，测试用
 }
 
-func newDialBreaker(name string) *dialBreaker {
-	return &dialBreaker{name: name, now: time.Now}
+func newDialBreaker(name string, halt bool) *dialBreaker {
+	return &dialBreaker{name: name, halt: halt, now: time.Now}
 }
 
 // admit 判定这一次拨号能否放行。返回 nil = 放行；返回错误 = 熔断中，调用方原样上抛。
@@ -96,6 +122,7 @@ func (b *dialBreaker) record(err error) {
 		b.fails = 0
 		b.cooldown = 0
 		b.openUntil = time.Time{}
+		b.notified = false // 这段事故结束了；下一段该重新通知
 		return
 	}
 	if errors.Is(err, context.Canceled) {
@@ -105,10 +132,15 @@ func (b *dialBreaker) record(err error) {
 
 	b.fails++
 	if wasProbe {
-		// 半开探针失败：冷却翻倍重开。debug 而不是 warning，理由见文件头的日志纪律。
-		b.cooldown *= 2
-		if b.cooldown > tideBreakerCooldownMax {
-			b.cooldown = tideBreakerCooldownMax
+		// 半开探针失败：重开。halt 档冷却恒 1 小时；普通档翻倍封顶。
+		// debug 而不是 warning，理由见文件头的日志纪律。
+		if b.halt {
+			b.cooldown = tideBreakerHaltCooldown
+		} else {
+			b.cooldown *= 2
+			if b.cooldown > tideBreakerCooldownMax {
+				b.cooldown = tideBreakerCooldownMax
+			}
 		}
 		b.openUntil = b.now().Add(b.cooldown)
 		log.Debugln("[TIDE] %s: probe failed, circuit re-opened for %ds (%d consecutive failures)",
@@ -120,9 +152,21 @@ func (b *dialBreaker) record(err error) {
 		return
 	}
 	if b.fails >= tideBreakerThreshold {
-		b.cooldown = tideBreakerCooldownMin
+		if b.halt {
+			b.cooldown = tideBreakerHaltCooldown
+		} else {
+			b.cooldown = tideBreakerCooldownMin
+		}
 		b.openUntil = b.now().Add(b.cooldown)
 		log.Warnln("[TIDE] %s: circuit opened after %d consecutive dial failures, cooling down %ds",
 			b.name, b.fails, int(b.cooldown/time.Second))
+		if b.halt && !b.notified {
+			b.notified = true
+			// 非阻塞：队列满（没人取）就丢，绝不能卡住拨号路径。
+			select {
+			case tideHaltEvents <- b.name:
+			default:
+			}
+		}
 	}
 }
