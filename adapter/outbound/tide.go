@@ -29,6 +29,8 @@ type Tide struct {
 	*Base
 	client *tide.Client
 	option *TideOption
+	// 连败熔断（见 tide_breaker.go 文件头）。配置重载随 adapter 重建而清零。
+	breaker *dialBreaker
 	// 上一次打过的路径构成，用来做「只在变化时才打日志」（见 logPathsIfChanged）。
 	pathMu    sync.Mutex
 	lastPaths string
@@ -80,7 +82,13 @@ type TideOption struct {
 }
 
 func (t *Tide) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+	// ★ 连败熔断（见 tide_breaker.go 文件头）：对端长时间不在时快速失败，
+	//   别让每条新流都付一遍完整的拨号超时——那正是「一夜 30% 电」的形态。
+	if err := t.breaker.admit(); err != nil {
+		return nil, err
+	}
 	c, err := t.client.DialContext(ctx, "tcp", metadata.RemoteAddress())
+	t.breaker.record(err)
 	if err != nil {
 		return nil, err
 	}
@@ -89,10 +97,16 @@ func (t *Tide) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, e
 }
 
 func (t *Tide) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (C.PacketConn, error) {
+	// ★ ResolveUDP 在 admit 之前：它是本地解析，失败不该记到对端头上，
+	//   也不该占掉半开态唯一的探针名额。admit 必须紧贴真正的网络拨号。
 	if err := t.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
+	if err := t.breaker.admit(); err != nil {
+		return nil, err
+	}
 	ps, err := t.client.DialPacket(ctx, metadata.RemoteAddress())
+	t.breaker.record(err)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +251,7 @@ func NewTide(option TideOption) (*Tide, error) {
 		}),
 		option: &option,
 	}
+	out.breaker = newDialBreaker(option.Name)
 	out.dialer = option.NewDialer(out.DialOptions())
 
 	sni := option.SNI

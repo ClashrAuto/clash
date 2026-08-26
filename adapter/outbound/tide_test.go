@@ -1,10 +1,14 @@
 package outbound
 
 import (
+	"context"
+	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ClashrAuto/coast/common/structure"
+	C "github.com/ClashrAuto/coast/constant"
 
 	"github.com/ClashrAuto/tide"
 )
@@ -105,5 +109,229 @@ func TestTideRttMs(t *testing.T) {
 	// 上界收在 uint16 里。
 	if got, ok = tideRttMs([]tide.PathInfo{ms(90 * time.Second)}); !ok || got != 65535 {
 		t.Fatalf("超大 RTT 该封顶 65535，得到 %d (ok=%v)", got, ok)
+	}
+}
+
+// ── 连败熔断（tide_breaker.go）────────────────────────────────────────────────
+//
+// ★ 两个方向的错法都值得单独钉：不该开时开了 = 好节点被误杀（fallback 组永远切走）；
+//   该开不开 = 「一夜 30% 电」原样复发，而且两种都零报错。
+
+func testBreaker(at *time.Time) *dialBreaker {
+	b := newDialBreaker("test")
+	b.now = func() time.Time { return *at }
+	return b
+}
+
+func dialFail(t *testing.T, b *dialBreaker) {
+	t.Helper()
+	if err := b.admit(); err != nil {
+		t.Fatalf("这一步应放行，被拒：%v", err)
+	}
+	b.record(context.DeadlineExceeded)
+}
+
+func TestBreakerOpensAfterConsecutiveFailures(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+
+	dialFail(t, b)
+	dialFail(t, b)
+	if err := b.admit(); err != nil {
+		t.Fatalf("两败之后仍应放行：%v", err)
+	}
+	b.record(context.DeadlineExceeded) // 第 3 败 → 开
+
+	err := b.admit()
+	if err == nil || !strings.Contains(err.Error(), "circuit open") {
+		t.Fatalf("三连败后应熔断，得到：%v", err)
+	}
+	// 冷却剩余要报给调用方（模型/用户拿它决定等多久）。
+	if !strings.Contains(err.Error(), "retry in") {
+		t.Fatalf("熔断错误里要带剩余秒数：%v", err)
+	}
+}
+
+func TestBreakerSuccessResetsEverything(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+
+	dialFail(t, b)
+	dialFail(t, b)
+	if err := b.admit(); err != nil {
+		t.Fatal(err)
+	}
+	b.record(nil) // 成功 → 清零
+
+	// 又两败：不该开（计数已被成功清掉）。
+	dialFail(t, b)
+	dialFail(t, b)
+	if err := b.admit(); err != nil {
+		t.Fatalf("成功复位后两败不该熔断：%v", err)
+	}
+	b.record(nil)
+}
+
+func TestBreakerCanceledNotCounted(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+
+	for i := 0; i < 10; i++ {
+		if err := b.admit(); err != nil {
+			t.Fatalf("第 %d 次 canceled 后被拒：%v", i, err)
+		}
+		b.record(context.Canceled)
+	}
+	if err := b.admit(); err != nil {
+		t.Fatalf("canceled 不是对端的账，不该熔断：%v", err)
+	}
+	b.record(nil)
+}
+
+func TestBreakerHalfOpenSingleProbe(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+	for i := 0; i < 3; i++ {
+		dialFail(t, b)
+	}
+
+	// 冷却期内全拒。
+	at = at.Add(tideBreakerCooldownMin - time.Second)
+	if err := b.admit(); err == nil {
+		t.Fatal("冷却未到期就放行了")
+	}
+
+	// 到期：只放一个探针。
+	at = at.Add(2 * time.Second)
+	if err := b.admit(); err != nil {
+		t.Fatalf("半开态第一个探针应放行：%v", err)
+	}
+	if err := b.admit(); err == nil || !strings.Contains(err.Error(), "probe") {
+		t.Fatalf("探针在途时其余拨号应快速失败，得到：%v", err)
+	}
+
+	// 探针成功 → 关，全放行。
+	b.record(nil)
+	if err := b.admit(); err != nil {
+		t.Fatalf("探针成功后应恢复放行：%v", err)
+	}
+	b.record(nil)
+}
+
+func TestBreakerProbeFailureDoublesCooldownWithCap(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+	for i := 0; i < 3; i++ {
+		dialFail(t, b)
+	}
+
+	cool := tideBreakerCooldownMin
+	// 连续探针失败：60s → 120s → 240s → 300s（封顶）→ 300s。
+	for round, want := range []time.Duration{2 * tideBreakerCooldownMin,
+		4 * tideBreakerCooldownMin, tideBreakerCooldownMax, tideBreakerCooldownMax} {
+		at = at.Add(cool + time.Millisecond)
+		if err := b.admit(); err != nil {
+			t.Fatalf("第 %d 轮到期后探针应放行：%v", round, err)
+		}
+		b.record(context.DeadlineExceeded)
+		if b.cooldown != want {
+			t.Fatalf("第 %d 轮重开后冷却应为 %v，得到 %v", round, want, b.cooldown)
+		}
+		// 重开期间照旧拒。
+		if err := b.admit(); err == nil {
+			t.Fatalf("第 %d 轮重开后冷却期内不该放行", round)
+		}
+		cool = want
+	}
+}
+
+func TestBreakerProbeCanceledReleasesSlot(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+	for i := 0; i < 3; i++ {
+		dialFail(t, b)
+	}
+	at = at.Add(tideBreakerCooldownMin + time.Second)
+
+	if err := b.admit(); err != nil {
+		t.Fatal(err)
+	}
+	b.record(context.Canceled) // 探针被调用方取消：名额必须还回来
+
+	if err := b.admit(); err != nil {
+		t.Fatalf("探针取消后名额该释放，下一个拨号应能再探：%v", err)
+	}
+	b.record(nil)
+}
+
+func TestBreakerInflightFailureWhileOpenDoesNotExtend(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+	dialFail(t, b)
+	dialFail(t, b)
+	// 两个并发拨号都已放行（开之前在途）。
+	if err := b.admit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.admit(); err != nil {
+		t.Fatal(err)
+	}
+	b.record(context.DeadlineExceeded) // 第 3 败 → 开
+	opened := b.openUntil
+	b.record(context.DeadlineExceeded) // 开之后才回来的在途失败
+	if !b.openUntil.Equal(opened) {
+		t.Fatal("开着时收到在途失败不该延长冷却")
+	}
+}
+
+// 端到端接线：真的构造 Tide 出站指向一个不可达地址，验证熔断在 DialContext 上生效。
+//
+// ★ 单测拿假时钟验的是状态机；这一条验的是**接线**——admit/record 真的包住了拨号，
+//   熔断后的失败是**立即**的（那正是省电的全部来源）。
+func TestBreakerEndToEndFastFail(t *testing.T) {
+	priv, err := tide.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tt, err := NewTide(TideOption{
+		Name:      "e2e",
+		Server:    "192.0.2.1", // TEST-NET-1：保证不可达
+		Port:      9,
+		Password:  "pw",
+		PublicKey: priv.Public().String(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tt.Close()
+
+	meta := &C.Metadata{Host: "example.invalid", DstPort: 443}
+	for i := 0; i < tideBreakerThreshold; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+		if _, err := tt.DialContext(ctx, meta); err == nil {
+			t.Fatalf("第 %d 次拨号居然成功了（TEST-NET 不该可达）", i)
+		}
+		cancel()
+	}
+
+	start := time.Now()
+	_, err = tt.DialContext(context.Background(), meta)
+	elapsed := time.Since(start)
+	if err == nil || !strings.Contains(err.Error(), "circuit open") {
+		t.Fatalf("连败后应熔断，得到：%v", err)
+	}
+	// 快速失败必须是毫秒级——给 CI 抖动留余量，收在 100ms。
+	if elapsed > 100*time.Millisecond {
+		t.Fatalf("熔断后的失败应是立即的，实测 %v", elapsed)
+	}
+
+	// UDP 入口走同一个熔断器。目标给已解析的 IP：ResolveUDP 在 admit 之前
+	//（本地解析不该占探针名额），带 Host 的话它会先去查 DNS——测试环境没有解析器，
+	// 报出来的是解析错误而不是熔断，断言就验错了对象。
+	if _, err := tt.ListenPacketContext(context.Background(),
+		&C.Metadata{DstIP: netip.MustParseAddr("192.0.2.99"), DstPort: 443,
+			NetWork: C.UDP}); err == nil ||
+		!strings.Contains(err.Error(), "circuit open") {
+		t.Fatalf("UDP 入口也该被熔断，得到：%v", err)
 	}
 }
