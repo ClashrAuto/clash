@@ -21,6 +21,8 @@ import "C"
 
 import (
 	"fmt"
+	"github.com/ClashrAuto/coast/component/dialer"
+	"github.com/ClashrAuto/coast/component/iface"
 	"github.com/ClashrAuto/coast/component/resolver"
 	"github.com/ClashrAuto/coast/component/suspend"
 	"os"
@@ -532,4 +534,45 @@ func CoastResetDNS() {
 	//   「长冻醒来有没有真的重置」只能靠这里（2026-08-24 真机验证时定的）。
 	log.Infoln("thaw: reset DNS upstream connections after long freeze")
 	resolver.ResetConnection()
+}
+
+// CoastSetDefaultInterface 把「系统此刻偏好的底层物理口」钉给核心的出站拨号。
+//
+// ★★★ **为什么需要它**（2026-08-26 真机定案）：`auto-detect-interface` 在 darwin 上
+// 是扫路由表取第一条命中的默认路由。隧道一开，en0 / pdp_ip0 的默认路由都降级成
+// 带作用域条目，iPhone 上蜂窝口 ifindex 更小、排在前面 —— WiFi 连着也 100% 走蜂窝
+// （真机日志：`default interface changed by monitor, => pdp_ip0`）。系统「WiFi 优先」
+// 的偏好只有 Network.framework 知道，所以由 Swift 侧的 NWPathMonitor 持续推进来。
+//
+// ★ `dialer.DefaultInterface` 在优先级链上压过 auto-detect 的 finder
+// （出站显式 interface-name > 入站携带 > DefaultInterface > DefaultInterfaceFinder，
+// 见 component/dialer/egress.go），所以 auto-detect 不用关、留着当兜底 ——
+// 这个值一次都没推到之前，行为与从前完全一样。
+//
+//export CoastSetDefaultInterface
+func CoastSetDefaultInterface(name *C.char) {
+	// ★ C 这层只做字符串转换，逻辑在 setDefaultEgressInterface —— cgo 进不了
+	//   `_test.go`（与 CoastStart 同一条理由），拆开才测得到。
+	setDefaultEgressInterface(C.GoString(name))
+}
+
+func setDefaultEgressInterface(name string) {
+	// 空名不接受：调用方（UnderlyingEgress.step）在没网时本来就不推；真收到空名
+	// 宁可保持上一个值 —— 清空等于把决定权还给 auto-detect，正是要修的那条错路。
+	if name == "" {
+		return
+	}
+	// ★ 同值早退（Swift 侧已按名去重，这里是第二道）：下面的 ResetConnection 会断
+	//   DoH 长连接重建，重复执行在射频上不是免费的。
+	if dialer.DefaultInterface.Load() == name {
+		return
+	}
+	dialer.DefaultInterface.Store(name)
+	// 与核心 TUN 监视器换口回调（listener/sing_tun/server.go）做的两件事逐字对齐：
+	// 接口快照缓存作废 + DNS 上游连接重建（旧口上的长连接已经是假活）。
+	iface.FlushCache()
+	resolver.ResetConnection()
+	// ★ Warn 级：隧道那份配置把 log-level 压到 warning，这一行是真机上验证
+	//   「平台钉口有没有生效」唯一持久可见的痕迹（低频 —— 只在口真变时打一次）。
+	log.Warnln("[TUN] default interface pinned by platform: %s", name)
 }
