@@ -728,5 +728,15 @@ func closeTunListener() {
 }
 
 func Cleanup() {
+	tunMux.Lock()
+	defer tunMux.Unlock()
 	closeTunListener()
+	// LastTunConf 必须一起清零。这个包的生命周期不等于核心的生命周期：
+	// macOS 系统扩展 / iOS NE 里核心是同进程内 stop→start 的（CoastStop/CoastStart），
+	// 包级变量原样活过重启。fd 关闭后号码被释放，下一次隧道常拿到同一个号，
+	// 于是新配置与残留的 LastTunConf 逐字节相等 → ReCreateTun 判「没变」直接返回，
+	// 而 tunLister 已经是 nil —— TUN 永远不会被创建，且成功行与报错行一行都没有。
+	// 表现是 VPN Connected、utun 存在、路由正常、混合端口能用，唯独走隧道的流量
+	// 全部超时（2026-08-28 真机：fd 14→14 黑洞，重启拿到 41 恢复；08-26 的 35→35 同因）。
+	LastTunConf = LC.Tun{}
 }
