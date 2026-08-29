@@ -31,9 +31,44 @@ type Tide struct {
 	option *TideOption
 	// 连败熔断（见 tide_breaker.go 文件头）。配置重载随 adapter 重建而清零。
 	breaker *dialBreaker
+	// 顶替登记的键（见 supersedeTideClient），Close 时用来摘掉自己的登记。
+	supersedeKey string
 	// 上一次打过的路径构成，用来做「只在变化时才打日志」（见 logPathsIfChanged）。
 	pathMu    sync.Mutex
 	lastPaths string
+}
+
+// ── 顶替登记 ────────────────────────────────────────────────────────────
+//
+// ★★★ mihomo 配置重载不杀存量连接：被换下的 Tide 适配器靠 GC finalizer 关
+//   （parser.go 的 NewAutoCloseProxyAdapter），而推送长连接（mtalk/apsd）攥着
+//   旧会话的流几天不放——finalizer 永不触发。每次重载漏一个会话，每个会话
+//   带着冗余补路 + 探测循环永动。2026-08-29 真机（Android 日用机 ↔ macOS
+//   配对电脑）：21 条 ESTABLISHED、66 KB/s 纯协议流量、核心 1300 唤醒/秒。
+//   所以在「同一个服务端+用户又建了新客户端」那一刻，把旧客户端的会话切进
+//   排水模式：存量流自然走完就关，硬期限兜底（语义见 tide.Session.Drain）。
+// ★ 键是 server+userID 而不是节点名：改名序列化出来的还是同一台电脑，
+//   而两台不同电脑绝不能互相排水。
+// ⚠️ 表里存 *tide.Client 而不是 *Tide：适配器靠 finalizer 回收，注册表攥着
+//   适配器指针会让它永远回收不掉——那正是这段要治的病的形状。
+var (
+	tideSupersedeMu  sync.Mutex
+	tideSupersedeMap = map[string]*tide.Client{}
+)
+
+// tideDrainHard 是排水的硬期限：正在跑的大传输值得等，但不能永远等——
+// 到点强关，推送流断了 app 会在秒级自己重连到新会话。
+const tideDrainHard = 30 * time.Minute
+
+func supersedeTideClient(key string, cl *tide.Client) {
+	tideSupersedeMu.Lock()
+	old := tideSupersedeMap[key]
+	tideSupersedeMap[key] = cl
+	tideSupersedeMu.Unlock()
+	if old != nil && old != cl {
+		log.Infoln("[TIDE] superseded old client for %s, draining its session", key)
+		old.Drain(tideDrainHard)
+	}
 }
 
 type TideOption struct {
@@ -227,6 +262,12 @@ func (t *Tide) PathRTTMs() (uint16, bool) {
 
 // Close implements C.ProxyAdapter
 func (t *Tide) Close() error {
+	// 只摘自己的登记：finalizer 迟到时表里早已是新客户端，不能误删它。
+	tideSupersedeMu.Lock()
+	if t.supersedeKey != "" && tideSupersedeMap[t.supersedeKey] == t.client {
+		delete(tideSupersedeMap, t.supersedeKey)
+	}
+	tideSupersedeMu.Unlock()
 	return t.client.Close()
 }
 
@@ -314,6 +355,9 @@ func NewTide(option TideOption) (*Tide, error) {
 		return nil, err
 	}
 	out.client = cl
+	// 顶替上一个同服务端+同用户的客户端（配置重载的每一轮都会走到这里）。
+	out.supersedeKey = addr + "|" + string(cfg.UserID[:])
+	supersedeTideClient(out.supersedeKey, cl)
 	return out, nil
 }
 
