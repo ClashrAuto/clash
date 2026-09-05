@@ -1,61 +1,38 @@
 package suspend
 
-import (
-	"testing"
-	"time"
-)
+import "testing"
 
-// 醒着时永远放行,而且**不记账** —— 记了的话「醒着扫过一轮」会把随后刚睡下的
-// 那一轮挡掉,而那一轮恰恰最该做(设备刚睡,健康数据要新)。
-func TestAllowFailureSweep_AwakeAlwaysAllowsAndDoesNotRecord(t *testing.T) {
+// 醒着时一律放行 —— 上游语义不变（快速自愈优先）。
+func TestAllowFailureSweep_AwakeAllows(t *testing.T) {
 	Resume()
-	reset()
 	for i := 0; i < 5; i++ {
 		if !AllowFailureSweep() {
 			t.Fatalf("醒着时第 %d 次被挡了", i+1)
 		}
 	}
-	Suspend()
-	defer Resume()
-	if !AllowFailureSweep() {
-		t.Fatal("刚睡下的第一轮必须放行(醒着那几轮不该记账)")
-	}
 }
 
-// 挂起态:首轮放行,冷却期内后续一律挡掉 —— 这正是「睡着时后台滴流每次拨号失败
-// 都全量重扫 74 个节点」那条风暴路径。
-func TestAllowFailureSweep_SuspendedThrottles(t *testing.T) {
+// 挂起态一次都不做 —— 这正是「睡着时后台滴流每次拨号失败都全量重扫上百个节点」
+// 那条风暴路径（2026-09-05 用户拍板：连当前在用的节点也不必测）。
+func TestAllowFailureSweep_SuspendedNeverAllows(t *testing.T) {
 	Suspend()
 	defer Resume()
-	reset()
-	if !AllowFailureSweep() {
-		t.Fatal("挂起态首轮应放行(死节点仍要能自愈)")
-	}
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 5; i++ {
 		if AllowFailureSweep() {
-			t.Fatalf("冷却期内第 %d 次不该放行", i+1)
+			t.Fatalf("挂起态第 %d 次不该放行", i+1)
 		}
 	}
 }
 
-// 冷却期满之后要重新放行 —— 自愈不能被永久挡死。
-func TestAllowFailureSweep_ReallowsAfterCooldown(t *testing.T) {
+// 醒来立刻恢复放行 —— 自愈靠的是 Resume 那一下（它还会跑补跑回调），
+// 不是睡着时硬扫。
+func TestAllowFailureSweep_ResumeRestores(t *testing.T) {
 	Suspend()
-	defer Resume()
-	reset()
-	if !AllowFailureSweep() {
-		t.Fatal("首轮应放行")
+	if AllowFailureSweep() {
+		t.Fatal("挂起态不该放行")
 	}
-	sweepMu.Lock()
-	lastSweep = time.Now().Add(-FailureSweepCooldown - time.Second)
-	sweepMu.Unlock()
+	Resume()
 	if !AllowFailureSweep() {
-		t.Fatal("冷却期满后应重新放行")
+		t.Fatal("恢复后应立刻放行")
 	}
-}
-
-func reset() {
-	sweepMu.Lock()
-	lastSweep = time.Time{}
-	sweepMu.Unlock()
 }

@@ -28,7 +28,6 @@ package suspend
 
 import (
 	"sync"
-	"time"
 
 	"github.com/ClashrAuto/coast/common/atomic"
 )
@@ -63,19 +62,7 @@ func Resume() {
 	}
 }
 
-// FailureSweepCooldown 挂起态下，两次「拨号失败触发的全量体检」之间的最小间隔。
-//
-// ★ 10 分钟是这么定的：睡着时死节点仍要能自愈（否则推送全断），所以不能设成不做；
-//   而全量一轮的代价与周期轮完全相同（实测 74 个节点 ≈ 74 次真实 TCP+TLS ≈ 21 包/秒
-//   持续 1 分钟）。10 分钟把最坏情况压到周期轮的 1/10，自愈延迟仍远小于一觉的长度。
-const FailureSweepCooldown = 10 * time.Minute
-
-var (
-	sweepMu   sync.Mutex
-	lastSweep time.Time
-)
-
-// AllowFailureSweep 报告「拨号失败触发的全量体检」此刻该不该放行，放行时记账。
+// AllowFailureSweep 报告「拨号失败触发的全量体检」此刻该不该放行。
 //
 // ★★★ 为什么需要它（2026-09-05 真机对账）：`Suspend()` 只挡周期轮，而
 //   `GroupBase.onDialFailed → healthCheck()` 那条路**不经过任何闸门** ——
@@ -86,20 +73,18 @@ var (
 //   用户连报三天「Android 还是很耗电」，症结在这里，而 `/suspend` 看起来是好的
 //   （核心确实收下了、周期轮确实停了），所以从外面完全看不出来。
 //
-// ★ 非挂起态一律放行、且**不记账** —— 醒着时保持上游语义不变（快速自愈优先）。
-//   记账会让「醒着扫过一轮」把随后刚睡下的那一轮挡掉，而那一轮恰恰是最该做的。
-func AllowFailureSweep() bool {
-	if !suspended.Load() {
-		return true
-	}
-	sweepMu.Lock()
-	defer sweepMu.Unlock()
-	if !lastSweep.IsZero() && time.Since(lastSweep) < FailureSweepCooldown {
-		return false
-	}
-	lastSweep = time.Now()
-	return true
-}
+// ★★ **挂起态一律不做，一次都不做**（2026-09-05 用户拍板：「不做全量重扫，
+//   连当前在用的节点也不需要」）。先前那版留了 10 分钟冷却，想保住「睡着时死节点
+//   仍能自愈」——实测那一轮摊下来仍有约 2 包/秒，而它买到的东西并不值：
+//   · 设备一醒，[Resume] 立刻跑注册好的补跑回调（健康检查就在里面），
+//     健康数据在用户真正用到之前就是新的；
+//   · 睡着时「自愈」能救的只有「后台推送连接断了要重连」，而那条连接本身断了
+//     就会由 app 自己重试拨号，拨号会走当前节点——真死了也只是这一条失败，
+//     不需要为它把上百个节点全握一遍手。
+//   代价说清楚：一觉之间某个节点死掉的话，靠它的后台连接要等到亮屏才恢复。
+//
+// ★ 非挂起态一律放行 —— 醒着时保持上游语义不变（快速自愈优先）。
+func AllowFailureSweep() bool { return !suspended.Load() }
 
 // RegisterResumeHook 注册「恢复时补跑」的回调；key 用调用方自己的指针，便于注销。
 // 健康检查在 NewHealthCheck 注册、close 时注销 —— 配置热重载会成对地走这两步。
