@@ -11,6 +11,7 @@ import (
 	"github.com/ClashrAuto/coast/adapter/outbound"
 	"github.com/ClashrAuto/coast/common/atomic"
 	"github.com/ClashrAuto/coast/common/utils"
+	"github.com/ClashrAuto/coast/component/suspend"
 	C "github.com/ClashrAuto/coast/constant"
 	P "github.com/ClashrAuto/coast/constant/provider"
 	"github.com/ClashrAuto/coast/log"
@@ -301,6 +302,14 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
 
 func (gb *GroupBase) healthCheck() {
 	if gb.failedTesting.Load() {
+		return
+	}
+
+	// ★★★ 挂起态（设备睡着/息屏）下给「失败触发的全量体检」限流 —— 理由与实测
+	//   数据见 suspend.AllowFailureSweep。这条路是 onDialFailed 的下游，
+	//   `Suspend()` 挡不到它，于是睡着时后台滴流的每一次拨号失败都能把 74 个节点
+	//   重扫一遍，成为「挂着 VPN 整夜发热」的实际主因。醒着时行为一字不变。
+	if !suspend.AllowFailureSweep() {
 		return
 	}
 

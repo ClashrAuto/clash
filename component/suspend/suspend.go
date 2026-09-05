@@ -28,6 +28,7 @@ package suspend
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ClashrAuto/coast/common/atomic"
 )
@@ -60,6 +61,44 @@ func Resume() {
 	for _, f := range hooks {
 		f()
 	}
+}
+
+// FailureSweepCooldown 挂起态下，两次「拨号失败触发的全量体检」之间的最小间隔。
+//
+// ★ 10 分钟是这么定的：睡着时死节点仍要能自愈（否则推送全断），所以不能设成不做；
+//   而全量一轮的代价与周期轮完全相同（实测 74 个节点 ≈ 74 次真实 TCP+TLS ≈ 21 包/秒
+//   持续 1 分钟）。10 分钟把最坏情况压到周期轮的 1/10，自愈延迟仍远小于一觉的长度。
+const FailureSweepCooldown = 10 * time.Minute
+
+var (
+	sweepMu   sync.Mutex
+	lastSweep time.Time
+)
+
+// AllowFailureSweep 报告「拨号失败触发的全量体检」此刻该不该放行，放行时记账。
+//
+// ★★★ 为什么需要它（2026-09-05 真机对账）：`Suspend()` 只挡周期轮，而
+//   `GroupBase.onDialFailed → healthCheck()` 那条路**不经过任何闸门** ——
+//   更狠的是它对 `connection refused` 特判成「一次失败就立刻全量重扫」，
+//   连连败计数都跳过。手机睡着时后台滴流不断，拨号失败也就不断，于是
+//   **挂起态下照样每分钟全量扫一遍 74 个节点**：实测息屏时仍有 1.35 次拨号/秒、
+//   蜂窝 24.6 包/秒（关掉 VPN 的基线是 2.2），射频整夜睡不下去。
+//   用户连报三天「Android 还是很耗电」，症结在这里，而 `/suspend` 看起来是好的
+//   （核心确实收下了、周期轮确实停了），所以从外面完全看不出来。
+//
+// ★ 非挂起态一律放行、且**不记账** —— 醒着时保持上游语义不变（快速自愈优先）。
+//   记账会让「醒着扫过一轮」把随后刚睡下的那一轮挡掉，而那一轮恰恰是最该做的。
+func AllowFailureSweep() bool {
+	if !suspended.Load() {
+		return true
+	}
+	sweepMu.Lock()
+	defer sweepMu.Unlock()
+	if !lastSweep.IsZero() && time.Since(lastSweep) < FailureSweepCooldown {
+		return false
+	}
+	lastSweep = time.Now()
+	return true
 }
 
 // RegisterResumeHook 注册「恢复时补跑」的回调；key 用调用方自己的指针，便于注销。
