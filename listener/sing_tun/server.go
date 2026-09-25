@@ -36,7 +36,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var InterfaceName = "Meta"
+// TUN 网卡的默认名（Windows 上同时是 wintun 的 TunnelType；Linux 上就是网卡名）。
+// 上游是 "Meta"；fork 改成产品名，用户在「网络连接」/`ip link` 里看到的才是 Coast。
+// macOS 不受影响：内核只认 utunN，CalculateInterfaceName 在那边不用这个值。
+// 配置里显式写了 `tun.device` 的仍以配置为准。
+var InterfaceName = "Coast"
 var EnforceBindInterface = false
 
 type Listener struct {
