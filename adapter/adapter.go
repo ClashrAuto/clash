@@ -146,6 +146,22 @@ func (p *Proxy) LastDelayForTestUrl(url string) (delay uint16) {
 	return history.Delay
 }
 
+// pathRTTOf 沿 Wrapped 链穿过包装层（autoClose 等），找实现了 PathRTTMs 的那一层。
+// 8 层上限只是防御：正常只有一两层。
+func pathRTTOf(a C.ProxyAdapter) (uint16, bool) {
+	for i := 0; i < 8 && a != nil; i++ {
+		if tr, ok := a.(interface{ PathRTTMs() (uint16, bool) }); ok {
+			return tr.PathRTTMs()
+		}
+		u, ok := a.(interface{ Wrapped() C.ProxyAdapter })
+		if !ok {
+			return 0, false
+		}
+		a = u.Wrapped()
+	}
+	return 0, false
+}
+
 // MarshalJSON implements C.ProxyAdapter
 func (p *Proxy) MarshalJSON() ([]byte, error) {
 	inner, err := p.ProxyAdapter.MarshalJSON()
@@ -166,10 +182,10 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 	// history 对 TIDE 节点（典型是「我的电脑」）量的是"经对端出口访问测速 URL 的全程"，
 	// 不是到对端的距离——客户端拿这个字段来展示后者。详见 outbound.(*Tide).PathRTTMs。
 	// 用匿名接口断言而不是在 constant 里加方法：只有 TIDE 实现它，别让所有适配器背一个空实现。
-	if tr, ok := p.ProxyAdapter.(interface{ PathRTTMs() (uint16, bool) }); ok {
-		if ms, has := tr.PathRTTMs(); has {
-			mapping["tide-rtt"] = ms
-		}
+	// ★★ 要穿过包装层找：parser 给每个出站都套了 autoCloseProxyAdapter，直接断言
+	//   `p.ProxyAdapter` 拿到的是壳，`tide-rtt` 就永远不出现（见 outbound.autoCloseProxyAdapter.Wrapped）。
+	if ms, has := pathRTTOf(p.ProxyAdapter); has {
+		mapping["tide-rtt"] = ms
 	}
 
 	proxyInfo := p.ProxyInfo()

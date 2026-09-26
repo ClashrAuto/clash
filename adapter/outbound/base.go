@@ -390,6 +390,16 @@ func (p *autoCloseProxyAdapter) Close() error {
 	return p.closeErr
 }
 
+// Wrapped 返回被包的那个适配器。
+//
+// ★★ 这层外壳**按接口嵌入**，只转发 ProxyAdapter 接口上的那些方法 —— 具体协议额外的观测口
+//   穿不过来。TIDE 的 `PathRTTMs` 就是这样被挡住的：parser 给每个出站都套这层壳，
+//   而 `/proxies` 序列化时对 `p.ProxyAdapter` 做类型断言，拿到的永远是壳，于是真实配置里
+//   `tide-rtt` 一次都没报过（2026-09-26 查清）。单测只测了 tideRttMs 本身，没走「解析 →
+//   包壳 → 序列化」这条路，所以一直是绿的。需要观测口的地方经 Wrapped 穿过去（见 adapter.go）。
+//   ⚠️ 不能叫 Unwrap：ProxyAdapter 接口上已有 `Unwrap(*Metadata, bool) Proxy`（代理组取当前节点用）。
+func (p *autoCloseProxyAdapter) Wrapped() C.ProxyAdapter { return p.ProxyAdapter }
+
 func NewAutoCloseProxyAdapter(adapter ProxyAdapter) ProxyAdapter {
 	proxy := &autoCloseProxyAdapter{
 		ProxyAdapter: adapter,
