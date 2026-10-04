@@ -136,6 +136,7 @@ func router(isDebug bool, secret string, dohServer string, cors Cors) *chi.Mux {
 		r.Mount("/suspend", suspendRouter())
 		r.Mount("/tidehalt", tideHaltRouter())
 		r.Mount("/dns", dnsRouter())
+		r.Mount("/geo", geoRouter())
 		r.Mount("/storage", storageRouter())
 		if !embedMode { // disallow restart in embed mode
 			r.Mount("/restart", restartRouter())
