@@ -60,6 +60,8 @@ github.com/ClashrAuto/tide v0.2.1-0.20260829080614-39b2d6a5b946 h1:2BzwUq/px8QAb
 github.com/ClashrAuto/tide v0.2.1-0.20260829080614-39b2d6a5b946/go.mod h1:b6dwPA/SqyckoTXsj6i6A5w38tQD+FeobsIQgeLyXQk=
 github.com/ClashrAuto/tide v0.2.1-0.20261004134537-0b528f3b6854 h1:3SotxUbEYGZZuo+7H8ULFGeg+eGz5GXBmJqoBc7/xQU=
 github.com/ClashrAuto/tide v0.2.1-0.20261004134537-0b528f3b6854/go.mod h1:b6dwPA/SqyckoTXsj6i6A5w38tQD+FeobsIQgeLyXQk=
+github.com/ClashrAuto/tide v0.2.1-0.20261004144031-abe7194a3acc h1:0pHmvYpHYxg7BDEvSLNUmWMDpuLXJFj5k4rIOuaLWQ0=
+github.com/ClashrAuto/tide v0.2.1-0.20261004144031-abe7194a3acc/go.mod h1:b6dwPA/SqyckoTXsj6i6A5w38tQD+FeobsIQgeLyXQk=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
