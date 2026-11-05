@@ -14,9 +14,8 @@ on:
       - "**"        # 所有分支都构建：master 出正式版，其余出 prerelease
     tags:
       - "v*"
-  pull_request:
-    branches:
-      - master
+  # ★ 不再接 pull_request：PR 构建不发版，只是把整张矩阵再编一遍；PR 的检查交给 test.yml。
+  #   （2026-11-05 GitHub 以「Actions 用量规模」停用了这个 fork 的工作流，见下面矩阵那段。）
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
@@ -29,58 +28,35 @@ jobs:
       is_release: ${{ steps.vars.outputs.is_release }}
     strategy:
       matrix:
+        # ★★ 只编 Coast 真在用的 10 个产物（2026-11-05 从约 45 个砍下来）。
+        #   起因：GitHub 以「the scale of GitHub Actions usage」停用了这个 fork 的工作流 ——
+        #   推送被静默吞掉（GitHub 记了 push、却一个 run 都不起），workflow_dispatch 回 422
+        #   「Actions has been disabled for this repository」，而 /actions/permissions 照样报 enabled。
+        #   那时每推一次任何分支都要编整张上游矩阵（freebsd / mips / loong64 / s390x /
+        #   amd64 v1~v3 各一份 / deb·rpm·pacman …），一个都没人下。
+        # ★ 谁在用哪一个（加回或删掉之前先对这张表）：
+        #   · *-amd64-compatible / *-arm64（windows .zip，其余 .gz）—— app 内「更新内核」
+        #     （Qt `CoreRelease.h`、Swift `CoreDownloader.swift`）与 Coast 打包时集成的内核
+        #     （clashauto `release.yml`、`macos/scripts/make_app.sh`、schat.build 的 mac Qt 线）。
+        #     那几处的前缀表是「compatible 优先、amd64-v1 兜底」，所以 amd64-v1 不必再编一份
+        #     —— 两者都是 GOAMD64=v1，同一个二进制两个名字。
+        #   · linux-amd64（不带后缀，GOAMD64=v3）—— clashauto `ci.yml` 的门禁拿它跑 `core -t`
+        #     （正则卡死「amd64 后面直接跟版本号」），删它那道门禁当场红。
+        #   · android-amd64 / -armv7 / -arm64-v8 —— `android/scripts/fetch_core.py` 进 jniLibs。
+        #   · iOS 与 macOS Swift 线从源码编 libcoast，不吃这里的产物。
+        # ★ deb / rpm / pacman / 源码 tarball 那几步**留着但不再触发**（条目里不再带那些字段）：
+        #   从上游 merge 回来时少一处冲突。
         jobs:
-          - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386}
-          - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
-          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible} # old style file name will be removed in next released
-          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64, tarball: tarball}
-          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test }
-          - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64}
-          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64}
-          - { goos: linux, goarch: arm64, output: arm64, debian: arm64, rpm: aarch64, pacman: aarch64}  
-          - { goos: linux, goarch: arm, goarm: '5', output: armv5 }
-          - { goos: linux, goarch: arm, goarm: '6', output: armv6, debian: armel, rpm: armv6hl} 
-          - { goos: linux, goarch: arm, goarm: '7', output: armv7, debian: armhf, rpm: armv7hl, pacman: armv7hl}
-          - { goos: linux, goarch: mips, gomips: hardfloat, output: mips-hardfloat }
-          - { goos: linux, goarch: mips, gomips: softfloat, output: mips-softfloat }
-          - { goos: linux, goarch: mipsle, gomips: hardfloat, output: mipsle-hardfloat }
-          - { goos: linux, goarch: mipsle, gomips: softfloat, output: mipsle-softfloat }
-          - { goos: linux, goarch: mips64, output: mips64 }
-          - { goos: linux, goarch: mips64le, output: mips64le, debian: mips64el, rpm: mips64el }
-          - { goos: linux, goarch: loong64, output: loong64-abi1, abi: '1', debian: loongarch64, rpm: loongarch64, goversion: 'custom' }
-          - { goos: linux, goarch: loong64, output: loong64-abi2, abi: '2', debian: loong64, rpm: loong64 }
-          - { goos: linux, goarch: riscv64, output: riscv64, debian: riscv64, rpm: riscv64 }
-          - { goos: linux, goarch: s390x, output: s390x, debian: s390x, rpm: s390x }
-          - { goos: linux, goarch: ppc64le, output: ppc64le, debian: ppc64el, rpm: ppc64le }
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible, test: test }
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64 }
+          - { goos: linux, goarch: arm64, output: arm64 }
 
-          # Go 1.26 with special patch can work on macOS 10.13 High Sierra
-          # https://github.com/MetaCubeX/go/commits/release-branch.go1.26/
-          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64 }
-          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible }
           - { goos: darwin, goarch: arm64, output: arm64 }
 
-          # Go 1.26 with special patch can work on Windows 7
-          # https://github.com/MetaCubeX/go/commits/release-branch.go1.26/
-          - { goos: windows, goarch: '386', output: '386' }
-          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64 }
-          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          - { goos: windows, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible }
           - { goos: windows, goarch: arm64, output: arm64 }
 
-          - { goos: freebsd, goarch: '386', output: '386' }
-          - { goos: freebsd, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: freebsd, goarch: amd64, goamd64: v3, output: amd64 }
-          - { goos: freebsd, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          - { goos: freebsd, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          - { goos: freebsd, goarch: amd64, goamd64: v3, output: amd64-v3 }
-          - { goos: freebsd, goarch: arm64, output: arm64 }
-
-          - { goos: android, goarch: '386', ndk: i686-linux-android34, output: '386' }
           - { goos: android, goarch: amd64, ndk: x86_64-linux-android34, output: amd64 }
           - { goos: android, goarch: arm, ndk: armv7a-linux-androideabi34, output: armv7 }
           - { goos: android, goarch: arm64, ndk: aarch64-linux-android34, output: arm64-v8 }

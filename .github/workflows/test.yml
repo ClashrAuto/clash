@@ -7,11 +7,17 @@ on:
       - ".github/ISSUE_TEMPLATE/**"
     branches:
       - master
-    tags:
-      - "v*"
+    # ★ 不接 tags：v* tag 要么是 build.yml 发版时用 GITHUB_TOKEN 打的（本来就不触发工作流），
+    #   要么是手动打的 —— 那次 build.yml 自己会跑一遍 go test。为它再跑 6 台机器是白花。
   pull_request:
     branches:
       - master
+  workflow_dispatch:
+# ★ 连推几次时只测最后一次：6 台机器（含 macOS / Windows arm）× 两轮 go test，
+#   叠着跑正是 2026-11-05 这个 fork 被 GitHub 以「Actions 用量规模」停用的那类开销。
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
   test:
