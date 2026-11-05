@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/netip"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	N "github.com/ClashrAuto/coast/common/net"
@@ -33,7 +35,12 @@ type Hysteria2 struct {
 	*Base
 
 	option *Hysteria2Option
-	client *hysteria2.Client
+	// ★ 指针可换：ResetTransport 要整个换掉客户端（见那里的注释），拨号路径无锁地读当前这个。
+	client atomic.Pointer[hysteria2.Client]
+	// 建客户端用的参数，换新客户端时原样再建一个。
+	clientOptions hysteria2.ClientOptions
+	resetMu       sync.Mutex // 串行化 ResetTransport 与 Close
+	closed        bool       // Close 之后不再换新客户端（resetMu 下读写）
 }
 
 type Hysteria2Option struct {
@@ -89,7 +96,7 @@ type Hysteria2RealmOption struct {
 }
 
 func (h *Hysteria2) DialContext(ctx context.Context, metadata *C.Metadata) (_ C.Conn, err error) {
-	c, err := h.client.DialConn(ctx, M.ParseSocksaddrHostPort(metadata.String(), metadata.DstPort))
+	c, err := h.client.Load().DialConn(ctx, M.ParseSocksaddrHostPort(metadata.String(), metadata.DstPort))
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +107,7 @@ func (h *Hysteria2) ListenPacketContext(ctx context.Context, metadata *C.Metadat
 	if err = h.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
-	pc, err := h.client.ListenPacket(ctx)
+	pc, err := h.client.Load().ListenPacket(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -110,10 +117,43 @@ func (h *Hysteria2) ListenPacketContext(ctx context.Context, metadata *C.Metadat
 	return NewPacketConn(N.NewThreadSafePacketConn(pc), h), nil
 }
 
+// ResetTransport 换一个新客户端，旧的连同它的 QUIC 连接一起关掉，下一次拨号重新握手
+// （醒来对账用，判据与理由见 tunnel/wake.go）。
+//
+// 只能整个换：sing-quic 的 CloseWithError 是**终态**——它把 connErr 置上，此后
+// offer() 一律返回那个错误，客户端再也拨不出去。它没有「只关当前连接、客户端照用」的
+// 公开入口，所以按建它时的参数原样再建一个（NewClient 只建结构、不碰网络）。
+//
+// QUICConfig 每次给一份拷贝：NewClient 会无条件写其中两个字段，与旧客户端共用同一份
+// 就是一次数据竞争（quic-go 拨号时自己还会再克隆，浅拷贝足够）。
+func (h *Hysteria2) ResetTransport() {
+	h.resetMu.Lock()
+	defer h.resetMu.Unlock()
+	if h.closed {
+		return
+	}
+	opts := h.clientOptions
+	if opts.QUICConfig != nil {
+		qc := *opts.QUICConfig
+		opts.QUICConfig = &qc
+	}
+	fresh, err := hysteria2.NewClient(opts)
+	if err != nil {
+		log.Warnln("[Hysteria2] %s: transport reset failed, keeping the old client: %v", h.Name(), err)
+		return
+	}
+	if old := h.client.Swap(fresh); old != nil {
+		_ = old.CloseWithError(errors.New("transport reset after sleep"))
+	}
+}
+
 // Close implements C.ProxyAdapter
 func (h *Hysteria2) Close() error {
-	if h.client != nil {
-		return h.client.CloseWithError(errors.New("proxy removed"))
+	h.resetMu.Lock()
+	defer h.resetMu.Unlock()
+	h.closed = true
+	if c := h.client.Load(); c != nil {
+		return c.CloseWithError(errors.New("proxy removed"))
 	}
 	return nil
 }
@@ -313,7 +353,8 @@ func NewHysteria2(option Hysteria2Option) (*Hysteria2, error) {
 	if err != nil {
 		return nil, err
 	}
-	outbound.client = client
+	outbound.client.Store(client)
+	outbound.clientOptions = clientOptions
 
 	return outbound, nil
 }

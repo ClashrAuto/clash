@@ -119,6 +119,13 @@ func (t *Tuic) dial(ctx context.Context) (quicConn *quic.Conn, err error) {
 	return quicConn, nil
 }
 
+// ResetTransport 丢掉连接池里的 QUIC 连接，下一次拨号重新握手（醒来对账用，见 tunnel/wake.go）。
+func (t *Tuic) ResetTransport() {
+	if t.client != nil {
+		t.client.Reset()
+	}
+}
+
 // ProxyInfo implements C.ProxyAdapter
 func (t *Tuic) ProxyInfo() C.ProxyInfo {
 	info := t.Base.ProxyInfo()

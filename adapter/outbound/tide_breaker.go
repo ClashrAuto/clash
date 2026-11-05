@@ -38,6 +38,19 @@ import (
 //   重开每 5 分钟一次，按 warning 打会把日志环刷穿。
 //
 // ★ 熔断状态在配置重载时随 adapter 重建而清零——重载本来就该给节点一次全新的机会。
+//
+// ★★ 「连续」按**批次**算，不按到达顺序算（2026-11-05「iOS 解锁后断网」）：
+//   一次失败被记账之后，**在它之前就已放行**、此刻还在途的拨号再失败，算同一次事故，
+//   不再加计数。原来按到达顺序数，于是「同一时刻并发失败 3 个」= 「连败 3 次」——
+//   解锁那一刻全机 app 同时重连，撞上睡前留下的死会话（服务端早忘了它，重连被拒、
+//   会话关掉、等在上面的拨号一起失败），一次事故就把熔断打开 60 秒；「不使用」档
+//   直接停 1 小时、还弹一条「连不上」通知——而新会话一秒后就能建起来。
+//   按批次之后，要熔断就得「失败、再拨、又失败」三轮，正是「对端真不在」的形态。
+//   成功同样开新批次：成功之前放行的在途拨号后来失败了，也不算（对端刚证明过可达）。
+//
+// ★★ 冷却按**墙钟**算，不按单调钟（同日）：Go 的单调钟在设备睡眠时停走，手机锁屏
+//   一夜醒着的时间可能只有几十分钟——「1 小时后再探一次」在墙钟上会拖成大半天，
+//   用户早上解锁时「我的电脑」明明在线，熔断还开着。冷却是对人的承诺，按人的时间算。
 const (
 	tideBreakerThreshold   = 3
 	tideBreakerCooldownMin = 60 * time.Second
@@ -78,10 +91,13 @@ type dialBreaker struct {
 	halt bool
 
 	mu        sync.Mutex
-	fails     int           // 连续失败数（成功清零）
+	fails     int           // 连续失败数（成功清零；按批次计，见文件头）
 	cooldown  time.Duration // 当前这一轮的冷却长度（半开探针失败时翻倍）
-	openUntil time.Time     // 零值 = 关
+	openUntil time.Time     // 零值 = 关（墙钟，见文件头）
 	probing   bool          // 半开态下已放行的那个探针还在途
+	// 批次号：每记一次失败、每一次成功复位都 +1。admit 把当时的批次号发给拨号方，
+	// record 时号码对不上 = 这次拨号在上一次记账之前就放行了，归入那一次事故。
+	epoch uint64
 	// halt 档里这一段「连不上事故」有没有通知过。成功复位时清掉——
 	// 缺这个的话对端整夜不在时每小时的重开都发一条通知，比不通知更糟。
 	notified bool
@@ -89,38 +105,53 @@ type dialBreaker struct {
 	now func() time.Time // 可注入，测试用
 }
 
-func newDialBreaker(name string, halt bool) *dialBreaker {
-	return &dialBreaker{name: name, halt: halt, now: time.Now}
+// breakerTicket 是 admit 发给一次被放行拨号的凭条，record 时原样交回。
+type breakerTicket struct {
+	epoch uint64 // 放行那一刻的批次号
+	probe bool   // 它是不是半开态那唯一的探针
 }
 
-// admit 判定这一次拨号能否放行。返回 nil = 放行；返回错误 = 熔断中，调用方原样上抛。
+// wallNow 返回**不带单调读数**的当前时刻：之后的 Before/Sub 都按墙钟比（见文件头）。
+func wallNow() time.Time { return time.Now().Round(0) }
+
+func newDialBreaker(name string, halt bool) *dialBreaker {
+	return &dialBreaker{name: name, halt: halt, now: wallNow}
+}
+
+// admit 判定这一次拨号能否放行。err == nil = 放行（凭条要在 record 时交回）；
+// 返回错误 = 熔断中，调用方原样上抛。
 //
 // ★ 放行的每一次拨号，结果都**必须**用 record 记回来（canceled 也要记）——半开态的
 //   探针名额靠 record 释放，漏记的话名额被永久占住，熔断器再也合不上。
-func (b *dialBreaker) admit() error {
+func (b *dialBreaker) admit() (breakerTicket, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.openUntil.IsZero() {
-		return nil
+		return breakerTicket{epoch: b.epoch}, nil
 	}
 	now := b.now()
 	if now.Before(b.openUntil) {
-		return fmt.Errorf("tide: circuit open after %d consecutive dial failures, retry in %ds",
+		return breakerTicket{}, fmt.Errorf(
+			"tide: circuit open after %d consecutive dial failures, retry in %ds",
 			b.fails, int(b.openUntil.Sub(now)/time.Second)+1)
 	}
 	if b.probing {
-		return errors.New("tide: circuit half-open, probe dial already in flight")
+		return breakerTicket{}, errors.New("tide: circuit half-open, probe dial already in flight")
 	}
 	b.probing = true
-	return nil
+	return breakerTicket{epoch: b.epoch, probe: true}, nil
 }
 
 // record 把一次被放行的拨号结果记回来。
-func (b *dialBreaker) record(err error) {
+func (b *dialBreaker) record(t breakerTicket, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	wasProbe := b.probing
-	b.probing = false
+	// ★ 探针名额只由**探针自己**释放。原来是「谁先回来谁释放」：半开态里一个开之前
+	//   就在途的拨号先回来，会被当成探针——它的失败把熔断重开、真探针的结果反倒没人认。
+	wasProbe := t.probe
+	if wasProbe {
+		b.probing = false
+	}
 
 	if err == nil {
 		if !b.openUntil.IsZero() {
@@ -130,14 +161,20 @@ func (b *dialBreaker) record(err error) {
 		b.cooldown = 0
 		b.openUntil = time.Time{}
 		b.notified = false // 这段事故结束了；下一段该重新通知
+		b.epoch++          // 成功之前放行的在途拨号，后来再失败也不算
 		return
 	}
 	if errors.Is(err, context.Canceled) {
 		// 调用方自己放弃，不是对端的账；探针名额已在上面释放，下一个拨号可以再探。
 		return
 	}
+	if !wasProbe && t.epoch != b.epoch {
+		// 在上一次记账（失败或成功）之前就已放行的在途拨号：同一次事故，不再计数。
+		return
+	}
 
 	b.fails++
+	b.epoch++
 	if wasProbe {
 		// 半开探针失败：重开。halt 档冷却恒 1 小时；普通档翻倍封顶。
 		// debug 而不是 warning，理由见文件头的日志纪律。
@@ -155,7 +192,8 @@ func (b *dialBreaker) record(err error) {
 		return
 	}
 	if !b.openUntil.IsZero() {
-		// 开着的时候收到的是「开之前就已在途」的拨号结果：只计数，不延长也不刷日志。
+		// 兜底：开着时只放行探针，而「开之前就已在途」的拨号已被上面的批次号挡掉，
+		// 正常走不到这里。真走到了也只计数，不延长也不刷日志。
 		return
 	}
 	if b.fails >= tideBreakerThreshold {

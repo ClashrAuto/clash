@@ -28,28 +28,63 @@ package suspend
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ClashrAuto/coast/common/atomic"
 )
 
+// SleepWatcher 接收「睡了一觉」的两个边沿（见 [RegisterSleepWatcher]）。
+type SleepWatcher struct {
+	// OnSleep 在「醒着 → 挂起」的边沿调，同步。
+	OnSleep func()
+	// OnWake 在「挂起 → 醒来」的边沿调，同步，**先于**补跑回调。slept 是这一觉的墙钟时长。
+	OnWake func(slept time.Duration)
+}
+
 var (
 	suspended atomic.Bool
+	// 进入挂起态那一刻的墙钟（Round(0) 去掉单调读数）。
+	// ★ 一定要墙钟：Go 的单调钟在设备睡眠时停走，拿它量「睡了多久」，锁屏一夜可能只量出
+	//   几十分钟——而对端与 NAT 的空闲超时是按墙钟走的，问的正是墙钟上过去了多久。
+	suspendedAt atomic.TypedValue[time.Time]
 
 	mu sync.Mutex
 	// Resume 时要补跑的回调（健康检查注册进来）。key 用注册方给的指针身份。
-	resumeHooks = map[any]func(){}
+	resumeHooks   = map[any]func(){}
+	sleepWatchers = map[any]SleepWatcher{}
 )
 
 // Suspended 报告当前是否处于挂起态。周期性活动在自己的 tick 里查它。
 func Suspended() bool { return suspended.Load() }
 
-// Suspend 进入挂起态。幂等。
-func Suspend() { suspended.Store(true) }
+// Suspend 进入挂起态。幂等：只有「醒着 → 挂起」这个边沿才记时刻、通知 SleepWatcher
+// （iOS 有好几条路会喊它——锁屏、入睡边界、解冻判定——重复喊不该把「睡着的时刻」往后挪）。
+func Suspend() {
+	if suspended.Swap(true) {
+		return
+	}
+	suspendedAt.Store(time.Now().Round(0))
+	for _, w := range watchers() {
+		if w.OnSleep != nil {
+			w.OnSleep()
+		}
+	}
+}
 
 // Resume 退出挂起态，并同步调用全部已注册的补跑回调。幂等（未挂起时只跑回调也无害，
 // 回调自己带「最近用过才跑」的判断）。
+//
+// ★ 「挂起 → 醒来」的边沿上先通知 SleepWatcher.OnWake，再跑补跑回调：醒来对账要先把
+//   熬不过这一觉的上游连接丢掉（tunnel/wake.go），补测才不会走进那些死连接、把节点测死。
 func Resume() {
-	suspended.Store(false)
+	if suspended.Swap(false) {
+		slept := time.Now().Round(0).Sub(suspendedAt.Load())
+		for _, w := range watchers() {
+			if w.OnWake != nil {
+				w.OnWake(slept)
+			}
+		}
+	}
 	mu.Lock()
 	hooks := make([]func(), 0, len(resumeHooks))
 	for _, f := range resumeHooks {
@@ -60,6 +95,31 @@ func Resume() {
 	for _, f := range hooks {
 		f()
 	}
+}
+
+// RegisterSleepWatcher 注册「睡了一觉」的边沿回调；key 用调用方自己的指针，便于注销。
+// 回调在锁外同步调用。
+func RegisterSleepWatcher(key any, w SleepWatcher) {
+	mu.Lock()
+	defer mu.Unlock()
+	sleepWatchers[key] = w
+}
+
+// UnregisterSleepWatcher 注销。对未注册的 key 是空操作。
+func UnregisterSleepWatcher(key any) {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(sleepWatchers, key)
+}
+
+func watchers() []SleepWatcher {
+	mu.Lock()
+	defer mu.Unlock()
+	ws := make([]SleepWatcher, 0, len(sleepWatchers))
+	for _, w := range sleepWatchers {
+		ws = append(ws, w)
+	}
+	return ws
 }
 
 // AllowFailureSweep 报告「拨号失败触发的全量体检」此刻该不该放行。

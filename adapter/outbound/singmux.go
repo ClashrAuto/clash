@@ -83,6 +83,14 @@ func (s *SingMux) ProxyInfo() C.ProxyInfo {
 	return info
 }
 
+// ResetTransport 关掉全部多路复用会话，下一次拨号新建（醒来对账用，见 tunnel/wake.go）。
+// sing-mux 的 Reset 不是终态：会话表清空后照常按需建新会话。
+func (s *SingMux) ResetTransport() {
+	if s.client != nil {
+		s.client.Reset()
+	}
+}
+
 // Close implements C.ProxyAdapter
 func (s *SingMux) Close() error {
 	if s.client != nil {

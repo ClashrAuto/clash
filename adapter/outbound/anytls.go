@@ -85,6 +85,13 @@ func (t *AnyTLS) ProxyInfo() C.ProxyInfo {
 	return info
 }
 
+// ResetTransport 关掉全部会话，下一次拨号新建（醒来对账用，见 tunnel/wake.go）。
+func (t *AnyTLS) ResetTransport() {
+	if t.client != nil {
+		t.client.CloseAllSessions()
+	}
+}
+
 // Close implements C.ProxyAdapter
 func (t *AnyTLS) Close() error {
 	return t.client.Close()

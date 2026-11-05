@@ -97,6 +97,11 @@ func (c *Client) createOutboundTLSConnection(ctx context.Context) (net.Conn, err
 	return tlsConn, nil
 }
 
+// CloseAllSessions 关掉全部会话、客户端照常可用（Coast：醒来对账用）。
+func (h *Client) CloseAllSessions() {
+	h.sessionClient.CloseAllSessions()
+}
+
 func (h *Client) Close() error {
 	return h.sessionClient.Close()
 }

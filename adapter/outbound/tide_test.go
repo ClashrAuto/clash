@@ -132,12 +132,21 @@ func drainTideHaltEvents() {
 	}
 }
 
-func dialFail(t *testing.T, b *dialBreaker) {
+// mustAdmit 要求这一次放行，返回凭条（record 时交回）。
+func mustAdmit(t *testing.T, b *dialBreaker) breakerTicket {
 	t.Helper()
-	if err := b.admit(); err != nil {
+	tk, err := b.admit()
+	if err != nil {
 		t.Fatalf("这一步应放行，被拒：%v", err)
 	}
-	b.record(context.DeadlineExceeded)
+	return tk
+}
+
+// dialFail 一次「放行 → 失败」的完整拨号。连着调就是**串行**的连败（每次都在上一次
+// 失败记账之后才放行）——并发的形态见 TestBreakerConcurrentFailuresCountOnce。
+func dialFail(t *testing.T, b *dialBreaker) {
+	t.Helper()
+	b.record(mustAdmit(t, b), context.DeadlineExceeded)
 }
 
 func TestBreakerOpensAfterConsecutiveFailures(t *testing.T) {
@@ -146,12 +155,10 @@ func TestBreakerOpensAfterConsecutiveFailures(t *testing.T) {
 
 	dialFail(t, b)
 	dialFail(t, b)
-	if err := b.admit(); err != nil {
-		t.Fatalf("两败之后仍应放行：%v", err)
-	}
-	b.record(context.DeadlineExceeded) // 第 3 败 → 开
+	tk := mustAdmit(t, b)                  // 两败之后仍应放行
+	b.record(tk, context.DeadlineExceeded) // 第 3 败 → 开
 
-	err := b.admit()
+	_, err := b.admit()
 	if err == nil || !strings.Contains(err.Error(), "circuit open") {
 		t.Fatalf("三连败后应熔断，得到：%v", err)
 	}
@@ -167,18 +174,12 @@ func TestBreakerSuccessResetsEverything(t *testing.T) {
 
 	dialFail(t, b)
 	dialFail(t, b)
-	if err := b.admit(); err != nil {
-		t.Fatal(err)
-	}
-	b.record(nil) // 成功 → 清零
+	b.record(mustAdmit(t, b), nil) // 成功 → 清零
 
 	// 又两败：不该开（计数已被成功清掉）。
 	dialFail(t, b)
 	dialFail(t, b)
-	if err := b.admit(); err != nil {
-		t.Fatalf("成功复位后两败不该熔断：%v", err)
-	}
-	b.record(nil)
+	b.record(mustAdmit(t, b), nil) // 成功复位后两败不该熔断
 }
 
 func TestBreakerCanceledNotCounted(t *testing.T) {
@@ -186,15 +187,69 @@ func TestBreakerCanceledNotCounted(t *testing.T) {
 	b := testBreaker(&at)
 
 	for i := 0; i < 10; i++ {
-		if err := b.admit(); err != nil {
+		tk, err := b.admit()
+		if err != nil {
 			t.Fatalf("第 %d 次 canceled 后被拒：%v", i, err)
 		}
-		b.record(context.Canceled)
+		b.record(tk, context.Canceled)
 	}
-	if err := b.admit(); err != nil {
-		t.Fatalf("canceled 不是对端的账，不该熔断：%v", err)
+	// canceled 不是对端的账，不该熔断。
+	b.record(mustAdmit(t, b), nil)
+}
+
+// ★★ 2026-11-05「iOS 解锁后断网」：同一时刻并发失败的一批算**一次**。
+//   解锁那一刻全机 app 同时重连、撞上睡前的死会话，一起失败——按到达顺序数的话
+//   这一下就是「连败 N 次」，普通档熔断 60 秒、「不使用」档停 1 小时并弹通知，
+//   而新会话一秒后就建得起来。
+func TestBreakerConcurrentFailuresCountOnce(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+
+	// 8 个拨号同时放行（都在同一批次里），然后一起失败。
+	var burst []breakerTicket
+	for i := 0; i < 8; i++ {
+		burst = append(burst, mustAdmit(t, b))
 	}
-	b.record(nil)
+	for _, tk := range burst {
+		b.record(tk, context.DeadlineExceeded)
+	}
+	if b.fails != 1 {
+		t.Fatalf("一批并发失败应只记 1 次，得到 %d", b.fails)
+	}
+	if _, err := b.admit(); err != nil {
+		t.Fatalf("一次事故不该熔断：%v", err)
+	}
+
+	// 反向：真正的「失败、再拨、又失败」照样在第三轮熔断 —— 别为了修 A 把 B 削掉。
+	at = at.Add(time.Second)
+	b2 := testBreaker(&at)
+	for round := 0; round < tideBreakerThreshold; round++ {
+		var wave []breakerTicket
+		for i := 0; i < 4; i++ {
+			wave = append(wave, mustAdmit(t, b2))
+		}
+		for _, tk := range wave {
+			b2.record(tk, context.DeadlineExceeded)
+		}
+	}
+	if _, err := b2.admit(); err == nil || !strings.Contains(err.Error(), "circuit open") {
+		t.Fatalf("三轮串行的失败应熔断，得到：%v", err)
+	}
+}
+
+// 成功之前就已放行的在途拨号，后来失败了也不算——对端刚证明过自己可达。
+func TestBreakerInflightFailureAfterSuccessNotCounted(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+
+	dialFail(t, b)
+	dialFail(t, b)
+	early := mustAdmit(t, b)
+	b.record(mustAdmit(t, b), nil)            // 成功 → 清零、开新批次
+	b.record(early, context.DeadlineExceeded) // 成功之前放行的，后来才失败
+	if b.fails != 0 {
+		t.Fatalf("成功之前放行的在途失败不该计数，得到 fails=%d", b.fails)
+	}
 }
 
 func TestBreakerHalfOpenSingleProbe(t *testing.T) {
@@ -206,25 +261,48 @@ func TestBreakerHalfOpenSingleProbe(t *testing.T) {
 
 	// 冷却期内全拒。
 	at = at.Add(tideBreakerCooldownMin - time.Second)
-	if err := b.admit(); err == nil {
+	if _, err := b.admit(); err == nil {
 		t.Fatal("冷却未到期就放行了")
 	}
 
 	// 到期：只放一个探针。
 	at = at.Add(2 * time.Second)
-	if err := b.admit(); err != nil {
-		t.Fatalf("半开态第一个探针应放行：%v", err)
+	probe := mustAdmit(t, b)
+	if !probe.probe {
+		t.Fatal("半开态放行的那一个应标记为探针")
 	}
-	if err := b.admit(); err == nil || !strings.Contains(err.Error(), "probe") {
+	if _, err := b.admit(); err == nil || !strings.Contains(err.Error(), "probe") {
 		t.Fatalf("探针在途时其余拨号应快速失败，得到：%v", err)
 	}
 
 	// 探针成功 → 关，全放行。
-	b.record(nil)
-	if err := b.admit(); err != nil {
-		t.Fatalf("探针成功后应恢复放行：%v", err)
+	b.record(probe, nil)
+	b.record(mustAdmit(t, b), nil)
+}
+
+// 半开态里，一个「开之前就在途」的旧拨号先回来，不能被当成探针：
+// 原来是「谁先回来谁释放名额」，它的失败会把熔断重开，真探针的成功反倒没人认。
+func TestBreakerStaleResultDoesNotStealProbe(t *testing.T) {
+	at := time.Unix(1000, 0)
+	b := testBreaker(&at)
+	dialFail(t, b)
+	dialFail(t, b)
+	stale := mustAdmit(t, b)                            // 开之前就放行、一直在途
+	b.record(mustAdmit(t, b), context.DeadlineExceeded) // 第 3 败 → 开
+
+	at = at.Add(tideBreakerCooldownMin + time.Second)
+	probe := mustAdmit(t, b)
+	b.record(stale, context.DeadlineExceeded) // 旧拨号这时才失败回来
+	if !b.probing {
+		t.Fatal("旧拨号的结果不该释放探针名额")
 	}
-	b.record(nil)
+	if b.openUntil.After(at) {
+		t.Fatal("旧拨号的失败不该把熔断重开")
+	}
+	b.record(probe, nil) // 真探针成功 → 关
+	if !b.openUntil.IsZero() {
+		t.Fatal("真探针成功后应关闭熔断")
+	}
 }
 
 func TestBreakerProbeFailureDoublesCooldownWithCap(t *testing.T) {
@@ -239,15 +317,16 @@ func TestBreakerProbeFailureDoublesCooldownWithCap(t *testing.T) {
 	for round, want := range []time.Duration{2 * tideBreakerCooldownMin,
 		4 * tideBreakerCooldownMin, tideBreakerCooldownMax, tideBreakerCooldownMax} {
 		at = at.Add(cool + time.Millisecond)
-		if err := b.admit(); err != nil {
+		tk, err := b.admit()
+		if err != nil {
 			t.Fatalf("第 %d 轮到期后探针应放行：%v", round, err)
 		}
-		b.record(context.DeadlineExceeded)
+		b.record(tk, context.DeadlineExceeded)
 		if b.cooldown != want {
 			t.Fatalf("第 %d 轮重开后冷却应为 %v，得到 %v", round, want, b.cooldown)
 		}
 		// 重开期间照旧拒。
-		if err := b.admit(); err == nil {
+		if _, err := b.admit(); err == nil {
 			t.Fatalf("第 %d 轮重开后冷却期内不该放行", round)
 		}
 		cool = want
@@ -262,15 +341,10 @@ func TestBreakerProbeCanceledReleasesSlot(t *testing.T) {
 	}
 	at = at.Add(tideBreakerCooldownMin + time.Second)
 
-	if err := b.admit(); err != nil {
-		t.Fatal(err)
-	}
-	b.record(context.Canceled) // 探针被调用方取消：名额必须还回来
+	b.record(mustAdmit(t, b), context.Canceled) // 探针被调用方取消：名额必须还回来
 
-	if err := b.admit(); err != nil {
-		t.Fatalf("探针取消后名额该释放，下一个拨号应能再探：%v", err)
-	}
-	b.record(nil)
+	// 探针取消后名额该释放，下一个拨号应能再探。
+	b.record(mustAdmit(t, b), nil)
 }
 
 func TestBreakerInflightFailureWhileOpenDoesNotExtend(t *testing.T) {
@@ -279,17 +353,28 @@ func TestBreakerInflightFailureWhileOpenDoesNotExtend(t *testing.T) {
 	dialFail(t, b)
 	dialFail(t, b)
 	// 两个并发拨号都已放行（开之前在途）。
-	if err := b.admit(); err != nil {
-		t.Fatal(err)
-	}
-	if err := b.admit(); err != nil {
-		t.Fatal(err)
-	}
-	b.record(context.DeadlineExceeded) // 第 3 败 → 开
+	first := mustAdmit(t, b)
+	second := mustAdmit(t, b)
+	b.record(first, context.DeadlineExceeded) // 第 3 败 → 开
 	opened := b.openUntil
-	b.record(context.DeadlineExceeded) // 开之后才回来的在途失败
+	b.record(second, context.DeadlineExceeded) // 开之后才回来的在途失败
 	if !b.openUntil.Equal(opened) {
 		t.Fatal("开着时收到在途失败不该延长冷却")
+	}
+}
+
+// 冷却按墙钟算：Go 的单调钟在设备睡眠时停走，带着单调读数比的话，手机锁屏一夜
+// 「1 小时后再探」会拖成大半天。判据：生产用的时钟**不带**单调读数（String 里没有 m=）。
+func TestBreakerClockIsWallClock(t *testing.T) {
+	if !strings.Contains(time.Now().String(), "m=") {
+		t.Skip("这个平台的 time.Now 不带单调读数，验不出区别")
+	}
+	if s := wallNow().String(); strings.Contains(s, "m=") {
+		t.Fatalf("熔断器的时钟带着单调读数（%s）—— 冷却会在设备睡眠时停走", s)
+	}
+	b := newDialBreaker("clock", false)
+	if s := b.now().String(); strings.Contains(s, "m=") {
+		t.Fatalf("newDialBreaker 没有用墙钟（%s）", s)
 	}
 }
 
@@ -370,10 +455,7 @@ func TestBreakerHaltModeHourCooldownAndSingleNotify(t *testing.T) {
 
 	// 一小时后的探针又失败：重开仍是 1 小时，且**不再**发事件。
 	at = at.Add(tideBreakerHaltCooldown + time.Second)
-	if err := b.admit(); err != nil {
-		t.Fatalf("到期探针应放行：%v", err)
-	}
-	b.record(context.DeadlineExceeded)
+	b.record(mustAdmit(t, b), context.DeadlineExceeded) // 到期探针放行，又失败
 	if b.cooldown != tideBreakerHaltCooldown {
 		t.Fatalf("halt 档重开冷却应仍为 1 小时，得到 %v", b.cooldown)
 	}
@@ -383,10 +465,7 @@ func TestBreakerHaltModeHourCooldownAndSingleNotify(t *testing.T) {
 
 	// 探针成功 → 复位；再一段连败是**新事故**，要重新通知。
 	at = at.Add(tideBreakerHaltCooldown + time.Second)
-	if err := b.admit(); err != nil {
-		t.Fatal(err)
-	}
-	b.record(nil)
+	b.record(mustAdmit(t, b), nil)
 	for i := 0; i < tideBreakerThreshold; i++ {
 		dialFail(t, b)
 	}

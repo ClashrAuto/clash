@@ -276,6 +276,19 @@ func (c *Client) DialUDP(dialer utils.PacketDialer) (UDPConn, error) {
 	return pktConn, nil
 }
 
+// ResetSession 关掉当前 QUIC 会话、客户端照常可用（Coast：醒来对账用，见 tunnel/wake.go）：
+// 下一次 openStreamWithReconnect 见会话为空就重连。与 Close 不同，Close 是终态
+// （closed=true，之后一律 ErrClosed）。quicSession 只在 reconnectMutex 下读写。
+func (c *Client) ResetSession() {
+	c.reconnectMutex.Lock()
+	defer c.reconnectMutex.Unlock()
+	if c.closed || c.quicSession == nil {
+		return
+	}
+	_ = c.quicSession.CloseWithError(closeErrorCodeGeneric, "")
+	c.quicSession = nil
+}
+
 func (c *Client) Close() error {
 	c.reconnectMutex.Lock()
 	defer c.reconnectMutex.Unlock()

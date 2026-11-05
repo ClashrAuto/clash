@@ -123,11 +123,12 @@ type TideOption struct {
 func (t *Tide) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
 	// ★ 连败熔断（见 tide_breaker.go 文件头）：对端长时间不在时快速失败，
 	//   别让每条新流都付一遍完整的拨号超时——那正是「一夜 30% 电」的形态。
-	if err := t.breaker.admit(); err != nil {
+	ticket, err := t.breaker.admit()
+	if err != nil {
 		return nil, err
 	}
 	c, err := t.client.DialContext(ctx, "tcp", metadata.RemoteAddress())
-	t.breaker.record(err)
+	t.breaker.record(ticket, err)
 	if err != nil {
 		return nil, err
 	}
@@ -141,11 +142,12 @@ func (t *Tide) ListenPacketContext(ctx context.Context, metadata *C.Metadata) (C
 	if err := t.ResolveUDP(ctx, metadata); err != nil {
 		return nil, err
 	}
-	if err := t.breaker.admit(); err != nil {
+	ticket, err := t.breaker.admit()
+	if err != nil {
 		return nil, err
 	}
 	ps, err := t.client.DialPacket(ctx, metadata.RemoteAddress())
-	t.breaker.record(err)
+	t.breaker.record(ticket, err)
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +260,20 @@ func (t *Tide) PathRTTMs() (uint16, bool) {
 		return 0, false
 	}
 	return tideRttMs(s.Paths())
+}
+
+// ResetTransport 关掉当前会话，下一次拨号由 tide.Client.Session 新建（醒来对账用，
+// 判据与理由见 tunnel/wake.go）。
+//
+// ★ 不能只等 tide 自己识破：它的静默判死用的是墙钟、第一拍就能判，可那一拍挂在探测
+//   定时器上（慢档 15 秒一拍，按单调钟走），醒来后这段时间里的新流都开在死会话上——
+//   开流不等对端确认（Session.OpenStream），于是不报错、只是不通。
+// ★ 不用 Client.Close：那是终态（之后一律 ErrClosed）。会话关掉而客户端不关，
+//   Client.Session 见会话已关就另建一条。没有会话时是 no-op（不为它去拨号）。
+func (t *Tide) ResetTransport() {
+	if s := t.client.CurrentSession(); s != nil {
+		_ = s.Close()
+	}
 }
 
 // Close implements C.ProxyAdapter

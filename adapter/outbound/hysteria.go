@@ -263,6 +263,13 @@ func NewHysteria(option HysteriaOption) (*Hysteria, error) {
 	return outbound, nil
 }
 
+// ResetTransport 关掉当前 QUIC 会话，下一次拨号重连（醒来对账用，见 tunnel/wake.go）。
+func (h *Hysteria) ResetTransport() {
+	if h.client != nil {
+		h.client.ResetSession()
+	}
+}
+
 // Close implements C.ProxyAdapter
 func (h *Hysteria) Close() error {
 	if h.client != nil {

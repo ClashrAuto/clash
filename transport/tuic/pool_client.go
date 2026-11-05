@@ -119,6 +119,34 @@ func (t *PoolClient) getClient(udp bool) Client {
 	}
 }
 
+// Reset 把池里的客户端全部摘掉并关闭（Coast：醒来对账用，见 tunnel/wake.go）。
+// 每个客户端攥着一条 QUIC 连接：没有在途流的立刻关，有的等流走完再关（clientImpl.Close
+// 的既有语义）。池空了之后下一次拨号由 getClient 新建客户端、重新握手——不是终态。
+// ★ 已摘掉的客户端不会回到池里：只有 newClient 往池里放，流结束不会把客户端放回来。
+func (t *PoolClient) Reset() {
+	for _, pool := range []struct {
+		clients *list.List[Client]
+		mu      *sync.Mutex
+	}{
+		{&t.tcpClients, &t.tcpClientsMutex},
+		{&t.udpClients, &t.udpClientsMutex},
+	} {
+		pool.mu.Lock()
+		var old []Client
+		for it := pool.clients.Front(); it != nil; it = it.Next() {
+			if it.Value != nil {
+				old = append(old, it.Value)
+			}
+		}
+		pool.clients.Init()
+		pool.mu.Unlock()
+		// 锁外关：Close 可能要做 QUIC 层的收尾，别攥着池锁挡住新拨号。
+		for _, c := range old {
+			c.Close()
+		}
+	}
+}
+
 func NewPoolClientV4(clientOption *ClientOptionV4, dialFn DialFunc) *PoolClient {
 	p := &PoolClient{
 		dialFn: dialFn,

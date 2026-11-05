@@ -166,6 +166,21 @@ func (c *Client) Close() error {
 	return nil
 }
 
+// CloseAllSessions 关掉全部会话、客户端照常可用（Coast：醒来对账用，见 tunnel/wake.go）。
+// 与 Close 不同：Close 会取消 die，之后 CreateStream 一律失败。会话关闭时各自的 dieHook
+// 把自己从 sessions / idleSession 里摘掉；流的 dieHook 见会话已关不会再把它放回空闲池。
+func (c *Client) CloseAllSessions() {
+	c.sessionsLock.Lock()
+	all := make([]*Session, 0, len(c.sessions))
+	for _, session := range c.sessions {
+		all = append(all, session)
+	}
+	c.sessionsLock.Unlock()
+	for _, session := range all {
+		session.Close()
+	}
+}
+
 func (c *Client) idleCleanup() {
 	c.idleCleanupExpTime(time.Now().Add(-c.idleSessionTimeout))
 }
