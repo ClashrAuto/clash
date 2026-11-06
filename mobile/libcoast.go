@@ -22,8 +22,10 @@ import "C"
 import (
 	"fmt"
 	"github.com/ClashrAuto/coast/adapter/outbound"
+	"github.com/ClashrAuto/coast/adapter/provider"
 	"github.com/ClashrAuto/coast/component/dialer"
 	"github.com/ClashrAuto/coast/component/iface"
+	"github.com/ClashrAuto/coast/component/mmdb"
 	"github.com/ClashrAuto/coast/component/resolver"
 	"github.com/ClashrAuto/coast/component/suspend"
 	"os"
@@ -40,6 +42,7 @@ import (
 	"github.com/ClashrAuto/coast/hub"
 	"github.com/ClashrAuto/coast/hub/executor"
 	"github.com/ClashrAuto/coast/log"
+	"github.com/ClashrAuto/coast/tunnel"
 	"github.com/ClashrAuto/coast/tunnel/statistic"
 )
 
@@ -66,9 +69,18 @@ func CoastStart(homeDir *C.char, confPath *C.char) *C.char {
 func startCore(home, conf string) error {
 	applyMemoryLimit()
 	captureStderr(home)
+	// ★ 要早于加载配置：配置一加载，各组的健康检查就开始了。
+	if onDemandHealthCheck {
+		provider.SetOnDemandHealthCheck(true, func() { resetIdleTransports() })
+	}
 
 	Cst.SetHomeDir(home)
 	Cst.SetConfig(conf)
+	// ★★ 承载核心的进程可能比这一次隧道长命（macOS 系统扩展跨多次 CoastStop/CoastStart
+	//   一直活着），而 IP 库加载一次就一直 mmap 着 —— 不在这里重开的话，app 换上的新
+	//   Country.mmdb 在进程退出前一次都不会被读到（2026-10-04 真机：扩展进程活了 6 天，
+	//   分流一直用第一天那份）。进程里还没加载过时这一句什么都不做。
+	mmdb.ReopenIP()
 
 	buf, err := os.ReadFile(conf)
 	if err != nil {
@@ -79,6 +91,7 @@ func startCore(home, conf string) error {
 	if err := hub.Parse(buf); err != nil {
 		return fmt.Errorf("parse config: %w", err)
 	}
+	resetStandby(tunnel.Proxies())
 	// ★ 启动这一下是整个生命周期里最大的一次**瞬时**分配：解析配置、建规则树、
 	//   读 Country.mmdb。这些垃圾靠 scavenger 慢慢还给系统要几分钟，而"刚连上就被杀"
 	//   恰恰是最常见的时刻。所以在这里**一次性**归还。
@@ -374,8 +387,22 @@ func startMemoryWatch() {
 				// ★ 先记峰值：被杀之前的最后一行就是现场。
 				if newPeak, next := memPeakDecision(used, peakLogged); newPeak {
 					peakLogged = next
-					log.Infoln("tunnel mem peak: %s %d MiB / limit %d MiB (RSS %d, Go %d)",
-						metric, used>>20, limit>>20, processRSSBytes()>>20, goMemoryBytes()>>20)
+					// ★★ 逼近上限（≥ memNearAt）的峰值必须用 **warning**：隧道形态的
+					//   full-tun.yaml 被压到 log-level=warning（电池专项），info 级的
+					//   峰值行在出货形态**一行都进不了文件** —— 而「被杀前最后一行」
+					//   正是这套仪表存在的理由。2026-08-29 真机核对坐实：13:07 那条
+					//   80% 告警在 tunnel-core.log 里，峰值行零条（它 08-21 就写好了，
+					//   电池专项后来把级别压下去时没人想起它）。
+					//   ★ 刷屏无虞：peakLogged 单调只涨、每 4 MiB 一行，warning 档
+					//   （≥60% ≈ 30 MiB 起）整个进程生命周期至多 (50-30)/4 = 5 行。
+					//   远离上限的峰值仍走 info —— 那些行在排障构建（app 进程 tap）里照旧可见。
+					if limit > 0 && float64(used) >= memNearAt*float64(limit) {
+						log.Warnln("tunnel mem peak: %s %d MiB / limit %d MiB (RSS %d, Go %d)",
+							metric, used>>20, limit>>20, processRSSBytes()>>20, goMemoryBytes()>>20)
+					} else {
+						log.Infoln("tunnel mem peak: %s %d MiB / limit %d MiB (RSS %d, Go %d)",
+							metric, used>>20, limit>>20, processRSSBytes()>>20, goMemoryBytes()>>20)
+					}
 				}
 				var warn bool
 				warn, armed = memWarnDecision(used, limit, armed)
@@ -394,6 +421,22 @@ func startMemoryWatch() {
 	})
 }
 
+// CoastTrafficTotals 累计的用户流量字节数（up/down，进程生命周期内单调递增）。
+//
+// ★ 给隧道侧的「休眠模式」当**速率判据**用（ios 的 DormantPolicy）：锁屏满宽限后
+//   要区分「真空闲（只剩推送心跳,每分钟几 KB）」和「锁屏听歌/导航/挂下载
+//   （几十 KB/s 起）」——前者该休眠,后者绝不能断。取两拍差分算窗口速率,
+//   阈值那侧的账见 DormantPolicy 的注释。
+// ★ 读的是 statistic.DefaultManager.Total()——只计**经过隧道的连接**流量,
+//   tide 协议帧/DNS 解析不在内,正好是「用户在用不在用」的口径。
+//
+//export CoastTrafficTotals
+func CoastTrafficTotals(up, down *C.ulonglong) {
+	u, d := statistic.DefaultManager.Total()
+	*up = C.ulonglong(u)
+	*down = C.ulonglong(d)
+}
+
 // CoastStop 停掉核心（关监听、断连接）。
 //
 //export CoastStop
@@ -402,6 +445,7 @@ func CoastStop() { stopCore() }
 // stopCore 同 `startCore`：纯 Go，测得到。
 func stopCore() {
 	executor.Shutdown()
+	resetStandby(nil)
 }
 
 // CoastVersion 返回核心版本，用来在「关于」页那张卡上显示，
@@ -470,9 +514,7 @@ func CoastStartLogTap() {
 				//   是因为四条线的解析器（Swift `LogLine.parse` / Kotlin `LogLine`）
 				//   本来就认它 —— Android 读的核心 stdout 就是这个形状。
 				//   ★ 正文里的引号要转义：解析那侧按「最后一个引号」收尾并认 \"。
-				line := "time=\"" + time.Now().Format(time.RFC3339Nano) + "\" level=" +
-					e.LogLevel.String() + " msg=\"" +
-					strings.ReplaceAll(e.Payload, "\"", "\\\"") + "\""
+				line := tapLine(time.Now(), e.LogLevel.String(), e.Payload)
 				logMu.Lock()
 				logBuf = append(logBuf, line)
 				if len(logBuf) > logBufMax {
@@ -483,6 +525,18 @@ func CoastStartLogTap() {
 			}
 		}()
 	})
+}
+
+// tapLine 把一条核心日志事件写成 logfmt 行（形状与理由见 CoastStartLogTap 里的注释）。
+//
+// ★★ 时间按 `t` 自带的时区写 —— 调用处传 `time.Now()`，也就是 `time.Local`。
+//
+//	iOS 上那必须是 localzone_darwin.go 换过的系统时区：Go 在 iOS 上的 `time.Local`
+//	原生恒为 UTC，这里就会写出 `…Z`，而日志页只截 `HH:mm:ss`，内核行于是比同一秒的
+//	Swift 行早 8 小时（2026-11-05 真机）。单拎成函数是为了能在测试里钉住这件事。
+func tapLine(t time.Time, level, payload string) string {
+	return "time=\"" + t.Format(time.RFC3339Nano) + "\" level=" + level +
+		" msg=\"" + strings.ReplaceAll(payload, "\"", "\\\"") + "\""
 }
 
 // CoastNextLog 取一条日志；没有就返回 NULL。**调用方负责 free**。
@@ -537,6 +591,27 @@ func CoastResetDNS() {
 	resolver.ResetConnection()
 }
 
+// CoastEnterStandby 卸掉全部节点，conf 是不带节点的配置。返回 NULL 表示成功，否则是错误原文
+// （调用方负责 free）。语义与理由见 standby.go。
+//
+//export CoastEnterStandby
+func CoastEnterStandby(conf *C.char) *C.char {
+	if err := enterStandby(C.GoString(conf)); err != nil {
+		return C.CString(err.Error())
+	}
+	return nil
+}
+
+// CoastReload 重新加载完整配置：离开待机，以及运行中用户改了配置。返回值同上。
+//
+//export CoastReload
+func CoastReload(conf *C.char) *C.char {
+	if err := reloadCore(C.GoString(conf)); err != nil {
+		return C.CString(err.Error())
+	}
+	return nil
+}
+
 // CoastNextTideHalt 取一条「TIDE 出站已停止重试」事件（值 = 出站名，调用方负责
 // free）；没有返回 NULL。
 //
@@ -563,8 +638,15 @@ func CoastNextTideHalt() *C.char {
 //
 // ★ `dialer.DefaultInterface` 在优先级链上压过 auto-detect 的 finder
 // （出站显式 interface-name > 入站携带 > DefaultInterface > DefaultInterfaceFinder，
-// 见 component/dialer/egress.go），所以 auto-detect 不用关、留着当兜底 ——
-// 这个值一次都没推到之前，行为与从前完全一样。
+// 见 component/dialer/egress.go）。iOS 上 auto-detect 已经关了（TunConfig），网口只有
+// 平台这一个来源；macOS 线还开着，这个值一次都没推到之前行为与从前一样。
+//
+// ★★★ **这个值必须早于内核的第一次拨号**（2026-11-06 真机定案，一夜掉 20%）：只靠这个函数
+// 推的话，推到之前内核已经在做首轮健康检查了 —— auto-detect 选中蜂窝，连接全落在 pdp_ip0
+// 上（实测隧道启动那一毫秒 7 条连接全走蜂窝，1.4 秒后才回到 en0）。tide 路径一旦落在蜂窝上
+// 就一直留着，探测 15 秒一拍发一整夜，蜂窝射频退不回空闲。所以启动时首选口由 Swift 探好、
+// 写进配置的 `interface-name`（TunConfig）：`ApplyConfig` 里 updateGeneral 早于 loadProvider，
+// 第一次拨号时它已经生效。这里只管**运行中**的变化。
 //
 //export CoastSetDefaultInterface
 func CoastSetDefaultInterface(name *C.char) {
@@ -573,9 +655,13 @@ func CoastSetDefaultInterface(name *C.char) {
 	setDefaultEgressInterface(C.GoString(name))
 }
 
+// resetIdleTransports 是换口时清长连接的那一步，变量是为了单测能换成计数的假件
+// （「同值不清、真换才清」是这里最要紧的不变量：每清一次都是一轮重新握手）。
+var resetIdleTransports = tunnel.ResetIdleTransports
+
 func setDefaultEgressInterface(name string) {
 	// 空名不接受：调用方（UnderlyingEgress.step）在没网时本来就不推；真收到空名
-	// 宁可保持上一个值 —— 清空等于把决定权还给 auto-detect，正是要修的那条错路。
+	// 宁可保持上一个值 —— 清空之后出站不绑口，会绕回隧道自己。
 	if name == "" {
 		return
 	}
@@ -589,6 +675,9 @@ func setDefaultEgressInterface(name string) {
 	// 接口快照缓存作废 + DNS 上游连接重建（旧口上的长连接已经是假活）。
 	iface.FlushCache()
 	resolver.ResetConnection()
+	// ★ 换口只影响新拨号，空闲的长连接留在旧口上不会自己回来（蜂窝上的 tide 路径照样探测），
+	//   这里清掉。正在用的不碰，理由见 tunnel.ResetIdleTransports。
+	resetIdleTransports()
 	// ★ Warn 级：隧道那份配置把 log-level 压到 warning，这一行是真机上验证
 	//   「平台钉口有没有生效」唯一持久可见的痕迹（低频 —— 只在口真变时打一次）。
 	log.Warnln("[TUN] default interface pinned by platform: %s", name)

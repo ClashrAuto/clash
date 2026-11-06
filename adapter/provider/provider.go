@@ -62,13 +62,17 @@ func (bp *baseProvider) Version() uint32 {
 }
 
 func (bp *baseProvider) Initial() error {
-	if bp.healthCheck.auto() {
+	if bp.healthCheck.auto() && !onDemandMode.Load() {
 		go bp.healthCheck.process()
 	}
 	return nil
 }
 
 func (bp *baseProvider) HealthCheck() {
+	if onDemandMode.Load() {
+		beginOnDemandCheck()
+		defer finishOnDemandCheck(bp.name)
+	}
 	bp.healthCheck.check()
 }
 
@@ -90,6 +94,9 @@ func (bp *baseProvider) Count() int {
 
 func (bp *baseProvider) Touch() {
 	bp.healthCheck.touch()
+	if onDemandMode.Load() {
+		bp.touchOnDemand()
+	}
 }
 
 func (bp *baseProvider) HealthCheckURL() string {
@@ -106,7 +113,7 @@ func (bp *baseProvider) setProxies(proxies []C.Proxy) {
 	bp.proxies = proxies
 	bp.version += 1
 	bp.healthCheck.setProxies(proxies)
-	if bp.healthCheck.auto() {
+	if bp.healthCheck.auto() && !onDemandMode.Load() {
 		go bp.healthCheck.check()
 	}
 }

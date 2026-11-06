@@ -35,7 +35,8 @@
 package main
 
 const (
-	defaultMemLimit int64 = 512 << 20
-	memWatchEnabled       = false
-	memLimitReason        = "macOS sysex has no jetsam per-process cap; this is a runaway guard"
+	defaultMemLimit     int64 = 512 << 20
+	memWatchEnabled           = false
+	memLimitReason            = "macOS sysex has no jetsam per-process cap; this is a runaway guard"
+	onDemandHealthCheck       = false
 )

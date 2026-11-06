@@ -153,3 +153,36 @@ func TestWakeWiringThroughManager(t *testing.T) {
 		t.Fatal("没有挂起时的快照，不该关任何连接")
 	}
 }
+
+// 把全局出站表换成假的，测完还原。
+func withProxies(t *testing.T, ps map[string]C.Proxy) {
+	t.Helper()
+	configMux.Lock()
+	origP, origV := proxies, providers
+	proxies, providers = ps, nil
+	configMux.Unlock()
+	t.Cleanup(func() {
+		configMux.Lock()
+		proxies, providers = origP, origV
+		configMux.Unlock()
+	})
+}
+
+// 换首选网口：只动没人在用的。正在用的硬关等于废掉 tide 切网不断流的能力。
+func TestResetIdleTransportsSkipsOutboundsInUse(t *testing.T) {
+	var idle, inUse int
+	withProxies(t, map[string]C.Proxy{
+		"idle":   fakeProxy{adapter: resettable{resets: &idle}},
+		"in-use": fakeProxy{adapter: resettable{resets: &inUse}},
+	})
+	c := newFakeConn("idle-check", 10, "in-use", "AUTO")
+	statistic.DefaultManager.Join(c)
+	defer statistic.DefaultManager.Leave(c)
+
+	if n := ResetIdleTransports(); n != 1 {
+		t.Fatalf("应只重置 1 个空闲出站，得到 %d", n)
+	}
+	if idle != 1 || inUse != 0 {
+		t.Fatalf("空闲的该重置、在用的不该动：idle=%d inUse=%d", idle, inUse)
+	}
+}

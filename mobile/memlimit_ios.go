@@ -15,4 +15,6 @@ const (
 	// 装仪表：真机上逼近上限时要有读数，否则被杀时手上什么都没有。
 	memWatchEnabled = true
 	memLimitReason  = "NE extension jetsam cap is 50 MiB"
+	// 手机上没有周期测速，用到才测（adapter/provider/healthcheck_ondemand.go）。
+	onDemandHealthCheck = true
 )

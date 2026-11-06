@@ -139,6 +139,40 @@ func planWake(before map[string]int64, now []wakeSample) wakePlan {
 	return plan
 }
 
+// ResetIdleTransports 丢掉**此刻没有任何中继连接在用**的出站的长连接，返回重置了几个出站
+// （Coast 自有，平台钉的首选网口变了时、按需测速结束时调）。
+//
+// 换口只影响新拨号，已有的长连接留在旧口上不会自己回来 —— 从蜂窝回到 Wi-Fi 之后，
+// 蜂窝上的 tide 路径照样活着、探测照发，直到它自己死掉（可能永远不死）。
+//
+// 为什么只动空闲的：tide 的卖点就是切网时流不断（宽限期内重连续上），正在用的会话
+// 硬关掉等于把这个能力废了。正在用的留着，等它用完。
+func ResetIdleTransports() int {
+	busy := map[string]bool{}
+	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
+		for _, name := range c.Info().Chain {
+			busy[name] = true
+		}
+		return true
+	})
+	return len(resetTransports(wakeProxies(), busy))
+}
+
+// resetTransports 重置 proxies 里除 busy 之外所有出站的长连接，返回重置了谁（已排序）。
+func resetTransports(proxies map[string]C.Proxy, busy map[string]bool) []string {
+	var reset []string
+	for name, p := range proxies {
+		if busy[name] {
+			continue
+		}
+		if resetTransport(p) {
+			reset = append(reset, name)
+		}
+	}
+	sort.Strings(reset)
+	return reset
+}
+
 // reconcileWake 执行对账：关掉空闲的中继连接，重置空闲出站的长连接。返回关了几条、重置了谁。
 func reconcileWake(before map[string]int64, conns []wakeTracker, proxies map[string]C.Proxy) (closed int, reset []string) {
 	samples := make([]wakeSample, 0, len(conns))
@@ -154,16 +188,7 @@ func reconcileWake(before map[string]int64, conns []wakeTracker, proxies map[str
 		_ = byID[id].Close()
 		closed++
 	}
-	for name, p := range proxies {
-		if plan.busy[name] {
-			continue
-		}
-		if resetTransport(p) {
-			reset = append(reset, name)
-		}
-	}
-	sort.Strings(reset)
-	return closed, reset
+	return closed, resetTransports(proxies, plan.busy)
 }
 
 // resetTransport 沿包装层（adapter.Proxy → autoClose → …）找到实现了 ResetTransport 的那一层
