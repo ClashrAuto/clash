@@ -15,6 +15,7 @@ import (
 	"strings"
 	"syscall"
 
+	adapterprovider "github.com/ClashrAuto/coast/adapter/provider"
 	"github.com/ClashrAuto/coast/common/cmd"
 	"github.com/ClashrAuto/coast/component/age"
 	"github.com/ClashrAuto/coast/component/generator"
@@ -27,6 +28,7 @@ import (
 	"github.com/ClashrAuto/coast/hub/executor"
 	"github.com/ClashrAuto/coast/log"
 	"github.com/ClashrAuto/coast/rules/provider"
+	"github.com/ClashrAuto/coast/tunnel"
 
 	"go.uber.org/automaxprocs/maxprocs"
 )
@@ -211,6 +213,12 @@ func main() {
 	}
 	if secret != "" {
 		options = append(options, hub.WithSecret(secret))
+	}
+
+	// Coast 自有：安卓的内核是这个可执行文件，不走 mobile/，按需测速只能从这里打开。
+	// 要早于第一次加载配置。用环境变量是因为老内核不认识它也不碍事，不用判版本。
+	if os.Getenv("COAST_ONDEMAND_HEALTHCHECK") == "1" {
+		adapterprovider.SetOnDemandHealthCheck(true, func() { tunnel.ResetIdleTransports() })
 	}
 
 	if err := hub.Parse(configBytes, options...); err != nil {

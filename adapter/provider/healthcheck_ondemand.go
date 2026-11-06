@@ -8,7 +8,8 @@ import (
 	"github.com/ClashrAuto/coast/component/suspend"
 )
 
-// 按需测速（Coast 自有，iOS 打开，其余平台不变）。
+// 按需测速（Coast 自有，两条手机线打开，桌面不变）。iOS 走 mobile/，安卓走
+// 环境变量 COAST_ONDEMAND_HEALTHCHECK=1（main.go）。
 //
 // ★★★ 手机上没有周期测速：定时器、启动时的全量测、唤醒补测一律不跑。用到才测 ——
 // 流量走到某个自动组时，这个组从没测过，或上次结果已经过期，才在后台测一轮。
