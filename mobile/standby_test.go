@@ -405,6 +405,21 @@ func TestStandbyCyclesDoNotLeak(t *testing.T) {
 	}
 }
 
+// taskinfo 的写法是「interrupt wakeups: N (M / x% from platform idle)」，两者是包含关系。
+func TestIdleWakeupsAreASubset(t *testing.T) {
+	deadline := time.Now().Add(300 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	all, idle := taskWakeups(), taskIdleWakeups()
+	if all == 0 {
+		t.Skip("这台机器读不到 task_power_info")
+	}
+	if idle > all {
+		t.Fatalf("空闲唤醒 %d 多于全部唤醒 %d", idle, all)
+	}
+}
+
 // 分状态量唤醒次数（默认跳过，它要跑半分钟）：
 //
 //	COAST_WAKEPROBE=1 go test ./mobile -run TestWakeRateProbe -v -timeout 120s
